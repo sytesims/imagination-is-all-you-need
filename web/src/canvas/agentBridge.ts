@@ -10,7 +10,7 @@
  * says what it does, then the card fades in, its prompt types itself in and its arrows draw). Notes, named frames, move_into and
  * point_at make the board read as a plan. Under reduced motion (or in a hidden tab) everything lands at once, with a plain outline.
  */
-import { Box, createShapeId, toRichText, type Editor, type TLShapeId } from 'tldraw';
+import { rect, rectHasPoint, unionRects, richText, type BoardApi, type NodeId, type Rect } from './boardApi';
 import { createCard, setCard, connect, describeCard, quoteCard, submit, listFlows } from './agentApi';
 import { submitInOrder } from './nodeRun';
 import { handOf, fx, workArea, boundsOf, animOK } from './agentHand';
@@ -104,118 +104,118 @@ function resolveProvider(toolId: string, model: string): string {
 function toolIdOf(flow: GenFlow): string { const cat = catalogNow(); return cat ? flowInfo(flow, cat).toolId : flow.toolId; }
 
 /** A card's short name (the shot name the agent gave it; an Upload node's own name, else its file's), else null. */
-export const nameOf = (editor: Editor, id: TLShapeId): string | null => { const s: any = editor.getShape(id); if (s?.type === UPLOAD_TYPE) return uploadNodeName(s);
+export const nameOf = (board: BoardApi, id: NodeId): string | null => { const s: any = board.getNode(id); if (s?.type === UPLOAD_TYPE) return uploadNodeName(s);
   const n = s?.meta?.name; return typeof n === 'string' && n.trim() ? n.trim() : null; };
 /** Plain text of a note's rich text (tiptap JSON). */
 export function plainText(rt: any): string { if (!rt || typeof rt !== 'object') return ''; if (typeof rt.text === 'string') return rt.text; return (Array.isArray(rt.content) ? rt.content.map(plainText).join(rt.type === 'doc' ? '\n' : '') : '').trim(); }
-const frameAt = (editor: Editor, pt: { x: number; y: number }) => editor.getCurrentPageShapes().filter((s) => s.type === 'frame').map((s) => editor.getShapePageBounds(s.id)!).find((b) => b && b.containsPoint(pt)) ?? null;
-const plainBox = (b: Box) => ({ x: b.x, y: b.y, w: b.w, h: b.h });
+const frameAt = (board: BoardApi, pt: { x: number; y: number }) => board.nodes().filter((s) => s.type === 'frame').map((s) => board.boundsOf(s.id)!).find((b) => b && rectHasPoint(b, pt)) ?? null;
+const plainBox = (b: Rect) => ({ x: b.x, y: b.y, w: b.w, h: b.h });
 /** The camera's area for these nodes: them and what feeds them (graph.withInputs), plus `extra` (a card about to appear). FollowAgent eases there
  *  (animated unless reduced motion) and stays still when it is already in view. */
-function areaOf(editor: Editor, ids: string[], extra?: { x: number; y: number; w: number; h: number } | null) {
-  const b = boundsOf(editor, withInputs(editor, ids)); const e = extra ? new Box(extra.x, extra.y, extra.w, extra.h) : null;
-  const all = b && e ? Box.Common([b, e]) : b ?? e; return all ? plainBox(all) : null;
+function areaOf(board: BoardApi, ids: string[], extra?: { x: number; y: number; w: number; h: number } | null) {
+  const b = boundsOf(board, withInputs(board, ids)); const e = extra ? rect(extra.x, extra.y, extra.w, extra.h) : null;
+  const all = b && e ? unionRects([b, e]) : b ?? e; return all ? plainBox(all) : null;
 }
 
-function titleOf(editor: Editor, id: TLShapeId): string {
-  const s = editor.getShape(id); if (!s) return 'Card'; const p = s.props as any;
-  if (s.type === GEN_TYPE) return String(nameOf(editor, id) || p.prompt || flowById(p.flow)?.name || 'Card').slice(0, 48);
+function titleOf(board: BoardApi, id: NodeId): string {
+  const s = board.getNode(id); if (!s) return 'Card'; const p = s.props as any;
+  if (s.type === GEN_TYPE) return String(nameOf(board, id) || p.prompt || flowById(p.flow)?.name || 'Card').slice(0, 48);
   if (s.type === 'note') return plainText(p.richText).slice(0, 48) || 'Note';
   if (s.type === 'frame') return String(p.name || 'Frame').slice(0, 48);
   if (s.type === RESULT_T) return String(p.title || p.model || 'Result').slice(0, 48);
-  if (s.type === 'image' || s.type === 'video') { const a: any = p.assetId ? editor.getAsset(p.assetId) : null; return String(a?.props?.name || (s.type === 'image' ? 'Picture' : 'Clip')).slice(0, 48); }
+  if (s.type === 'image' || s.type === 'video') { const a: any = p.assetId ? board.asset(p.assetId) : null; return String(a?.props?.name || (s.type === 'image' ? 'Picture' : 'Clip')).slice(0, 48); }
   return 'Card';
 }
-function cardNode(editor: Editor, id: TLShapeId, quote?: any) {
-  const d = describeCard(editor, id); const s = editor.getShape(id); if (!d || !s) return null; const p = s.props as any;
+function cardNode(board: BoardApi, id: NodeId, quote?: any) {
+  const d = describeCard(board, id); const s = board.getNode(id); if (!d || !s) return null; const p = s.props as any;
   return { id, type: 'card' as const, kind: p.medium ?? null, workflow: p.flow ?? null, workflowName: flowById(p.flow)?.name ?? p.flow ?? null, model: d.model || p.provider || null, prompt: p.prompt ?? '',
-    name: nameOf(editor, id), title: String(nameOf(editor, id) || p.prompt || d.flow || 'Card').slice(0, 100), frame: frameOfShape(editor, id), status: p.status ?? null, inputs: (arrowsInto(editor, id).map((a) => a.fromId).filter(Boolean) as string[]),
+    name: nameOf(board, id), title: String(nameOf(board, id) || p.prompt || d.flow || 'Card').slice(0, 100), frame: frameOfShape(board, id), status: p.status ?? null, inputs: (arrowsInto(board, id).map((a) => a.fromId).filter(Boolean) as string[]),
     results: (p.takes ?? []).filter((t: any) => t?.url).map((t: any) => ({ url: t.url, kind: t.kind ?? null, poster: t.poster ?? null })),
-    price: priceView(quote ?? p.quote), jobId: p.jobId || null, missing: d.missing, ...posOf(editor, id),
+    price: priceView(quote ?? p.quote), jobId: p.jobId || null, missing: d.missing, ...posOf(board, id),
     /* the version strip: which version flows to the next card (1-based) */ version: (p.takes ?? []).length ? Math.min(p.take ?? 0, p.takes.length - 1) + 1 : null, versions: (p.takes ?? []).length };
 }
 
 /** Where a node sits on the board (page px, top-left and size), so an agent can see the layout. */
-const posOf = (editor: Editor, id: TLShapeId) => { const b = editor.getShapePageBounds(id); return b ? { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h) } : {}; };
-const frameOfShape = (editor: Editor, id: TLShapeId) => { const s = editor.getShape(id); const parent = s ? editor.getShape(s.parentId as TLShapeId) : null; return parent?.type === 'frame' ? parent.id : null; };
+const posOf = (board: BoardApi, id: NodeId) => { const b = board.boundsOf(id); return b ? { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h) } : {}; };
+const frameOfShape = (board: BoardApi, id: NodeId) => { const s = board.getNode(id); const parent = s ? board.getNode(s.parentId as NodeId) : null; return parent?.type === 'frame' ? parent.id : null; };
 /** The agent writes a card's prompt as you watch (instant under reduced motion). */
-async function typePrompt(editor: Editor, id: TLShapeId, text: string) {
-  if (!text || !animOK()) { if (text) setCard(editor, id, { prompt: text }); return; }
+async function typePrompt(board: BoardApi, id: NodeId, text: string) {
+  if (!text || !animOK()) { if (text) setCard(board, id, { prompt: text }); return; }
   fx.writing(id, true);
   try {
     const steps = Math.min(24, Math.max(6, Math.ceil(text.length / 9))); const per = Math.min(1000, 280 + text.length * 5) / steps;
-    for (let i = 1; i <= steps; i++) { if (!editor.getShape(id)) return; setCard(editor, id, { prompt: text.slice(0, Math.round((text.length * i) / steps)) }); await sleep(per); }
-    setCard(editor, id, { prompt: text });
+    for (let i = 1; i <= steps; i++) { if (!board.getNode(id)) return; setCard(board, id, { prompt: text.slice(0, Math.round((text.length * i) / steps)) }); await sleep(per); }
+    setCard(board, id, { prompt: text });
   } finally { fx.writing(id, false); }
 }
 
-async function withQuote(editor: Editor, id: TLShapeId) {
-  const q = await quoteCard(editor, id).catch(() => null);
-  return { card: cardNode(editor, id, q), quote: compactQuote(q), q };
+async function withQuote(board: BoardApi, id: NodeId) {
+  const q = await quoteCard(board, id).catch(() => null);
+  return { card: cardNode(board, id, q), quote: compactQuote(q), q };
 }
 
-async function addCard(editor: Editor, op: AgentOp) {
+async function addCard(board: BoardApi, op: AgentOp) {
   if (!op.workflow) throw new Error('Name a workflow (see canvas_list_workflows).');
   if (!catalogNow()) { for (let i = 0; i < 25 && !catalogNow(); i++) await sleep(100); }
   const flow = resolveFlow(op.workflow); const toolId = toolIdOf(flow);
   const provider = op.model ? resolveProvider(toolId, op.model) : undefined;
-  const from = (op.inputs_from ?? []).map((id) => { const s = editor.getShape(id as TLShapeId); if (!s) throw new Error(`No node with id "${id}" on this board.`); return s.id; });
-  const name = op.name?.trim() || ''; const at = op.at ?? freeSpot(editor, CARD_W, CARD_H); const hand = handOf(editor);
+  const from = (op.inputs_from ?? []).map((id) => { const s = board.getNode(id as NodeId); if (!s) throw new Error(`No node with id "${id}" on this board.`); return s.id; });
+  const name = op.name?.trim() || ''; const at = op.at ?? freeSpot(board, CARD_W, CARD_H); const hand = handOf(board);
   /* the hand goes there first; the camera frames the frame being filled (or the card) */
-  const fr = frameAt(editor, at); workArea(areaOf(editor, from, fr ? plainBox(fr) : { x: at.x - CARD_W / 2, y: at.y - CARD_H / 2, w: CARD_W, h: CARD_H })); /* and the cards wired into it */
+  const fr = frameAt(board, at); workArea(areaOf(board, from, fr ? plainBox(fr) : { x: at.x - CARD_W / 2, y: at.y - CARD_H / 2, w: CARD_W, h: CARD_H })); /* and the cards wired into it */
   await hand.glideTo({ x: at.x - CARD_W / 2 + 28, y: at.y - CARD_H / 2 + 26 }, `Adding ${name || flow.name}`);
   const typed = animOK() && !!op.prompt;
-  const id = createCard(editor, { flow: flow.id, prompt: typed ? '' : op.prompt, ...(provider ? { provider } : {}), ...(op.settings ? { vals: op.settings } : {}), ...(from.length ? { from } : {}), at, select: false });
-  try { checkFeeds(editor, from, id, true); } catch (e) { editor.deleteShapes([id, ...arrowsInto(editor, id).map((a) => a.arrowId)]); throw e; }
+  const id = createCard(board, { flow: flow.id, prompt: typed ? '' : op.prompt, ...(provider ? { provider } : {}), ...(op.settings ? { vals: op.settings } : {}), ...(from.length ? { from } : {}), at, select: false });
+  try { checkFeeds(board, from, id, true); } catch (e) { board.removeLinks(arrowsInto(board, id).map((a) => a.arrowId)); board.removeNodes([id]); throw e; }
   { /* Material Swap: the first input is the object, the rest are swatches, whatever order the arrows end up in (a frame move reorders them) */
-    const sp = cardState(editor, editor.getShape(id)!, catalogNow()).spec; const many = sp?.slots.find((x) => x.many); const first = sp?.slots.find((x) => !x.many);
-    if (many && first && from.length > 1) setCard(editor, id, { pins: Object.fromEntries(from.map((f, i) => [f, i === 0 ? first.name : many.name])) }); }
-  if (name) editor.run(() => editor.updateShape({ id, type: GEN_TYPE, meta: { ...(editor.getShape(id)?.meta ?? {}), name } } as any), { history: 'ignore' });
-  fx.enter(id); for (const a of arrowsInto(editor, id)) fx.drawArrow(a.arrowId);
-  if (typed) await typePrompt(editor, id, op.prompt!);
+    const sp = cardState(board, board.getNode(id)!, catalogNow()).spec; const many = sp?.slots.find((x) => x.many); const first = sp?.slots.find((x) => !x.many);
+    if (many && first && from.length > 1) setCard(board, id, { pins: Object.fromEntries(from.map((f, i) => [f, i === 0 ? first.name : many.name])) }); }
+  if (name) board.batch(() => board.patchNode(id, { meta: { ...(board.getNode(id)?.meta ?? {}), name } } as any), { history: 'ignore' });
+  fx.enter(id); for (const a of arrowsInto(board, id)) fx.drawArrow(a.arrowId);
+  if (typed) await typePrompt(board, id, op.prompt!);
   hand.touch([id]);
-  return withQuote(editor, id);
+  return withQuote(board, id);
 }
 
-async function updateCard(editor: Editor, op: AgentOp) {
+async function updateCard(board: BoardApi, op: AgentOp) {
   if (!op.card_id) throw new Error('Name a card id.');
-  const id = op.card_id as TLShapeId; const s = editor.getShape(id); if (!s || s.type !== GEN_TYPE) throw new Error('No generate card with that id on this board.');
+  const id = op.card_id as NodeId; const s = board.getNode(id); if (!s || s.type !== GEN_TYPE) throw new Error('No generate card with that id on this board.');
   if (!catalogNow()) { for (let i = 0; i < 25 && !catalogNow(); i++) await sleep(100); }
   const flow = op.workflow ? resolveFlow(op.workflow) : null;
-  const d = describeCard(editor, id); const curFlow = d ? flowById(d.flow) : null;
+  const d = describeCard(board, id); const curFlow = d ? flowById(d.flow) : null;
   const toolId = flow ? toolIdOf(flow) : curFlow ? toolIdOf(curFlow) : '';
   const provider = op.model ? resolveProvider(toolId, op.model) : undefined;
-  const b = editor.getShapePageBounds(id); const hand = handOf(editor);
-  if (b) { workArea(areaOf(editor, [id, ...(op.inputs_from ?? [])])); await hand.glideTo({ x: b.minX + 28, y: b.minY + 24 }, `Changing ${titleOf(editor, id)}`); }
+  const b = board.boundsOf(id); const hand = handOf(board);
+  if (b) { workArea(areaOf(board, [id, ...(op.inputs_from ?? [])])); await hand.glideTo({ x: b.minX + 28, y: b.minY + 24 }, `Changing ${titleOf(board, id)}`); }
   /* settings merge into the card's own (a new workflow starts from its defaults): canvas_update_card { settings: { resolution } } keeps the length it had */
   const keep = flow && flow.id !== d?.flow ? {} : ((s.props as any).vals ?? {});
-  setCard(editor, id, { ...(flow ? { flow: flow.id } : {}), ...(provider ? { provider } : {}), ...(op.settings ? { vals: { ...keep, ...op.settings } } : {}) });
-  if (op.prompt !== undefined) { if (animOK() && op.prompt) await typePrompt(editor, id, op.prompt); else setCard(editor, id, { prompt: op.prompt }); }
-  if (op.version != null) { const n = ((editor.getShape(id)?.props as any)?.takes ?? []).length; if (op.version < 1 || op.version > n) throw new Error(n ? `Pick a version from 1 to ${n}.` : 'This card has no versions yet.');
-    editor.run(() => editor.updateShape({ id, type: GEN_TYPE, props: { take: op.version! - 1, ratio: 0 } } as any), { history: 'ignore' }); }
+  setCard(board, id, { ...(flow ? { flow: flow.id } : {}), ...(provider ? { provider } : {}), ...(op.settings ? { vals: { ...keep, ...op.settings } } : {}) });
+  if (op.prompt !== undefined) { if (animOK() && op.prompt) await typePrompt(board, id, op.prompt); else setCard(board, id, { prompt: op.prompt }); }
+  if (op.version != null) { const n = ((board.getNode(id)?.props as any)?.takes ?? []).length; if (op.version < 1 || op.version > n) throw new Error(n ? `Pick a version from 1 to ${n}.` : 'This card has no versions yet.');
+    board.batch(() => board.patchNode(id, { props: { take: op.version! - 1, ratio: 0 } } as any), { history: 'ignore' }); }
   hand.touch([id]);
   if (op.inputs_from) {
-    const info = portInfoOf(editor, editor.getShape(id)!, catalogNow());
-    for (const f of op.inputs_from) { const k = outKindOfShape(editor.getShape(f as TLShapeId)); if (k && !info.ins.some((i) => i.kind === k)) throw new Error(`${takesLine(titleOf(editor, id), info.ins)}, and “${titleOf(editor, f as TLShapeId)}” makes ${PORT_WORDS[k]}.`); }
-    const old = arrowsInto(editor, id).map((a) => a.arrowId); if (old.length) editor.deleteShapes(old);
-    for (const fromId of op.inputs_from) { const from = editor.getShape(fromId as TLShapeId); if (!from) throw new Error(`No node with id "${fromId}" on this board.`); linkShapes(editor, from.id, id); }
+    const info = portInfoOf(board, board.getNode(id)!, catalogNow());
+    for (const f of op.inputs_from) { const k = outKindOfShape(board.getNode(f as NodeId)); if (k && !info.ins.some((i) => i.kind === k)) throw new Error(`${takesLine(titleOf(board, id), info.ins)}, and “${titleOf(board, f as NodeId)}” makes ${PORT_WORDS[k]}.`); }
+    const old = arrowsInto(board, id).map((a) => a.arrowId); if (old.length) board.removeLinks(old);
+    for (const fromId of op.inputs_from) { const from = board.getNode(fromId as NodeId); if (!from) throw new Error(`No node with id "${fromId}" on this board.`); linkShapes(board, from.id, id); }
   }
-  return withQuote(editor, id);
+  return withQuote(board, id);
 }
 
 /** A quote that came back as an error (a 400 like "Duration 10 s isn't available…") or not at all: it has no price, so it can't count as a run. */
 export const unpriced = (q: any) => !q || (typeof q === 'object' && !!q.error && typeof q.credits !== 'number' && !q.cost && q.demo !== true);
-async function propose(editor: Editor, op: AgentOp) {
+async function propose(board: BoardApi, op: AgentOp) {
   const ids = op.card_ids ?? []; if (!ids.length) throw new Error('Name at least one card id.');
   const items: ProposalItem[] = []; const cards: ProposalCard[] = [];
   for (const cardId of ids) {
-    const id = cardId as TLShapeId; const s = editor.getShape(id); if (!s || s.type !== GEN_TYPE) throw new Error(`No generate card with id "${cardId}" on this board.`);
-    const d = describeCard(editor, id); if (!d) throw new Error(`Card "${cardId}" is still loading.`);
+    const id = cardId as NodeId; const s = board.getNode(id); if (!s || s.type !== GEN_TYPE) throw new Error(`No generate card with id "${cardId}" on this board.`);
+    const d = describeCard(board, id); if (!d) throw new Error(`Card "${cardId}" is still loading.`);
     /* priced as it will run: an input from a card upstream that hasn't run yet counts as there (it waits for it, in graph order) */
-    const fed = cardState(editor, s, catalogNow(), { pending: true }); const missingFed = missingOf(fed.spec, fed.bySlot, d.prompt);
-    const ups = waitingInputsOf(editor, id).map((w) => ({ id: w.id as string, name: w.name, status: String((editor.getShape(w.id)?.props as any)?.status ?? '') }));
-    let qErr = ''; const q = await quoteCard(editor, id, { pending: true }).catch((e) => { qErr = String((e as Error)?.message ?? ''); return null; }); const pv = priceView(q);
-    const usd = pv?.usd ?? null; const credits = pv?.credits ?? null; const title = String(nameOf(editor, id) || d.prompt || d.flow || 'Card').slice(0, 140);
+    const fed = cardState(board, s, catalogNow(), { pending: true }); const missingFed = missingOf(fed.spec, fed.bySlot, d.prompt);
+    const ups = waitingInputsOf(board, id).map((w) => ({ id: w.id as string, name: w.name, status: String((board.getNode(w.id)?.props as any)?.status ?? '') }));
+    let qErr = ''; const q = await quoteCard(board, id, { pending: true }).catch((e) => { qErr = String((e as Error)?.message ?? ''); return null; }); const pv = priceView(q);
+    const usd = pv?.usd ?? null; const credits = pv?.credits ?? null; const title = String(nameOf(board, id) || d.prompt || d.flow || 'Card').slice(0, 140);
     const other = q?.runnable === false ? String(q.reasonText ?? q.blockedReason ?? q.reason ?? 'This card cannot run right now.') : unpriced(q) ? `No price for these settings${q?.error || qErr ? `: ${String(q?.error || qErr).replace(/\.$/, '')}` : ''}` : null;
     cards.push({ id: cardId, title, usd, credits, missing: d.missing, missingFed, ups, other });
     items.push({ cardId, title, workflow: d.flow, model: d.model || null, status: d.status, usd, credits, quote: compactQuote(q), problem: null });
@@ -224,263 +224,263 @@ async function propose(editor: Editor, op: AgentOp) {
   return { items, totalUsd: r4(r.totalUsd), totalCredits: r.totalCredits };
 }
 
-async function summarize(editor: Editor) {
+async function summarize(board: BoardApi) {
   const nodes: any[] = [];
-  for (const s of editor.getCurrentPageShapes()) {
+  for (const s of board.nodes()) {
     const p = s.props as any;
     if (s.type === GEN_TYPE) {
-      const q = await quoteCard(editor, s.id).catch(() => null); const n = cardNode(editor, s.id, q); if (n) nodes.push(n);
+      const q = await quoteCard(board, s.id).catch(() => null); const n = cardNode(board, s.id, q); if (n) nodes.push(n);
     } else if (s.type === RESULT_T) {
       nodes.push({ id: s.id, type: 'result', kind: p.kind ?? null, title: p.title ?? null, model: p.model ?? null, results: p.url ? [{ url: p.url, kind: p.kind ?? null, poster: p.poster ?? null }] : [], jobId: p.jobId || null });
     } else if (s.type === UPLOAD_TYPE) {
-      const n = uploadNodeSummary(s as any); if (n) nodes.push({ ...n, ...posOf(editor, s.id) }); /* a dropped picture, clip or sound, by its name (2026-11-03: they were missing) */
+      const n = uploadNodeSummary(s as any); if (n) nodes.push({ ...n, ...posOf(board, s.id) }); /* a dropped picture, clip or sound, by its name (2026-11-03: they were missing) */
     } else if (s.type === 'image' || s.type === 'video') {
-      const asset: any = p.assetId ? editor.getAsset(p.assetId) : null; const url = asset?.props?.src; if (!url) continue;
+      const asset: any = p.assetId ? board.asset(p.assetId) : null; const url = asset?.props?.src; if (!url) continue;
       nodes.push({ id: s.id, type: s.type === 'image' ? 'picture' : 'clip', kind: s.type, title: asset?.props?.name ?? s.type, results: [{ url, kind: s.type }] });
     } else if (s.type === 'note' || s.type === 'text') {
       /* the person's own ideas too: an agent reads the stickies and text on the board */
-      const t = plainText(p.richText); if (t) nodes.push({ id: s.id, type: 'note', kind: s.type, title: t.slice(0, 600), by: (s.meta as any)?.by === 'agent' ? 'agent' : 'you', frame: frameOfShape(editor, s.id) });
+      const t = plainText(p.richText); if (t) nodes.push({ id: s.id, type: 'note', kind: s.type, title: t.slice(0, 600), by: (s.meta as any)?.by === 'agent' ? 'agent' : 'you', frame: frameOfShape(board, s.id) });
     } else if (s.type === 'frame') {
-      nodes.push({ id: s.id, type: 'frame', kind: 'frame', title: String(p.name || 'Frame'), children: editor.getSortedChildIdsForParent(s.id) });
+      nodes.push({ id: s.id, type: 'frame', kind: 'frame', title: String(p.name || 'Frame'), children: board.childrenOf(s.id) });
     } else if (s.type === 'bookmark') {
-      const a: any = p.assetId ? editor.getAsset(p.assetId) : null; nodes.push({ id: s.id, type: 'link', kind: 'bookmark', title: a?.props?.title || p.url || 'Link', url: p.url ?? a?.props?.src ?? null });
+      const a: any = p.assetId ? board.asset(p.assetId) : null; nodes.push({ id: s.id, type: 'link', kind: 'bookmark', title: a?.props?.title || p.url || 'Link', url: p.url ?? a?.props?.src ?? null });
     }
   }
   return { nodes };
 }
 
-async function runProposal(editor: Editor, op: AgentOp) {
+async function runProposal(board: BoardApi, op: AgentOp) {
   const ids = op.card_ids ?? []; const jobIds: string[] = []; const failed: { cardId: string; error: string }[] = []; let firstError: Error | null = null;
   setAgentBudgetHeader(op.budget_id ?? null);
   try {
     /* one card the server refuses doesn't stop the others; a budget stop does (nothing after it may spend). Graph order (2026-10-28): a card
      * fed by another card in this proposal starts when that one is done, so it gets its input (it used to start at once, without it). */
-    const r = await submitInOrder(editor, ids, { stop: e => /budget/i.test(e.message),
-      onLater: (id, x) => { if (x.error) handOf(editor).say(`${titleOf(editor, id as TLShapeId)} didn’t start: ${x.error}`); } });
+    const r = await submitInOrder(board, ids, { stop: e => /budget/i.test(e.message),
+      onLater: (id, x) => { if (x.error) handOf(board).say(`${titleOf(board, id as NodeId)} didn’t start: ${x.error}`); } });
     jobIds.push(...r.jobIds); failed.push(...r.failed); if (r.failed.length) firstError = new Error(r.failed[0].error);
-    for (const cid of ids) for (const j of batchIdsOf(editor.getShape(cid as TLShapeId))) if (!jobIds.includes(j)) jobIds.push(j); /* Material Swap: every swatch's run */
+    for (const cid of ids) for (const j of batchIdsOf(board.getNode(cid as NodeId))) if (!jobIds.includes(j)) jobIds.push(j); /* Material Swap: every swatch's run */
   } finally { setAgentBudgetHeader(null); }
   if (firstError && !jobIds.length) { (firstError as any).jobIds = jobIds; throw firstError; }
   return { jobIds, failed };
 }
 
 /** Where a plan of w × h (page px) can go: below everything on the board, or centred in the view on an empty board. Top-left corner. */
-function freeArea(editor: Editor, w: number, h: number) {
-  const b = editor.getCurrentPageBounds();
-  if (!b || !editor.getCurrentPageShapeIds().size) { const c = editor.getViewportPageBounds().center; return { x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2) }; }
+function freeArea(board: BoardApi, w: number, h: number) {
+  const b = board.contentBounds();
+  if (!b || board.isEmpty()) { const c = board.viewportBounds().center; return { x: Math.round(c.x - w / 2), y: Math.round(c.y - h / 2) }; }
   return { x: Math.round(b.minX), y: Math.round(b.maxY + 220) };
 }
 
 /** canvas_add_from_job (2026-10-28): an existing generation as a result card, through the Assets drawer's own code (resultMedia + addResultCard),
  *  so the agent can wire it into a new card (Extend, Upscale…). `out` picks one output of a multi-output job. */
-async function addFromJob(editor: Editor, op: AgentOp) {
+async function addFromJob(board: BoardApi, op: AgentOp) {
   if (!op.job_id) throw new Error('Name a job id.');
   const job = await getJob(op.job_id); const outs = (job.outputs ?? []).filter((o) => o?.url); const n = op.out ?? 0;
   if (n > 0 && !outs[n]) throw new Error(`That generation has ${outs.length} output${outs.length === 1 ? '' : 's'}.`);
   const picked = n > 0 ? { ...job, resultUrl: outs[n]!.url, outputs: [outs[n]!, ...outs.filter((_, i) => i !== n)] } : job;
   const m = resultMedia(picked, ownAccountsNow()); if (!m) throw new Error('That generation has nothing the board can show (not finished, or a file type the board does not place).');
-  const hand = handOf(editor); const spot = op.at ?? freeSpot(editor, 384, 320);
+  const hand = handOf(board); const spot = op.at ?? freeSpot(board, 384, 320);
   workArea({ x: spot.x - 200, y: spot.y - 180, w: 400, h: 360 }); await hand.glideTo({ x: spot.x - 160, y: spot.y - 140 }, `Placing ${m.kind === 'video' ? 'a clip' : m.kind === 'audio' ? 'a sound' : m.kind === '3d' ? 'a 3D model' : 'a picture'}`);
-  const id = await addResultCard(editor, job.id, m, op.at, { free: !op.at });
-  fx.enter(id); hand.touch([id]); const b = editor.getShapePageBounds(id); if (b) workArea(plainBox(b));
-  const p = editor.getShape(id)?.props as any;
+  const id = await addResultCard(board, job.id, m, op.at, { free: !op.at });
+  fx.enter(id); hand.touch([id]); const b = board.boundsOf(id); if (b) workArea(plainBox(b));
+  const p = board.getNode(id)?.props as any;
   return { id, node: { id, type: 'result', kind: p?.kind ?? m.kind, title: p?.title ?? m.title, model: p?.model ?? null, results: [{ url: m.url, kind: m.kind, poster: m.poster || null }], jobId: job.id } };
 }
 
 /** The demo's own pictures as Upload nodes (Sofa in every material: the sofa and its swatches). Only shipped /examples/ files. */
-async function addUpload(editor: Editor, op: AgentOp) {
+async function addUpload(board: BoardApi, op: AgentOp) {
   const url = String(op.url ?? ''); if (!/^\/examples\/[\w/.-]+\.(webp|png|jpe?g)$/i.test(url) || url.includes('..')) throw new Error('An upload node here takes one of the app’s own example pictures.');
-  const d = NODE_DEFS.upload; const at = op.at ?? freeSpot(editor, d.defaultW, d.defaultH); const hand = handOf(editor); const label = String(op.name ?? '').trim().slice(0, 60) || 'Picture';
+  const d = NODE_DEFS.upload; const at = op.at ?? freeSpot(board, d.defaultW, d.defaultH); const hand = handOf(board); const label = String(op.name ?? '').trim().slice(0, 60) || 'Picture';
   workArea({ x: at.x - d.defaultW / 2 - 40, y: at.y - d.defaultH / 2 - 40, w: d.defaultW + 80, h: d.defaultH + 80 }); await hand.glideTo({ x: at.x - d.defaultW / 2 + 24, y: at.y - d.defaultH / 2 + 20 }, `Adding ${label.toLowerCase()}`);
-  const id = createAuxNode(editor, 'upload', { at, media: { url, poster: url, mediaKind: 'image', label }, title: label, select: false });
+  const id = createAuxNode(board, 'upload', { at, media: { url, poster: url, mediaKind: 'image', label }, title: label, select: false });
   fx.enter(id); hand.touch([id]); return { id, node: { id, type: 'upload', kind: 'image', title: label, results: [{ url, kind: 'image' }] } };
 }
 /** A card's versions side by side, one Result card each, in the order their inputs sit on the board (Material Swap: the swatches, left to right),
  *  named after that input ("Leather"). With from_id, a Compare card after them: that node (before) against the first version (after). */
-async function spreadVersions(editor: Editor, op: AgentOp) {
-  const id = String(op.card_id ?? '') as TLShapeId; const s = editor.getShape(id); if (!s || s.type !== GEN_TYPE) throw new Error('No generate card with that id on this board.');
+async function spreadVersions(board: BoardApi, op: AgentOp) {
+  const id = String(op.card_id ?? '') as NodeId; const s = board.getNode(id); if (!s || s.type !== GEN_TYPE) throw new Error('No generate card with that id on this board.');
   const takes: any[] = ((s.props as any).takes ?? []).filter((t: any) => t?.jobId); if (!takes.length) throw new Error('That card has no versions yet.');
   /* left to right, as the swatches sit on the board (the arrow order can change when a frame takes the cards) */
-  const keyOf = (t: any) => { const sid = (t.from ?? []).at(-1)?.shapeId; const b = sid ? editor.getShapePageBounds(sid as TLShapeId) : null; return b ? b.minX : Number.MAX_SAFE_INTEGER; };
-  const sorted = [...takes].sort((a, b) => keyOf(a) - keyOf(b)); const b = editor.getShapePageBounds(id); const at0 = op.at ?? (b ? { x: b.minX, y: b.maxY + 340 } : { x: 0, y: 0 }); const hand = handOf(editor);
+  const keyOf = (t: any) => { const sid = (t.from ?? []).at(-1)?.shapeId; const b = sid ? board.boundsOf(sid as NodeId) : null; return b ? b.minX : Number.MAX_SAFE_INTEGER; };
+  const sorted = [...takes].sort((a, b) => keyOf(a) - keyOf(b)); const b = board.boundsOf(id); const at0 = op.at ?? (b ? { x: b.minX, y: b.maxY + 340 } : { x: 0, y: 0 }); const hand = handOf(board);
   const made: string[] = [];
   for (const [i, t] of sorted.entries()) { const job = await getJob(t.jobId).catch(() => null); if (!job) continue; const m = resultMedia(job, ownAccountsNow()); if (!m) continue;
     const name = (t.from ?? []).at(-1)?.label || `Version ${i + 1}`; const at = { x: at0.x + 190 + i * 400, y: at0.y };
     await hand.glideTo({ x: at.x - 160, y: at.y - 140 }, `Placing ${name.toLowerCase()}`);
-    const rid = await addResultCard(editor, job.id, { ...m, title: name }, at); fx.enter(rid); made.push(rid); }
+    const rid = await addResultCard(board, job.id, { ...m, title: name }, at); fx.enter(rid); made.push(rid); }
   if (!made.length) throw new Error('None of the versions could be placed.');
   let compare: string | null = null;
-  if (op.from_id && editor.getShape(op.from_id as TLShapeId)) { const at = { x: at0.x + 190 + made.length * 400 + 60, y: at0.y };
-    compare = createAuxNode(editor, 'compare', { at, select: false }); linkShapes(editor, op.from_id as TLShapeId, compare as TLShapeId); linkShapes(editor, made[0] as TLShapeId, compare as TLShapeId);
-    fx.enter(compare); for (const a of arrowsInto(editor, compare as TLShapeId)) fx.drawArrow(a.arrowId); }
-  const all = [...made, ...(compare ? [compare] : [])]; editor.selectNone(); /* placing selects each card; the panel stays shut */ hand.touch(all); const bb = boundsOf(editor, all); if (bb) workArea(plainBox(bb));
+  if (op.from_id && board.getNode(op.from_id as NodeId)) { const at = { x: at0.x + 190 + made.length * 400 + 60, y: at0.y };
+    compare = createAuxNode(board, 'compare', { at, select: false }); linkShapes(board, op.from_id as NodeId, compare as NodeId); linkShapes(board, made[0] as NodeId, compare as NodeId);
+    fx.enter(compare); for (const a of arrowsInto(board, compare as NodeId)) fx.drawArrow(a.arrowId); }
+  const all = [...made, ...(compare ? [compare] : [])]; board.select([]); /* placing selects each card; the panel stays shut */ hand.touch(all); const bb = boundsOf(board, all); if (bb) workArea(plainBox(bb));
   return { ids: made, compare };
 }
 
 // ---------------------------------------------------------------- the board as a plan: notes, frames, move into, point
 const NOTE_COLORS = new Set(['orange', 'yellow', 'violet', 'light-violet', 'blue', 'light-blue', 'green', 'light-green', 'red', 'light-red', 'grey', 'black', 'white']);
 const NOTE_SCALE = 1.3; /* 260 px: readable beside a 340 px card at the zooms Follow uses */
-async function addNote(editor: Editor, op: AgentOp) {
+async function addNote(board: BoardApi, op: AgentOp) {
   const text = String(op.text ?? '').trim(); if (!text) throw new Error('A note needs some text.');
-  const frame = op.frame_id ? editor.getShape(op.frame_id as TLShapeId) : null; if (op.frame_id && frame?.type !== 'frame') throw new Error(`No frame with id "${op.frame_id}" on this board.`);
-  const size = 200 * NOTE_SCALE; const at = op.at ?? freeSpot(editor, size, size); const hand = handOf(editor);
+  const frame = op.frame_id ? board.getNode(op.frame_id as NodeId) : null; if (op.frame_id && frame?.type !== 'frame') throw new Error(`No frame with id "${op.frame_id}" on this board.`);
+  const size = 200 * NOTE_SCALE; const at = op.at ?? freeSpot(board, size, size); const hand = handOf(board);
   /* in a frame, the camera frames the whole frame (the beat sheet reads as one row), else the note */
-  const fb = frame ? editor.getShapePageBounds(frame.id) : null; workArea(fb ? plainBox(fb) : { x: at.x - size / 2 - 60, y: at.y - size / 2 - 60, w: size + 120, h: size + 120 });
+  const fb = frame ? board.boundsOf(frame.id) : null; workArea(fb ? plainBox(fb) : { x: at.x - size / 2 - 60, y: at.y - size / 2 - 60, w: size + 120, h: size + 120 });
   await hand.glideTo({ x: at.x - size / 2 + 24, y: at.y - size / 2 + 20 }, 'Writing a note');
-  const id = createShapeId(); const color = op.color && NOTE_COLORS.has(op.color) ? op.color : 'orange'; const typed = animOK();
-  editor.run(() => editor.createShape({ id, type: 'note', x: at.x - size / 2, y: at.y - size / 2, meta: { by: 'agent' }, props: { color, richText: toRichText(typed ? '' : text), scale: NOTE_SCALE, size: 'm', font: 'sans', align: 'start', verticalAlign: 'start' } } as any));
-  if (frame) editor.reparentShapes([id], frame.id);
+  const color = op.color && NOTE_COLORS.has(op.color) ? op.color : 'orange'; const typed = animOK();
+  let id = ''; board.batch(() => { id = board.addNode({ type: 'note', x: at.x - size / 2, y: at.y - size / 2, meta: { by: 'agent' }, props: { color, richText: richText(typed ? '' : text), scale: NOTE_SCALE, size: 'm', font: 'sans', align: 'start', verticalAlign: 'start' } }); });
+  if (frame) board.setParent([id], frame.id);
   fx.enter(id);
-  if (typed) { const steps = Math.min(20, Math.max(5, Math.ceil(text.length / 6))); for (let i = 1; i <= steps; i++) { if (!editor.getShape(id)) break; editor.run(() => editor.updateShape({ id, type: 'note', props: { richText: toRichText(text.slice(0, Math.round((text.length * i) / steps))) } } as any), { history: 'ignore' }); await sleep(36); } }
+  if (typed) { const steps = Math.min(20, Math.max(5, Math.ceil(text.length / 6))); for (let i = 1; i <= steps; i++) { if (!board.getNode(id)) break; board.batch(() => board.patchNode(id, { props: { richText: richText(text.slice(0, Math.round((text.length * i) / steps))) } } as any), { history: 'ignore' }); await sleep(36); } }
   hand.touch([id]);
   return { id, text };
 }
-async function addFrame(editor: Editor, op: AgentOp) {
-  const name = String(op.name ?? '').trim().slice(0, 80) || 'Frame'; const around = (op.around ?? []).filter((x) => editor.getShape(x as TLShapeId)) as TLShapeId[];
+async function addFrame(board: BoardApi, op: AgentOp) {
+  const name = String(op.name ?? '').trim().slice(0, 80) || 'Frame'; const around = (op.around ?? []).filter((x) => board.getNode(x as NodeId)) as NodeId[];
   if (op.around?.length && !around.length) throw new Error('None of those nodes are on this board.');
-  const fit = around.length ? boundsOf(editor, around) : null;
+  const fit = around.length ? boundsOf(board, around) : null;
   const box = fit ? { x: fit.x - 40, y: fit.y - 40, w: fit.w + 80, h: fit.h + 80 }
-    : (() => { const w = Math.max(120, Number(op.w) || 820), h = Math.max(120, Number(op.h) || 520); const c = op.at ? null : freeSpot(editor, w, h); return { x: op.at ? op.at.x : c!.x - w / 2, y: op.at ? op.at.y : c!.y - h / 2, w, h }; })();
-  const hand = handOf(editor); workArea(box);
+    : (() => { const w = Math.max(120, Number(op.w) || 820), h = Math.max(120, Number(op.h) || 520); const c = op.at ? null : freeSpot(board, w, h); return { x: op.at ? op.at.x : c!.x - w / 2, y: op.at ? op.at.y : c!.y - h / 2, w, h }; })();
+  const hand = handOf(board); workArea(box);
   await hand.glideTo({ x: box.x + 16, y: box.y - 6 }, `Making a frame: ${name}`);
-  const id = createShapeId(); const typed = animOK();
-  editor.run(() => { editor.createShape({ id, type: 'frame', x: box.x, y: box.y, meta: { by: 'agent' }, props: { w: box.w, h: box.h, name: typed ? '' : name } } as any); editor.sendToBack([id]); });
+  const typed = animOK();
+  let id = ''; board.batch(() => { id = board.addNode({ type: 'frame', x: box.x, y: box.y, meta: { by: 'agent' }, props: { w: box.w, h: box.h, name: typed ? '' : name } }); board.toBack([id]); });
   fx.enter(id);
-  if (typed) for (let i = 1; i <= name.length; i += 2) { if (!editor.getShape(id)) break; editor.run(() => editor.updateShape({ id, type: 'frame', props: { name: name.slice(0, i + 1) } } as any), { history: 'ignore' }); await sleep(28); }
-  if (typed) editor.run(() => editor.updateShape({ id, type: 'frame', props: { name } } as any), { history: 'ignore' });
-  if (around.length) editor.reparentShapes(around, id);
+  if (typed) for (let i = 1; i <= name.length; i += 2) { if (!board.getNode(id)) break; board.batch(() => board.patchNode(id, { props: { name: name.slice(0, i + 1) } } as any), { history: 'ignore' }); await sleep(28); }
+  if (typed) board.batch(() => board.patchNode(id, { props: { name } } as any), { history: 'ignore' });
+  if (around.length) board.setParent(around, id);
   hand.touch([id]);
   return { id, name, x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.w), h: Math.round(box.h) };
 }
-async function moveInto(editor: Editor, op: AgentOp) {
-  const frame = editor.getShape(op.frame_id as TLShapeId); if (!frame || frame.type !== 'frame') throw new Error(`No frame with id "${op.frame_id}" on this board.`);
-  const ids = (op.ids ?? []).filter((x) => x !== frame.id && editor.getShape(x as TLShapeId)) as TLShapeId[]; if (!ids.length) throw new Error('None of those nodes are on this board.');
-  const fb = editor.getShapePageBounds(frame.id)!; const name = String((frame.props as any).name || 'the frame'); const hand = handOf(editor);
+async function moveInto(board: BoardApi, op: AgentOp) {
+  const frame = board.getNode(op.frame_id as NodeId); if (!frame || frame.type !== 'frame') throw new Error(`No frame with id "${op.frame_id}" on this board.`);
+  const ids = (op.ids ?? []).filter((x) => x !== frame.id && board.getNode(x as NodeId)) as NodeId[]; if (!ids.length) throw new Error('None of those nodes are on this board.');
+  const fb = board.boundsOf(frame.id)!; const name = String((frame.props as any).name || 'the frame'); const hand = handOf(board);
   workArea(plainBox(fb)); await hand.glideTo({ x: fb.minX + 24, y: fb.minY + 8 }, `Putting ${ids.length === 1 ? 'it' : `${ids.length} cards`} in ${name}`);
-  editor.reparentShapes(ids, frame.id);
+  board.setParent(ids, frame.id);
   hand.touch([frame.id]);
   return { moved: ids.length, frameId: frame.id, frameName: name };
 }
-async function pointAt(editor: Editor, op: AgentOp) {
-  const b = op.ids?.length ? boundsOf(editor, op.ids) : op.at ? new Box(op.at.x - 40, op.at.y - 40, 80, 80) : null;
+async function pointAt(board: BoardApi, op: AgentOp) {
+  const b = op.ids?.length ? boundsOf(board, op.ids) : op.at ? rect(op.at.x - 40, op.at.y - 40, 80, 80) : null;
   if (!b) throw new Error(op.ids?.length ? 'None of those nodes are on this board.' : 'Name ids or a point (at).');
-  workArea(plainBox(b)); await handOf(editor).point(b, op.text?.slice(0, 120));
-  if (op.ids?.length) handOf(editor).touch(op.ids);
+  workArea(plainBox(b)); await handOf(board).point(b, op.text?.slice(0, 120));
+  if (op.ids?.length) handOf(board).touch(op.ids);
   return { pointed: true };
 }
 
 /** Typed connections (2026-10-27): the agent can only wire what a person could. `wired`: the arrows are already drawn (add_card), so
  *  the room left must not be below zero; otherwise each source needs room. Throws the same words the board shows on an illegal drop. */
-function checkFeeds(editor: Editor, from: TLShapeId[], to: TLShapeId, wired = false) {
-  const t = editor.getShape(to); if (!t || !from.length) return; const info = portInfoOf(editor, t, catalogNow()); const name = nameOf(editor, to) || flowById((t.props as any).flow)?.name || 'That card';
-  for (const f of from) { const k = outKindOfShape(editor.getShape(f)); const fname = titleOf(editor, f);
+function checkFeeds(board: BoardApi, from: NodeId[], to: NodeId, wired = false) {
+  const t = board.getNode(to); if (!t || !from.length) return; const info = portInfoOf(board, t, catalogNow()); const name = nameOf(board, to) || flowById((t.props as any).flow)?.name || 'That card';
+  for (const f of from) { const k = outKindOfShape(board.getNode(f)); const fname = titleOf(board, f);
     if (!k) throw new Error(`“${fname}” has nothing to pass on (a 3D model or a group doesn't feed other cards).`);
     const slot = info.ins.find((i) => i.kind === k);
     if (!slot) throw new Error(`${takesLine(name, info.ins)}, and “${fname}” makes ${PORT_WORDS[k]}. Pick another workflow (canvas_next_steps lists the ones that fit).`);
     if (wired ? slot.room < 0 : !canFeed(k, f, info)) throw new Error(`${name} can't take another ${PORT_WORDS[k].replace(/^an? /, '')}: its inputs are full.`); }
 }
 /** The sensible next workflows for what a node makes (the board's "What next?" list), so an agent chains the same way a person does. */
-function nextSteps(editor: Editor, op: AgentOp) {
-  const id = (op.card_id ?? '') as TLShapeId; const s = editor.getShape(id); if (!s) throw new Error(`No node with id "${op.card_id}" on this board.`);
+function nextSteps(board: BoardApi, op: AgentOp) {
+  const id = (op.card_id ?? '') as NodeId; const s = board.getNode(id); if (!s) throw new Error(`No node with id "${op.card_id}" on this board.`);
   const kind = outKindOfShape(s); const have = new Set(listFlows().map((f) => f.id));
   return { card_id: id, kind, steps: kind ? NEXT_STEPS[kind].filter((a) => have.has(a.flow)).map((a) => ({ workflow: a.flow, label: a.label })) : [] };
 }
 
 /** The agent's look at each version: a badge per version and the one it recommends. It never changes which version is active: you choose. */
-function applyReviews(editor: Editor, op: AgentOp) {
+function applyReviews(board: BoardApi, op: AgentOp) {
   const by = (op.by === 'sample' || op.by === 'checks' ? op.by : 'agent') as TakeReview['by']; let updated = 0;
-  editor.run(() => { for (const c of op.cards ?? []) {
-    const s = editor.getShape(c.card_id as TLShapeId); if (!s || s.type !== GEN_TYPE) throw new Error(`No generate card with id "${c.card_id}" on this board.`);
+  board.batch(() => { for (const c of op.cards ?? []) {
+    const s = board.getNode(c.card_id as NodeId); if (!s || s.type !== GEN_TYPE) throw new Error(`No generate card with id "${c.card_id}" on this board.`);
     const takes = withReviews((s.props as any).takes ?? [], c.reviews, c.recommend, by); /* the active version (take) is never touched: you choose */
-    editor.updateShape({ id: s.id, type: GEN_TYPE, props: { takes } } as any); updated++;
+    board.patchNode(s.id, { props: { takes } } as any); updated++;
   } }, { history: 'ignore' });
   return { updated };
 }
 
 /** The latest batch on each board: a group without inputs goes right of it. */
-const lastGroup = new WeakMap<Editor, string[]>();
+const lastGroup = new WeakMap<BoardApi, string[]>();
 /** What the batch layout needs from the board: input boxes, what is taken, and where a group without inputs goes (right of the
  *  selection, else the latest batch, else the newest thing on the board; none on an empty board). */
-function layoutCtx(editor: Editor): LayoutCtx & { anchorIds: string[] } {
-  const shapes = editor.getCurrentPageShapesSorted().filter((s) => s.type !== 'arrow');
-  const taken = shapes.map((s) => editor.getShapePageBounds(s.id)).filter(Boolean).map((b) => plainBox(b!));
-  const sel = editor.getSelectedShapeIds().filter((id) => editor.getShape(id)?.type !== 'arrow');
-  const last = (lastGroup.get(editor) ?? []).filter((id) => editor.getShape(id as TLShapeId));
+function layoutCtx(board: BoardApi): LayoutCtx & { anchorIds: string[] } {
+  const shapes = board.nodes({ sorted: true });
+  const taken = shapes.map((s) => board.boundsOf(s.id)).filter(Boolean).map((b) => plainBox(b!));
+  const sel = board.selection().filter((id) => !!board.getNode(id));
+  const last = (lastGroup.get(board) ?? []).filter((id) => board.getNode(id as NodeId));
   const newest = [...shapes].reverse().find((s) => s.type !== 'frame');
-  const anchorIds = sel.length ? sel : last.length ? last : newest ? [newest.id] : []; const anchor = boundsOf(editor, anchorIds);
-  return { anchorIds, taken, anchor: anchor ? plainBox(anchor) : null, boxOf: (id) => { const b = editor.getShape(id as TLShapeId) ? editor.getShapePageBounds(id as TLShapeId) : null; return b ? plainBox(b) : null; } };
+  const anchorIds = sel.length ? sel : last.length ? last : newest ? [newest.id] : []; const anchor = boundsOf(board, anchorIds);
+  return { anchorIds, taken, anchor: anchor ? plainBox(anchor) : null, boxOf: (id) => { const b = board.getNode(id as NodeId) ? board.boundsOf(id as NodeId) : null; return b ? plainBox(b) : null; } };
 }
 
 /** Many things at once (canvas_batch): validated against the board, laid out as one group, made in ONE history step (a single Undo
  *  removes it all; one bad item and nothing is made), then shown as one wave with one camera move. Cards are drafts: nothing runs. */
-async function applyBatch(editor: Editor, op: AgentOp) {
+async function applyBatch(board: BoardApi, op: AgentOp) {
   const items = op.items ?? []; if (!catalogNow()) { for (let i = 0; i < 25 && !catalogNow(); i++) await sleep(100); }
-  const bad = validateBatch(items, (id) => !!editor.getShape(id as TLShapeId)); if (bad) throw new Error(bad);
+  const bad = validateBatch(items, (id) => board.has(id)); if (bad) throw new Error(bad);
   const needsLayout = items.some((it) => (it.kind === 'add_card' || it.kind === 'add_note' || it.kind === 'add_frame') && !it.at);
-  const first = batchLayout(items, { x: 0, y: 0 }); const origin = needsLayout ? freeArea(editor, Math.max(1, first.size.w), Math.max(1, first.size.h)) : { x: 0, y: 0 };
-  const ctx = needsLayout ? layoutCtx(editor) : null; const pos = ctx ? batchLayout(items, origin, ctx) : { at: {}, frames: {} };
-  const made = buildBatch(editor, items, pos, {
+  const first = batchLayout(items, { x: 0, y: 0 }); const origin = needsLayout ? freeArea(board, Math.max(1, first.size.w), Math.max(1, first.size.h)) : { x: 0, y: 0 };
+  const ctx = needsLayout ? layoutCtx(board) : null; const pos = ctx ? batchLayout(items, origin, ctx) : { at: {}, frames: {} };
+  const made = buildBatch(board, items, pos, {
     flowOf: (w) => resolveFlow(w).id,
     providerOf: (flowId, model) => { const f = flowById(flowId); return model && f ? resolveProvider(toolIdOf(f), model) : undefined; },
-    check: (from, to) => checkFeeds(editor, from, to, true),
-    spot: (w, h) => freeSpot(editor, w, h),
+    check: (from, to) => checkFeeds(board, from, to, true),
+    spot: (w, h) => freeSpot(board, w, h),
   });
-  lastGroup.set(editor, made.order);
+  lastGroup.set(board, made.order);
   /* one camera move at a readable zoom: the new group with what feeds it (and what it was placed beside), else without, else the group
      alone; the hand at its start, then the wave */
-  const box = boundsOf(editor, made.order);
-  if (box) { const fed = withInputs(editor, made.order); const beside = ctx && !made.arrows.length ? ctx.anchorIds : [];
-    workArea(plainBox(readableArea(editor, made.order, [[...fed, ...beside], fed]) ?? box)); void handOf(editor).glideTo({ x: box.minX + 28, y: box.minY + 20 }, `Adding ${made.cards.length + made.notes.length || made.frames.length} at once`); }
+  const box = boundsOf(board, made.order);
+  if (box) { const fed = withInputs(board, made.order); const beside = ctx && !made.arrows.length ? ctx.anchorIds : [];
+    workArea(plainBox(readableArea(board, made.order, [[...fed, ...beside], fed]) ?? box)); void handOf(board).glideTo({ x: box.minX + 28, y: box.minY + 20 }, `Adding ${made.cards.length + made.notes.length || made.frames.length} at once`); }
   fx.wave(made.order.filter((id) => !made.frames.includes(id)), made.arrows);
-  window.setTimeout(() => handOf(editor).touch(made.cards.slice(0, 12)), Math.min(2400, made.order.length * 45 + 300));
-  return { refs: made.refs, cards: made.cards.map((id) => cardNode(editor, id as TLShapeId)).filter(Boolean), notes: made.notes, frames: made.frames, arrows: made.arrows,
+  window.setTimeout(() => handOf(board).touch(made.cards.slice(0, 12)), Math.min(2400, made.order.length * 45 + 300));
+  return { refs: made.refs, cards: made.cards.map((id) => cardNode(board, id as NodeId)).filter(Boolean), notes: made.notes, frames: made.frames, arrows: made.arrows,
     line: batchLine({ cards: made.cards.length, notes: made.notes.length, frames: made.frames.length }) };
 }
 
 /** Apply one op from the server through the same agentApi a person uses. Throws a plain message when it cannot. */
-export async function applyOp(editor: Editor, op: AgentOp): Promise<any> {
+export async function applyOp(board: BoardApi, op: AgentOp): Promise<any> {
   switch (op.kind) {
     case 'say': return { ok: true };
-    case 'add_card': return addCard(editor, op);
-    case 'update_card': return updateCard(editor, op);
+    case 'add_card': return addCard(board, op);
+    case 'update_card': return updateCard(board, op);
     case 'connect': {
       if (!op.from_id || !op.to_id) throw new Error('Name a from id and a to id.');
-      const from = editor.getShape(op.from_id as TLShapeId), to = editor.getShape(op.to_id as TLShapeId);
+      const from = board.getNode(op.from_id as NodeId), to = board.getNode(op.to_id as NodeId);
       if (!from) throw new Error(`No node with id "${op.from_id}" on this board.`); if (!to) throw new Error(`No node with id "${op.to_id}" on this board.`);
       if (from.id === to.id) throw new Error('A card cannot feed itself.');
-      checkFeeds(editor, [from.id], to.id);
-      const tb = editor.getShapePageBounds(to.id); if (tb) await handOf(editor).glideTo({ x: tb.minX + 6, y: tb.midY }, `Connecting ${titleOf(editor, from.id)}`);
-      const arrowId = linkShapes(editor, from.id, to.id); if (!arrowId) throw new Error('Could not draw that arrow.');
-      fx.drawArrow(arrowId); handOf(editor).touch([to.id]);
-      return { arrowId, fromId: from.id, toId: to.id, fromTitle: titleOf(editor, from.id), toTitle: titleOf(editor, to.id) };
+      checkFeeds(board, [from.id], to.id);
+      const tb = board.boundsOf(to.id); if (tb) await handOf(board).glideTo({ x: tb.minX + 6, y: tb.midY }, `Connecting ${titleOf(board, from.id)}`);
+      const arrowId = linkShapes(board, from.id, to.id); if (!arrowId) throw new Error('Could not draw that arrow.');
+      fx.drawArrow(arrowId); handOf(board).touch([to.id]);
+      return { arrowId, fromId: from.id, toId: to.id, fromTitle: titleOf(board, from.id), toTitle: titleOf(board, to.id) };
     }
     case 'remove_card': {
-      if (!op.card_id) throw new Error('Name a card id.'); const id = op.card_id as TLShapeId; if (!editor.getShape(id)) throw new Error('No node with that id on this board.');
-      const b = editor.getShapePageBounds(id); if (b) await handOf(editor).glideTo({ x: b.minX + 28, y: b.minY + 24 }, `Removing ${titleOf(editor, id)}`);
-      const title = titleOf(editor, id); editor.deleteShapes([id]); return { removed: op.card_id, title };
+      if (!op.card_id) throw new Error('Name a card id.'); const id = op.card_id as NodeId; if (!board.has(id)) throw new Error('No node with that id on this board.');
+      const b = board.boundsOf(id); if (b) await handOf(board).glideTo({ x: b.minX + 28, y: b.minY + 24 }, `Removing ${titleOf(board, id)}`);
+      const title = titleOf(board, id); if (board.getLink(id)) board.removeLinks([id]); else board.removeNodes([id]); return { removed: op.card_id, title };
     }
     case 'propose_run': {
-      const b = readableArea(editor, op.card_ids ?? []); if (b) { workArea(plainBox(b)); handOf(editor).say(`Pricing ${(op.card_ids ?? []).length === 1 ? 'this card' : `${(op.card_ids ?? []).length} cards`}`); handOf(editor).touch(op.card_ids ?? []); }
-      return propose(editor, op);
+      const b = readableArea(board, op.card_ids ?? []); if (b) { workArea(plainBox(b)); handOf(board).say(`Pricing ${(op.card_ids ?? []).length === 1 ? 'this card' : `${(op.card_ids ?? []).length} cards`}`); handOf(board).touch(op.card_ids ?? []); }
+      return propose(board, op);
     }
-    case 'summary': return summarize(editor);
-    case 'run_proposal': { handOf(editor).say('Starting the runs'); handOf(editor).touch(op.card_ids ?? []); return runProposal(editor, op); }
-    case 'free_area': return freeArea(editor, Number(op.w) || 400, Number(op.h) || 400);
-    case 'add_note': return addNote(editor, op);
-    case 'add_frame': return addFrame(editor, op);
-    case 'move_into': return moveInto(editor, op);
-    case 'point_at': return pointAt(editor, op);
-    case 'next_steps': return nextSteps(editor, op);
-    case 'batch': return applyBatch(editor, op);
-    case 'review_versions': return applyReviews(editor, op);
-    case 'add_from_job': return addFromJob(editor, op);
-    case 'add_upload': return addUpload(editor, op);
-    case 'spread_versions': return spreadVersions(editor, op);
+    case 'summary': return summarize(board);
+    case 'run_proposal': { handOf(board).say('Starting the runs'); handOf(board).touch(op.card_ids ?? []); return runProposal(board, op); }
+    case 'free_area': return freeArea(board, Number(op.w) || 400, Number(op.h) || 400);
+    case 'add_note': return addNote(board, op);
+    case 'add_frame': return addFrame(board, op);
+    case 'move_into': return moveInto(board, op);
+    case 'point_at': return pointAt(board, op);
+    case 'next_steps': return nextSteps(board, op);
+    case 'batch': return applyBatch(board, op);
+    case 'review_versions': return applyReviews(board, op);
+    case 'add_from_job': return addFromJob(board, op);
+    case 'add_upload': return addUpload(board, op);
+    case 'spread_versions': return spreadVersions(board, op);
     case 'place_result': { /* the short film's stitched cut (server: runShortFilm after POST /api/compose) */
       if (!op.job_id || !op.url) throw new Error('Name a job and its file.');
-      const id = await addResultCard(editor, op.job_id, { kind: 'video', url: op.url, poster: `/api/media/thumb?url=${encodeURIComponent(op.url)}`, title: op.title || 'Your film', caption: { model: 'Stitch (ffmpeg)', place: 'Your computer', price: 'Free', time: '' } } as any, op.at);
-      editor.run(() => editor.updateShape({ id, type: 'ohf-result', meta: { film: true } } as any), { history: 'ignore' }); /* the final film: ringed in gold in the zoomed-out sky */
-      fx.enter(id); handOf(editor).touch([id]); return { id }; }
+      const id = await addResultCard(board, op.job_id, { kind: 'video', url: op.url, poster: `/api/media/thumb?url=${encodeURIComponent(op.url)}`, title: op.title || 'Your film', caption: { model: 'Stitch (ffmpeg)', place: 'Your computer', price: 'Free', time: '' } } as any, op.at);
+      board.batch(() => board.patchNode(id, { meta: { film: true } } as any), { history: 'ignore' }); /* the final film: ringed in gold in the zoomed-out sky */
+      fx.enter(id); handOf(board).touch([id]); return { id }; }
     default: throw new Error(`Unknown op "${(op as any).kind}".`);
   }
 }
@@ -488,7 +488,7 @@ export async function applyOp(editor: Editor, op: AgentOp): Promise<any> {
 const post = (boardId: string, body: unknown) => fetch(`/api/canvas/boards/${encodeURIComponent(boardId)}/agent/results`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
 /** Listen to the board's SSE stream. Returns a close function. EventSource reconnects on its own. */
-export function startAgentBridge(boardId: string, editor: Editor, h: BridgeHandlers = {}) {
+export function startAgentBridge(boardId: string, board: BoardApi, h: BridgeHandlers = {}) {
   /* bfcache (2026-10-27): an open stream keeps Safari from caching the page on leave; close it on pagehide, open it again on pageshow */
   let es: EventSource | null = null; let tail: Promise<void> = Promise.resolve();
   const connect = () => { if (es) return; es = new EventSource(`/api/canvas/boards/${encodeURIComponent(boardId)}/agent/stream`); wire(es); };
@@ -509,7 +509,7 @@ export function startAgentBridge(boardId: string, editor: Editor, h: BridgeHandl
   es.addEventListener('op', (ev) => {
     const d = json(ev); if (!d?.id || !d?.op) return;
     tail = tail.then(async () => {
-      try { const result = await applyOp(editor, d.op as AgentOp); await post(boardId, { id: d.id, ok: true, result }); }
+      try { const result = await applyOp(board, d.op as AgentOp); await post(boardId, { id: d.id, ok: true, result }); }
       catch (e: any) { await post(boardId, { id: d.id, ok: false, error: e?.message || 'The canvas could not apply that.', ...(e?.jobIds ? { result: { jobIds: e.jobIds } } : {}) }).catch(() => undefined); }
     }).catch(() => undefined);
   });

@@ -1,6 +1,6 @@
 import { ACCEPT, kindOfFile, wrongTypeText } from '../../../server/src/shared/mediaAccept';
 /**
- * Canvas chrome in our style, drawn over tldraw (rendered as <Tldraw> children, so tldraw's editor and UI context are available):
+ * Canvas chrome in our style, drawn over the board (rendered inside it, so the board and its tool list are available):
  *  - LeftToolbar: Select, Hand, New node (node types + workflows), Upload, then tldraw's own Sticky note, Text, Arrow, Frame and Pen
  *    (so a person can add ideas beside the agent's), Group, Zoom. tldraw's own toolbar is hidden through the components override; the
  *    tool list still comes from useTools, so V / H / T / A / F / D and every other tldraw shortcut works.
@@ -8,7 +8,7 @@ import { ACCEPT, kindOfFile, wrongTypeText } from '../../../server/src/shared/me
  *  - EmptyHint: a new board's quiet hint. The board switcher, spend chip and assets drawer live in CanvasPage.
  */
 import { useRef, useState } from 'react';
-import { useEditor, useIsToolSelected, useTools, useValue } from 'tldraw';
+import { useBoardApi, useToolButton, useValue } from './boardApi';
 import { BarPopover, PopSection, PopRow } from '../shared/BarPop';
 import { ImageIcon, VideoIcon, AudioIcon, CubeIcon } from '../ui/Icons';
 import { DEFAULT_FLOW, availableFlows, type GenMedium } from '../shared/genFlows';
@@ -35,9 +35,9 @@ const DRAW_TOOLS: ToolDef[] = [
 ];
 
 function ToolButton({ def }: { def: ToolDef }) {
-  const tools = useTools(); const t = tools[def.id]; const on = useIsToolSelected(t);
-  if (!t) return null;
-  return <button type="button" className={`cv-tool${on ? ' on' : ''}`} aria-pressed={on} aria-label={def.key ? `${def.label} (${def.key})` : def.label} {...tip(def.key ? `${def.label} · ${def.key}` : def.label)} data-testid={`cv-tool-${def.id}`} onClick={() => t.onSelect('toolbar')}><def.icon /></button>;
+  const t = useToolButton(def.id); const on = t.on;
+  if (!t.available) return null;
+  return <button type="button" className={`cv-tool${on ? ' on' : ''}`} aria-pressed={on} aria-label={def.key ? `${def.label} (${def.key})` : def.label} {...tip(def.key ? `${def.label} · ${def.key}` : def.label)} data-testid={`cv-tool-${def.id}`} onClick={t.pick}><def.icon /></button>;
 }
 
 const GEN: { id: GenMedium; label: string; hint: string; icon: (p: { size?: number }) => JSX.Element }[] = [
@@ -57,14 +57,14 @@ const Tile = ({ id, label, hint, icon: I, more, onClick }: { id: string; label: 
 
 /** "New node": the Generate tiles (each opens its medium's workflows) and the other node kinds. */
 export function NewNodeButton() {
-  const editor = useEditor(); const cat = useCatalog(); const btn = useRef<HTMLButtonElement>(null);
+  const board = useBoardApi(); const cat = useCatalog(); const btn = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false); const [step, setStep] = useState<GenMedium | null>(null);
   const flows = availableFlows(cat); const count = (m: GenMedium) => flows.filter(f => f.medium === m).length;
   const focus = (sel: string) => requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-testid="cv-new-pop"] ${sel}`)?.focus({ preventScroll: true }));
   const close = () => { setOpen(false); setStep(null); };
   const back = () => { const m = step; setStep(null); if (m) focus(`[data-testid="cv-new-${m}"]`); };
   const pick = (m: GenMedium) => { if (count(m) > 1) { setStep(m); focus('.cv-new-flows [role=menuitem]'); } else make('gen', DEFAULT_FLOW[m]); };
-  const make: Make = (kind, flow) => { close(); editor.setCurrentTool('select'); createNode(editor, kind, kind === 'gen' ? { flow: flow ?? DEFAULT_FLOW.image } : {}); };
+  const make: Make = (kind, flow) => { close(); board.setTool('select'); createNode(board, kind, kind === 'gen' ? { flow: flow ?? DEFAULT_FLOW.image } : {}); };
   const g = step && GEN.find(k => k.id === step); const list = step ? flows.filter(f => f.medium === step) : [];
   return <>
     <button ref={btn} type="button" className={`cv-tool cv-new${open ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={open} aria-label="New node (G)" {...tip(open ? null : 'New node · G')} data-testid="cv-new" onClick={() => open ? close() : setOpen(true)}><Ic.PlusIcon /></button>
@@ -84,11 +84,11 @@ export function NewNodeButton() {
 
 /** Upload: picks a file, uploads it through POST /api/media and drops an Upload node with the /files/ URL. */
 function UploadButton() {
-  const editor = useEditor(); const toast = useToast(); const file = useRef<HTMLInputElement>(null); const [busy, setBusy] = useState(false);
+  const board = useBoardApi(); const toast = useToast(); const file = useRef<HTMLInputElement>(null); const [busy, setBusy] = useState(false);
   const take = async (f: File | undefined) => { if (!f || busy) return; if (!kindOfFile(f)) { toast(wrongTypeText(f.name, ['image', 'video', 'audio']), 'warn'); return; } setBusy(true);
     try { const [m] = await uploadMedia([f]); if (!m?.url) throw new Error('Upload failed'); const kind = (m as any).type || (/^image\//.test(f.type) ? 'image' : /^video\//.test(f.type) ? 'video' : 'audio');
       const poster = kind === 'image' ? m.url : kind === 'video' ? `/api/media/thumb?url=${encodeURIComponent(m.url)}` : '';
-      createNode(editor, 'upload', { media: { url: m.url, poster, mediaKind: kind, label: f.name } }); }
+      createNode(board, 'upload', { media: { url: m.url, poster, mediaKind: kind, label: f.name } }); }
     catch (e) { toast((e as Error).message || 'Upload failed', 'error'); } finally { setBusy(false); } };
   return <>
     <input ref={file} type="file" hidden accept={Object.values(ACCEPT).join(',')} onChange={e => { void take(e.target.files?.[0]); e.currentTarget.value = ''; }} />
@@ -97,8 +97,8 @@ function UploadButton() {
 }
 
 export function LeftToolbar() {
-  const editor = useEditor(); const toast = useToast(); const zoom = useValue('zoom', () => editor.getZoomLevel(), [editor]);
-  const opts = { animation: { duration: 160 } };
+  const board = useBoardApi(); const toast = useToast(); const zoom = useValue('zoom', () => board.zoom(), [board]);
+  const opts = { duration: 160 };
   return <nav className="cv-toolbar" aria-label="Canvas tools" data-testid="cv-toolbar">
     {TOOLS.map(d => d ? <ToolButton key={d.id} def={d} /> : null)}
     <hr className="cv-sep" />
@@ -106,21 +106,21 @@ export function LeftToolbar() {
     <UploadButton />
     <hr className="cv-sep" />
     {DRAW_TOOLS.map(d => <ToolButton key={d.id} def={d} />)}
-    <button type="button" className="cv-tool" aria-label="Group the selection (Shift+G)" {...tip('Group the selection · Shift+G')} data-testid="cv-tool-group" onClick={() => { editor.setCurrentTool('select'); createNode(editor, 'group'); }}><Ic.GroupIcon /></button>
-    <button type="button" className="cv-tool" aria-label="Tidy: lay linked cards into rows" {...tip('Tidy · linked cards into rows, left to right (Undo puts it back)')} data-testid="cv-tool-tidy" onClick={() => { const n = tidyNow(editor); if (!n) toast('Already tidy.'); }}><Ic.TidyIcon /></button>
+    <button type="button" className="cv-tool" aria-label="Group the selection (Shift+G)" {...tip('Group the selection · Shift+G')} data-testid="cv-tool-group" onClick={() => { board.setTool('select'); createNode(board, 'group'); }}><Ic.GroupIcon /></button>
+    <button type="button" className="cv-tool" aria-label="Tidy: lay linked cards into rows" {...tip('Tidy · linked cards into rows, left to right (Undo puts it back)')} data-testid="cv-tool-tidy" onClick={() => { const n = tidyNow(board); if (!n) toast('Already tidy.'); }}><Ic.TidyIcon /></button>
     <hr className="cv-sep" />
     <div className="cv-rail-zoom" role="group" aria-label="Zoom" data-testid="cv-zoom">
-      <button type="button" className="cv-tool" aria-label="Zoom out" {...tip('Zoom out · −')} onClick={() => editor.zoomOut(undefined, opts)}><Ic.ZoomOutIcon size={16} /></button>
-      <button type="button" className="cv-rail-pct" aria-label="Reset zoom to 100%" {...tip('Reset to 100% · Shift+0')} data-testid="cv-zoom-pct" onClick={() => editor.resetZoom(undefined, opts)}>{Math.round(zoom * 100)}%</button>
-      <button type="button" className="cv-tool" aria-label="Zoom in" {...tip('Zoom in · +')} onClick={() => editor.zoomIn(undefined, opts)}><Ic.ZoomInIcon size={16} /></button>
-      <button type="button" className="cv-tool" aria-label="Zoom to fit" {...tip('Fit everything · Shift+1')} onClick={() => editor.zoomToFit(opts)}><Ic.FitIcon size={16} /></button>
+      <button type="button" className="cv-tool" aria-label="Zoom out" {...tip('Zoom out · −')} onClick={() => board.zoomOut(opts)}><Ic.ZoomOutIcon size={16} /></button>
+      <button type="button" className="cv-rail-pct" aria-label="Reset zoom to 100%" {...tip('Reset to 100% · Shift+0')} data-testid="cv-zoom-pct" onClick={() => board.resetZoom(opts)}>{Math.round(zoom * 100)}%</button>
+      <button type="button" className="cv-tool" aria-label="Zoom in" {...tip('Zoom in · +')} onClick={() => board.zoomIn(opts)}><Ic.ZoomInIcon size={16} /></button>
+      <button type="button" className="cv-tool" aria-label="Zoom to fit" {...tip('Fit everything · Shift+1')} onClick={() => board.zoomToFit(opts)}><Ic.FitIcon size={16} /></button>
     </div>
   </nav>;
 }
 
 export function EmptyHint({ onOpenAssets }: { onOpenAssets: () => void }) {
-  const editor = useEditor(); const empty = useValue('board empty', () => editor.getCurrentPageShapeIds().size === 0, [editor]);
-  const tool = useValue('tool', () => editor.getCurrentToolId(), [editor]);
+  const board = useBoardApi(); const empty = useValue('board empty', () => board.isEmpty(), [board]);
+  const tool = useValue('tool', () => board.tool(), [board]);
   if (!empty) return null;
   return <div className={`cv-empty${tool !== 'select' && tool !== 'hand' ? ' quiet' : ''}`} data-testid="cv-empty">
     <OrbitMark size={40} className="cv-empty-mark" />

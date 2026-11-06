@@ -4,8 +4,7 @@
  * Open in tool. Everything is read live from the board shape, so the card in the dock and the card on the board never disagree.
  * Re-roll never runs anything: it asks the server for a priced proposal, which waits for Go like every other run.
  */
-import type { Editor } from 'tldraw';
-import { useValue } from 'tldraw';
+import { useValue, type BoardApi } from './boardApi';
 import { jobPct } from '../api';
 import { navigate } from '../platform/router';
 import { tip } from '../shared/Tooltip';
@@ -22,16 +21,16 @@ import { LOCAL_FREE } from '../../../server/src/shared/modelIds';
 type Snap = { status: GenCardProps['status']; medium: GenMedium; flow: string; prompt: string; name: string; model: string; quote: any; jobId: string; error: string; kept: boolean;
   poster: string; url: string; kind: string; takes: number } | null;
 
-function snapOf(editor: Editor, id: string): Snap {
-  const s = editor.getShape(id as any); if (!s || s.type !== GEN_TYPE) return null; const p = s.props as GenCardProps; const t = p.takes?.[Math.min(p.take ?? 0, (p.takes?.length ?? 1) - 1)];
+function snapOf(board: BoardApi, id: string): Snap {
+  const s = board.getNode(id as any); if (!s || s.type !== GEN_TYPE) return null; const p = s.props as GenCardProps; const t = p.takes?.[Math.min(p.take ?? 0, (p.takes?.length ?? 1) - 1)];
   return { status: p.status, medium: p.medium, flow: p.flow, prompt: p.prompt, name: String((s.meta as any)?.name ?? ''), model: p.model, quote: p.quote, jobId: p.jobId, error: p.error, kept: !!(s.meta as any)?.kept,
     poster: t?.poster || (t?.kind === 'image' ? t.url : '') || '', url: t?.url ?? '', kind: t?.kind ?? '', takes: p.takes?.length ?? 0 };
 }
 
 const STATUS: Record<string, string> = { draft: 'Draft', running: 'Running', done: 'Done', failed: 'Failed' };
 
-export function AgentMediaCard({ editor, cardId, meta, onFocus, onReroll, rerolling }: { editor: Editor | null; cardId: string; meta: any; onFocus: (id: string) => void; onReroll: (id: string, title: string) => void; rerolling?: boolean }) {
-  const s = useValue('dock card', () => (editor ? snapOf(editor, cardId) : null), [editor, cardId]);
+export function AgentMediaCard({ board, cardId, meta, onFocus, onReroll, rerolling }: { board: BoardApi | null; cardId: string; meta: any; onFocus: (id: string) => void; onReroll: (id: string, title: string) => void; rerolling?: boolean }) {
+  const s = useValue('dock card', () => (board ? snapOf(board, cardId) : null), [board, cardId]);
   const job = useValue('dock card job', () => (s?.jobId ? liveJobs.get()[s.jobId] : undefined), [s?.jobId]);
   const flow = s?.flow ?? meta?.workflow ?? ''; const medium: GenMedium = (s?.medium ?? meta?.kind ?? 'image') as GenMedium;
   const name = (flowById(flow) ? flowInfo(flowById(flow)!, catalogNow()).name : null) ?? meta?.workflowName ?? 'Card'; /* a workflow card's own name (Material Swap), not its id */
@@ -45,7 +44,7 @@ export function AgentMediaCard({ editor, cardId, meta, onFocus, onReroll, reroll
   const pct = s?.status === 'running' && job ? jobPct(job) : 0;
   const status = !s ? 'Removed' : queued ? 'Queued' : s.status === 'running' ? (pct ? `${pct}%` : 'Running') : s.status === 'done' && s.takes > 1 ? `${s.takes} takes` : STATUS[s.status] ?? s.status;
   const href = s ? toolHrefOf(flow, s.status === 'done' ? s.jobId : null) : null;
-  const keep = () => { if (!editor || !s) return; const sh = editor.getShape(cardId as any); if (!sh) return; editor.updateShape({ id: sh.id, type: sh.type, meta: { ...sh.meta, kept: !s.kept } } as any); };
+  const keep = () => { if (!board || !s) return; const sh = board.getNode(cardId as any); if (!sh) return; board.patchNode(sh.id, { meta: { ...sh.meta, kept: !s.kept } } as any); };
   const busy = s?.status === 'running';
 
   return <article className={`ap-tc${s ? ` st-${s.status}` : ' st-gone'}${s?.kept ? ' kept' : ''}`} data-testid="agent-toolcard" data-status={s?.status ?? 'gone'} data-card={cardId}>

@@ -4,25 +4,24 @@
  * the same rules as a person: real model limits, quote = charge, the board's project, nothing runs without an explicit submit().
  *
  * createNode(kind, …) makes any node kind (gen, prompt, upload, note, compare, group); connect(from, to) wires an output into an input
- * with the existing tldraw arrow binding. The generate functions are unchanged for existing callers.
+ * with a board link, exactly as a person draws one. The generate functions are unchanged for existing callers.
  *
  * Future agent panel (not built): mount it in CanvasPage's `.cv-agent-slot` (right edge, `data-slot="agent-panel"`, width from the CSS
- * variable --cv-agent-w on .cv-root, 0 today; the Assets button and drawer already sit left of it). It gets the editor from
- * useCanvasEditor() and calls the functions below. In dev builds they are on window.__ohfCanvasAgent for checks.
+ * variable --cv-agent-w on .cv-root, 0 today; the Assets button and drawer already sit left of it). It gets the board from
+ * useCanvasBoard() and calls the functions below. In dev builds they are on window.__ohfCanvasAgent for checks.
  */
-import type { Editor, TLShapeId, VecLike } from 'tldraw';
+import type { BoardApi, NodeId, Point } from './boardApi';
 import { availableFlows, flowById, type GenMedium } from '../shared/genFlows';
 import { catalogNow } from './catalog';
 import { cardState, makerOf, missingOf, modelNameOf } from './cardState';
 import { GEN_TYPE, draftProps, type BoardInput, type GenCardProps } from './cardModel';
 import { linkShapes, promptInto } from './graph';
 import { quoteNode, submitNode } from './nodeRun';
-import { createShapeId } from 'tldraw';
 import { freeSpot, reveal } from './placement';
 import { createAuxNode, type AuxCreateOpts } from './auxShapes';
 import type { NodeKind } from './nodeTypes';
-import { setBoardCtx, boardCtx, useCanvasEditor } from './boardCtx';
-export { setBoardCtx, boardCtx, useCanvasEditor, reveal };
+import { setBoardCtx, boardCtx, useCanvasBoard } from './boardCtx';
+export { setBoardCtx, boardCtx, useCanvasBoard, reveal };
 
 /** The workflow a new card starts on: the last one made on this board (G uses it). */
 let lastFlow = 'create';
@@ -32,47 +31,47 @@ export const lastFlowNow = () => lastFlow;
 export const listFlows = () => availableFlows(catalogNow()).map(f => ({ id: f.id, medium: f.medium, name: f.name, tagline: f.tagline, needs: f.needs }));
 
 /** A new draft card (selected; centred on `at`, default the middle of the view). `from`: shapes to wire in as inputs with arrows. */
-export function createCard(editor: Editor, o: { flow?: string; medium?: GenMedium; at?: VecLike; prompt?: string; provider?: string; vals?: Record<string, string>; parents?: string[]; from?: TLShapeId[]; select?: boolean } = {}): TLShapeId {
-  const id = createShapeId(); const props = draftProps(o); lastFlow = props.flow; const c = o.at ?? freeSpot(editor, props.w, props.h);
-  editor.markHistoryStoppingPoint('new generate card');
-  editor.run(() => { editor.createShape({ id, type: GEN_TYPE, x: c.x - props.w / 2, y: c.y - props.h / 2, props } as any); for (const src of o.from ?? []) linkShapes(editor, src, id); });
-  if (o.select !== false) editor.select(id);
+export function createCard(board: BoardApi, o: { flow?: string; medium?: GenMedium; at?: Point; prompt?: string; provider?: string; vals?: Record<string, string>; parents?: string[]; from?: NodeId[]; select?: boolean } = {}): NodeId {
+  const props = draftProps(o); lastFlow = props.flow; const c = o.at ?? freeSpot(board, props.w, props.h);
+  board.mark('new generate card');
+  let id = ''; board.batch(() => { id = board.addNode({ type: GEN_TYPE, x: c.x - props.w / 2, y: c.y - props.h / 2, props }); for (const src of o.from ?? []) linkShapes(board, src, id); });
+  if (o.select !== false) board.select([id]);
   return id;
 }
 
 /** Any node kind: generate uses the card above; prompt / upload / note / compare / group use the shared node frame. */
-export function createNode(editor: Editor, kind: NodeKind, o: AuxCreateOpts & { flow?: string; medium?: GenMedium; prompt?: string; provider?: string; vals?: Record<string, string>; parents?: string[]; from?: TLShapeId[] } = {}): TLShapeId {
-  if (kind === 'gen') return createCard(editor, o);
+export function createNode(board: BoardApi, kind: NodeKind, o: AuxCreateOpts & { flow?: string; medium?: GenMedium; prompt?: string; provider?: string; vals?: Record<string, string>; parents?: string[]; from?: NodeId[] } = {}): NodeId {
+  if (kind === 'gen') return createCard(board, o);
   if (kind === 'result') throw new Error('Result nodes come from a finished run.');
-  return createAuxNode(editor, kind, o);
+  return createAuxNode(board, kind, o);
 }
 
 /** Change a card (prompt, workflow, model, settings, pins). A new workflow resets the model and settings to that workflow's own. */
-export function setCard(editor: Editor, id: TLShapeId, patch: Partial<Pick<GenCardProps, 'prompt' | 'flow' | 'provider' | 'vals' | 'pins' | 'inputs'>>) {
-  const s = editor.getShape(id); if (!s || s.type !== GEN_TYPE) return; const f = patch.flow ? flowById(patch.flow) : null;
+export function setCard(board: BoardApi, id: NodeId, patch: Partial<Pick<GenCardProps, 'prompt' | 'flow' | 'provider' | 'vals' | 'pins' | 'inputs'>>) {
+  const s = board.getNode(id); if (!s || s.type !== GEN_TYPE) return; const f = patch.flow ? flowById(patch.flow) : null;
   const props: Partial<GenCardProps> = { ...patch, ...(f ? { medium: f.medium, provider: patch.provider ?? f.provider ?? '', vals: patch.vals ?? {}, ratio: 0 } : {}) };
-  editor.run(() => editor.updateShape({ id, type: GEN_TYPE, props } as any), { history: 'ignore' });
+  board.batch(() => board.patchNode(id, { props }), { history: 'ignore' });
 }
 /** Put uploaded files into a card's slots (pinned there), in one change: the slot's Add chip and a file dropped on the card both use it. */
-export function addCardInputs(editor: Editor, id: TLShapeId, added: { input: BoardInput; slot: string }[]) {
-  const p = editor.getShape(id)?.props as GenCardProps | undefined; if (!p || !added.length) return;
-  setCard(editor, id, { inputs: [...p.inputs, ...added.map(a => a.input)], pins: { ...p.pins, ...Object.fromEntries(added.map(a => [a.input.key, a.slot])) } });
+export function addCardInputs(board: BoardApi, id: NodeId, added: { input: BoardInput; slot: string }[]) {
+  const p = board.getNode(id)?.props as GenCardProps | undefined; if (!p || !added.length) return;
+  setCard(board, id, { inputs: [...p.inputs, ...added.map(a => a.input)], pins: { ...p.pins, ...Object.fromEntries(added.map(a => [a.input.key, a.slot])) } });
 }
 /** Wire a node's output into another node's input: an arrow, exactly as a person would draw it. */
-export function connect(editor: Editor, fromId: TLShapeId, toId: TLShapeId): TLShapeId | null { editor.markHistoryStoppingPoint('connect input'); return linkShapes(editor, fromId, toId); }
+export function connect(board: BoardApi, fromId: NodeId, toId: NodeId): NodeId | null { board.mark('connect input'); return linkShapes(board, fromId, toId); }
 /** What a card is and needs: its workflow, model, settings, inputs by slot, the first missing step, and its status. */
-export function describeCard(editor: Editor, id: TLShapeId) {
-  const s = editor.getShape(id); if (!s || s.type !== GEN_TYPE) return null; const st = cardState(editor, s, catalogNow()); const p = s.props as GenCardProps;
-  return { id, flow: p.flow, status: p.status, prompt: promptInto(editor, id) || p.prompt, model: modelNameOf(st.spec), provider: st.spec?.provider ?? p.provider, vals: st.spec?.vals ?? p.vals, providers: st.spec?.providers.map(x => x.id) ?? [],
+export function describeCard(board: BoardApi, id: NodeId) {
+  const s = board.getNode(id); if (!s || s.type !== GEN_TYPE) return null; const st = cardState(board, s, catalogNow()); const p = s.props as GenCardProps;
+  return { id, flow: p.flow, status: p.status, prompt: promptInto(board, id) || p.prompt, model: modelNameOf(st.spec), provider: st.spec?.provider ?? p.provider, vals: st.spec?.vals ?? p.vals, providers: st.spec?.providers.map(x => x.id) ?? [],
     slots: st.spec?.slots.map(x => ({ name: x.name, label: x.label, accept: x.accept, required: x.required, max: x.max, filled: st.bySlot[x.name]?.length ?? 0 })) ?? [], unused: st.extra.length,
-    missing: missingOf(st.spec, st.bySlot, promptInto(editor, id) || p.prompt), jobId: p.jobId || null, takes: p.takes.length };
+    missing: missingOf(st.spec, st.bySlot, promptInto(board, id) || p.prompt), jobId: p.jobId || null, takes: p.takes.length };
 }
 /** A fresh quote for the card as it is now (the same GET /price the run is checked against: quote = charge). */
 export const quoteCard = quoteNode;
 /** Run the card: a fresh quote first, then the jobs API. Throws a plain message when something is missing or the server refuses. */
 export const submit = submitNode;
 /** Expose for dev checks (never in a production build). */
-export function exposeForDev(editor: Editor) {
+export function exposeForDev(board: BoardApi) {
   if (!(import.meta as any).env?.DEV) return;
-  (window as any).__ohfCanvasAgent = { listFlows, describeCard: (id: string) => describeCard(editor, id as TLShapeId), createCard: (o: any) => createCard(editor, o), createNode: (kind: NodeKind, o: any) => createNode(editor, kind, o), setCard: (id: string, p: any) => setCard(editor, id as TLShapeId, p), connect: (a: string, b: string) => connect(editor, a as TLShapeId, b as TLShapeId), quoteCard: (id: string) => quoteCard(editor, id as TLShapeId), submit: (id: string) => submit(editor, id as TLShapeId) };
+  (window as any).__ohfCanvasAgent = { listFlows, describeCard: (id: string) => describeCard(board, id as NodeId), createCard: (o: any) => createCard(board, o), createNode: (kind: NodeKind, o: any) => createNode(board, kind, o), setCard: (id: string, p: any) => setCard(board, id as NodeId, p), connect: (a: string, b: string) => connect(board, a as NodeId, b as NodeId), quoteCard: (id: string) => quoteCard(board, id as NodeId), submit: (id: string) => submit(board, id as NodeId) };
 }

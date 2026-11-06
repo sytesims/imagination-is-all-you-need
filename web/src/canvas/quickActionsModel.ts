@@ -1,7 +1,6 @@
 /** The quick actions' list and what one does (QuickActions.tsx draws the bar). Each only makes a NEW draft card wired to the result. */
-import type { Editor, TLShapeId } from 'tldraw';
+import type { BoardApi, NodeId, Point } from './boardApi';
 import { UpscaleIcon, CutoutIcon, LayerSheetsIcon, VectorIcon, LightIcon, VideoIcon, CubeIcon, SoundIcon, ImageIcon, MicIcon, MusicIcon, type IconProps } from '../ui/Icons';
-import type { VecLike } from 'tldraw';
 import type { PortKind } from './nodeLogic';
 import { createCard, reveal } from './agentApi';
 import { GEN_TYPE, CARD_W, CARD_H } from './cardModel';
@@ -19,12 +18,12 @@ export const QUICK_ACTIONS: Record<'image' | 'video', Act[]> = {
 };
 
 /** The draft card for an action: right of the source, an arrow from the source into it, selected. Never submits. */
-export function quickCard(editor: Editor, sourceId: TLShapeId, a: Act): TLShapeId | null {
-  const b = editor.getShapePageBounds(sourceId); if (!b) return null;
-  const taken = editor.getCurrentPageShapes().filter(s => s.type === GEN_TYPE && (s.props as any).parents?.includes(sourceId)).length; /* a second action from the same result goes below the first */
-  editor.markHistoryStoppingPoint('quick action');
-  const id = createCard(editor, { flow: a.flow, from: [sourceId], parents: [sourceId], at: { x: b.maxX + 110 + 160, y: b.minY + 130 + taken * 300 } });
-  reveal(editor, id);
+export function quickCard(board: BoardApi, sourceId: NodeId, a: Act): NodeId | null {
+  const b = board.boundsOf(sourceId); if (!b) return null;
+  const taken = board.nodes().filter(s => s.type === GEN_TYPE && (s.props as any).parents?.includes(sourceId)).length; /* a second action from the same result goes below the first */
+  board.mark('quick action');
+  const id = createCard(board, { flow: a.flow, from: [sourceId], parents: [sourceId], at: { x: b.maxX + 110 + 160, y: b.minY + 130 + taken * 300 } });
+  reveal(board, id);
   if (a.group) setTimeout(() => dispatchEvent(new CustomEvent(OPEN_GROUP_EVT, { detail: { g: a.group, cardId: id } })), 220);
   return id;
 }
@@ -39,9 +38,9 @@ export const NEXT_STEPS: Record<PortKind, Act[]> = {
     { id: 'music', label: 'Music', flow: 'music', icon: MusicIcon }, { id: 'voice', label: 'Read it aloud', flow: 'voice', icon: MicIcon }],
 };
 /** A next step dropped at a point: a draft card centred there, wired from the source, selected. Never submits. */
-export function nextStepCard(editor: Editor, sourceId: TLShapeId, a: Act, at: VecLike): TLShapeId {
-  editor.markHistoryStoppingPoint('next step');
-  const id = createCard(editor, { flow: a.flow, from: [sourceId], parents: [sourceId], at: freeSpot(editor, CARD_W, CARD_H, { x: at.x + CARD_W / 2, y: at.y }) }); /* at the drop point, nudged off any card */
+export function nextStepCard(board: BoardApi, sourceId: NodeId, a: Act, at: Point): NodeId {
+  board.mark('next step');
+  const id = createCard(board, { flow: a.flow, from: [sourceId], parents: [sourceId], at: freeSpot(board, CARD_W, CARD_H, { x: at.x + CARD_W / 2, y: at.y }) }); /* at the drop point, nudged off any card */
   if (a.group) setTimeout(() => dispatchEvent(new CustomEvent(OPEN_GROUP_EVT, { detail: { g: a.group, cardId: id } })), 220);
   return id;
 }

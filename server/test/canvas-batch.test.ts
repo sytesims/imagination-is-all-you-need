@@ -1,6 +1,6 @@
 // Canvas batches (server/src/shared/canvasBatch.ts + web/src/canvas/batchBuild.ts): all-or-nothing validation, temporary refs, a group
 // layout where nothing overlaps, the one dock line, and the board side: ONE history mark (a single Undo removes the whole batch) and a
-// bail back to it when any item fails. A stub editor stands in for tldraw. Run: cd server && npx tsx test/canvas-batch.test.ts
+// bail back to it when any item fails. A stub BoardApi stands in for the board. Run: cd server && npx tsx test/canvas-batch.test.ts
 import assert from 'node:assert/strict';
 import { validateBatch, batchLayout, batchLine, BATCH_MAX, BATCH_GRID, type BatchItem } from '../src/shared/canvasBatch.ts';
 import { buildBatch } from '../../web/src/canvas/batchBuild.ts';
@@ -87,35 +87,37 @@ assert.equal(batchLine({ cards: 1, notes: 6, frames: 1 }), 'Added 1 card and 6 n
 assert.equal(batchLine({ cards: 0, notes: 0, frames: 2 }), 'Added 2 frames');
 ok('the one dock line');
 
-// ---- the board side with a stub editor: one history mark (one Undo), refs wired, a failure bails back and nothing stays ----
-function stubEditor() {
-  const shapes = new Map<string, any>(); const marks: string[] = []; const bails: string[] = []; let runs = 0; let snap: Map<string, any> | null = null;
-  const ed: any = {
+// ---- the board side with a stub board (BoardApi): one history mark (one Undo), refs wired, a failure bails back and nothing stays ----
+function stubBoard() {
+  const shapes = new Map<string, any>(); const marks: string[] = []; const bails: string[] = []; let runs = 0; let snap: Map<string, any> | null = null; let n = 0;
+  const bounds = (id: string) => { const s = shapes.get(id); if (!s) return null; const w = s.props?.w ?? 260, h = s.props?.h ?? 260; return { x: s.x, y: s.y, w, h, minX: s.x, minY: s.y, maxX: s.x + w, maxY: s.y + h, midX: s.x + w / 2, midY: s.y + h / 2, center: { x: s.x + w / 2, y: s.y + h / 2 } }; };
+  const b: any = {
     shapes, marks, bails, get runs() { return runs; },
-    markHistoryStoppingPoint: (n: string) => { marks.push(n); snap = new Map([...shapes].map(([k, v]) => [k, { ...v }])); return `mark-${marks.length}`; },
+    mark: (l: string) => { marks.push(l); snap = new Map([...shapes].map(([k, v]) => [k, { ...v }])); return `mark-${marks.length}`; },
     bailToMark: (m: string) => { bails.push(m); shapes.clear(); for (const [k, v] of snap ?? []) shapes.set(k, v); },
-    run: (fn: () => void) => { runs++; fn(); },
-    createShape: (s: any) => { shapes.set(s.id, { parentId: 'page:page', ...s }); },
-    sendToBack: () => undefined, createBindings: (b: any[]) => { for (const x of b) shapes.set(`binding:${shapes.size}`, { ...x, typeName: 'binding' }); },
-    getShape: (id: string) => shapes.get(id), reparentShapes: (ids: string[], p: string) => { for (const id of ids) { const s = shapes.get(id); if (s) s.parentId = p; } },
-    getShapePageBounds: (id: string) => { const s = shapes.get(id); if (!s) return null; const w = s.props?.w ?? 260, h = s.props?.h ?? 260; return { minX: s.x, minY: s.y, maxX: s.x + w, maxY: s.y + h, midY: s.y + h / 2 }; },
+    batch: (fn: () => void) => { runs++; fn(); },
+    addNode: (s: any) => { const id = `shape:n${++n}`; shapes.set(id, { id, parentId: 'page:page', ...s }); return id; },
+    toBack: () => undefined,
+    addLink: (from: string, to: string) => { if (!bounds(from) || !bounds(to)) return null; const id = `shape:l${++n}`; shapes.set(id, { id, type: 'link', from, to }); return id; },
+    getNode: (id: string) => (shapes.get(id)?.type === 'link' ? null : shapes.get(id) ?? null), boundsOf: bounds,
+    setParent: (ids: string[], p: string) => { for (const id of ids) { const s = shapes.get(id); if (s) s.parentId = p; } },
   };
-  return ed;
+  return b;
 }
 const deps = (check?: (f: string[], t: string) => void) => ({ flowOf: (w: string) => (w === 'nope' ? (() => { throw new Error('Unknown workflow "nope".'); })() : w), providerOf: () => undefined, check: (f: any, t: any) => check?.(f, t), spot: () => ({ x: 0, y: 0 }) });
 const items12: BatchItem[] = [{ kind: 'add_frame', ref: 'f', name: 'Set' }, ...Array.from({ length: 12 }, (_, i): BatchItem => ({ kind: 'add_card', ref: `c${i}`, workflow: i % 2 ? 'video' : 'create', prompt: `p${i}`, frame: 'f', ...(i % 2 ? { inputs_from: [`c${i - 1}`] } : {}) }))];
-const e1 = stubEditor(); const made = buildBatch(e1, items12, batchLayout(items12, { x: 0, y: 0 }), deps());
-assert.deepEqual(e1.marks, ['agent batch'], 'ONE history mark: a single Undo removes the whole batch'); assert.equal(e1.runs, 1, 'every shape in one editor.run'); assert.equal(e1.bails.length, 0);
+const e1 = stubBoard(); const made = buildBatch(e1, items12, batchLayout(items12, { x: 0, y: 0 }), deps());
+assert.deepEqual(e1.marks, ['agent batch'], 'ONE history mark: a single Undo removes the whole batch'); assert.equal(e1.runs, 1, 'every node in one board.batch'); assert.equal(e1.bails.length, 0);
 assert.equal(made.cards.length, 12); assert.equal(made.frames.length, 1); assert.equal(made.arrows.length, 6, 'each clip wired from the picture before it');
 assert.ok(made.cards.every((id) => e1.shapes.get(id).parentId === made.refs.f), 'cards sit in their frame');
 assert.ok(made.cards.every((id) => e1.shapes.get(id).props.status === 'draft'), 'drafts only: nothing runs');
 const card3 = e1.shapes.get(made.refs.c3); assert.equal(card3.props.prompt, 'p3'); assert.equal(card3.props.flow, 'video');
-const e2 = stubEditor(); e2.createShape({ id: 'shape:keep', type: 'note', x: 0, y: 0, props: {} });
+const e2 = stubBoard(); e2.shapes.set('shape:keep', { id: 'shape:keep', type: 'note', x: 0, y: 0, props: {} });
 assert.throws(() => buildBatch(e2, [{ kind: 'add_card', ref: 'a', workflow: 'create' }, { kind: 'add_card', ref: 'b', workflow: 'music', inputs_from: ['a'] }], { at: {}, frames: {} },
   deps((f, t) => { throw new Error('Music bed takes text, and “a” makes a picture.'); })), /takes text/);
 assert.equal(e2.bails.length, 1, 'an illegal connection bails back to the mark'); assert.deepEqual([...e2.shapes.keys()], ['shape:keep'], 'nothing of the batch stays; what was there before is untouched');
-const e3 = stubEditor(); assert.throws(() => buildBatch(e3, [{ kind: 'add_card', workflow: 'create' }, { kind: 'add_card', workflow: 'nope' }], { at: {}, frames: {} }, deps()), /Unknown workflow/);
+const e3 = stubBoard(); assert.throws(() => buildBatch(e3, [{ kind: 'add_card', workflow: 'create' }, { kind: 'add_card', workflow: 'nope' }], { at: {}, frames: {} }, deps()), /Unknown workflow/);
 assert.equal(e3.marks.length, 0, 'a wrong workflow is caught before anything is made'); assert.equal(e3.shapes.size, 0);
 ok('board side: one mark and one run for 12 cards (single Undo), refs wired, drafts only; a bad item leaves nothing behind');
 console.log('canvas-batch: all ok');
-process.exit(0); // tldraw keeps timers alive in node
+process.exit(0); // the board engine keeps timers alive in node

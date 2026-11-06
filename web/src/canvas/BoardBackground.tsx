@@ -1,15 +1,15 @@
 /**
- * The board's background (tldraw's Background slot, behind every shape), in the look picked in the board menu (boardLook.ts):
+ * The board's background (the board's Background slot, behind every shape), in the look picked in the board menu (boardLook.ts):
  *  - space: three star and dust layers that drift at different speeds as you pan (parallax), so the board feels endless and deep, with
  *    a soft orange glow at the edges;
  *  - haze: slow colour clouds over a faint dot grid;
  *  - night: a calm dot grid and a gentle vignette.
  * Cheap on purpose: each layer is one tiled image moved with a GPU transform (no repaint while panning; a zoom only rescales the tile),
- * styles are set straight on the elements from a tldraw reactor (no React render per camera move), and the drifting glows are CSS
+ * styles are set straight on the elements from a board reactor (no React render per camera move), and the drifting glows are CSS
  * animations that stop under reduced motion.
  */
 import { useRef } from 'react';
-import { useEditor, useQuickReactor, useValue } from 'tldraw';
+import { useBoardApi, useReactor, useValue } from './boardApi';
 import { boardLookAtom, type BoardLook } from './boardLook';
 
 /** A seeded tile of stars (or dust) as a data URL, made once per layer. */
@@ -39,10 +39,10 @@ const SPACE: Layer[] = [
 const mod = (a: number, n: number) => ((a % n) + n) % n;
 
 export function BoardBackground() {
-  const editor = useEditor(); const look = useValue('board look', () => boardLookAtom.get(), []);
+  const board = useBoardApi(); const look = useValue('board look', () => boardLookAtom.get(), []);
   const root = useRef<HTMLDivElement>(null);
-  useQuickReactor('board background', () => {
-    const el = root.current; if (!el) return; const c = editor.getCamera(); const z = c.z;
+  useReactor('board background', () => {
+    const el = root.current; if (!el) return; const c = board.camera(); const z = c.z;
     for (const node of el.querySelectorAll<HTMLElement>('[data-f]')) {
       const f = Number(node.dataset.f), zf = Number(node.dataset.zf), base = Number(node.dataset.tile);
       /* the dot grid: one dot every 24 page px (96 when far out, 384 very far out, so it never turns to noise) */
@@ -50,7 +50,7 @@ export function BoardBackground() {
       node.style.backgroundSize = `${size}px ${size}px`; node.style.inset = `${-size}px`;
       node.style.transform = `translate3d(${mod(c.x * z * f, size)}px,${mod(c.y * z * f, size)}px,0)`;
     }
-  }, [editor, look]);
+  }, [board, look]);
   return <div ref={root} className={`cv-bg look-${look}`} data-look={look} data-testid="cv-bg" aria-hidden>
     {look === 'space' && <><i className="cv-bg-glow" />{SPACE.map((l) => <i key={l.key} className={`cv-bg-layer cv-bg-${l.key}`} data-f={l.f} data-zf={l.zf} data-tile={l.tile} style={{ backgroundImage: `url(${l.img()})` }} />)}
       <i className="cv-bg-layer cv-bg-grid faint" data-grid="1" data-f={1} data-zf={1} data-tile={24} /></>}

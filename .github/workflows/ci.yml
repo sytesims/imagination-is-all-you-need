@@ -1,7 +1,8 @@
 name: CI
 
-# Pull requests: Build and start on all three systems, and the one-line install on Ubuntu only, unless the PR touches
-# the installer, setup/launcher scripts or package files (then also ARM64 Linux, and get.sh in a fresh Ubuntu container).
+# Pull requests: Build and start on all three systems. The one-line install runs only when the PR touches the installer,
+# setup/launcher scripts or package files (then on every system, plus get.sh in a fresh Ubuntu container); it hung on
+# Ubuntu's package mirror for unrelated PRs, so they skip it. main (push, nightly, by hand) still runs it everywhere.
 # main (push, nightly, by hand): everything.
 on:
   push:
@@ -49,8 +50,8 @@ jobs:
           if grep -qE '^(scripts/(get|install)\.(sh|ps1)|scripts/(setup|start|update|doctor|app-env|env-merge|install-mcp|web-build|build-plugins|node-version)\.mjs|server/src/doctor/.*|scripts/(make-mac-app\.sh|mac-app/.*)|((server|web|mcp)/)?package(-lock)?\.json|\.github/workflows/ci\.yml)$' <<<"$changed"; then
             echo "Install or setup files changed: everything"; full
           else
-            echo "No install or setup files changed: one-line install on Ubuntu only"
-            { echo 'install_os=["ubuntu-latest"]'; echo "build_os=$three"; echo "full=false"; } >> "$GITHUB_OUTPUT"
+            echo "No install or setup files changed: the one-line install is skipped (main and nightly still run it)"
+            { echo 'install_os=[]'; echo "build_os=$three"; echo "full=false"; } >> "$GITHUB_OUTPUT"
           fi
 
   build-start:
@@ -145,6 +146,7 @@ jobs:
   one-line-install:
     name: One-line install (${{ matrix.os }}, Node 22)
     needs: scope
+    if: needs.scope.outputs.install_os != '[]'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     strategy:

@@ -6,7 +6,7 @@
  *  - footer: the model and the price / actions;
  *  - typed ports (2026-10-27): a small dot per input kind on the left edge and one output dot on the right, coloured by what travels
  *    (picture, clip, sound, text; tokens.css --media-*). Dragging from an output draws a ghost line in that colour, lights the cards
- *    that take that kind and dims the others; a drop on a legal card draws the existing tldraw arrow binding (graph.linkShapes), so
+ *    that take that kind and dims the others; a drop on a legal card draws a board link (graph.linkShapes), so
  *    cardInputs keeps working exactly as before. A drop on a card that can't take it says what that card takes; a drop on empty
  *    board opens "What next?" (NextStepMenu) with the sensible workflows for that medium.
  *  - one look at every zoom (2026-10-30: the zoomed-out pill is gone; links ended at card edges the pill no longer filled). Far out the
@@ -17,7 +17,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useEditor, useValue, type TLShapeId } from 'tldraw';
+import { useBoardApi, useValue, type BoardApi, type NodeId } from './boardApi';
 import { portDragAtom, nextStepAtom, listenPortDrag } from './nodeFrameModel';
 import { tip } from '../shared/Tooltip';
 import { useToast } from '../shared/Toast';
@@ -30,7 +30,7 @@ import { perfOff } from './CameraMotion';
 import { CardName } from './CardName';
 
 export interface NodeFrameProps {
-  shapeId: TLShapeId; type: string; tint?: NodeTint;
+  shapeId: NodeId; type: string; tint?: NodeTint;
   icon: ReactNode; title: ReactNode; titleHint?: string;
   status?: ReactNode; actions?: ReactNode;
   children?: ReactNode; footer?: ReactNode;
@@ -51,7 +51,7 @@ export interface NodeFrameProps {
 const KIND_NAME: Record<PortKind, string> = { image: 'Picture', video: 'Clip', audio: 'Sound', text: 'Text' };
 /** The node's ports as a stable string (so a card re-renders only when its ports change): "out|kind:room,kind:room". */
 const portKey = (p: PortInfo | null) => (p ? `${p.out ?? ''}|${p.ins.map((i) => `${i.kind}:${i.room}`).join(',')}` : '|');
-const nameOfNode = (editor: ReturnType<typeof useEditor>, id: string) => { const s = editor.getShape(id as TLShapeId); const n = (s?.meta as any)?.name; return (typeof n === 'string' && n.trim()) || nodeDefOf(s?.type)?.label || 'This card'; };
+const nameOfNode = (board: BoardApi, id: string) => { const s = board.getNode(id as NodeId); const n = (s?.meta as any)?.name; return (typeof n === 'string' && n.trim()) || nodeDefOf(s?.type)?.label || 'This card'; };
 
 /** The line that follows the pointer while dragging from an output (only the source frame draws it). */
 function DragGhost({ from }: { from: { x: number; y: number } }) {
@@ -66,23 +66,23 @@ function DragGhost({ from }: { from: { x: number; y: number } }) {
 }
 
 export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status, actions, children, footer, className = '', bodyClass = '', variant = 'node', testId, rootAttrs, label, heading, renamable, farName }: NodeFrameProps) {
-  const editor = useEditor(); const toast = useToast();
+  const board = useBoardApi(); const toast = useToast();
   const def = nodeDefOf(type);
-  const selected = useValue('nf selected', () => editor.getSelectedShapeIds().includes(shapeId), [editor, shapeId]);
-  const hovered = useValue('nf hovered', () => editor.getHoveredShapeId() === shapeId, [editor, shapeId]);
+  const selected = useValue('nf selected', () => board.selection().includes(shapeId), [board, shapeId]);
+  const hovered = useValue('nf hovered', () => board.hovered() === shapeId, [board, shapeId]);
   /* this node's role in a drag: the source, a legal target (and the one under the pointer), or dimmed */
   const role = useValue('nf drag role', () => { const d = portDragAtom.get(); if (!d) return ''; if (d.fromId === shapeId) return 'src'; return d.targetId === shapeId ? 'drop' : d.legal.includes(shapeId) ? 'ok' : 'dim'; }, [shapeId]);
   const dragKind = useValue('nf drag kind', () => portDragAtom.get()?.kind ?? null, []);
-  const ports = useValue('nf ports', () => { const s = editor.getShape(shapeId); return portKey(s && variant === 'node' ? portInfoOf(editor, s, catalogNow()) : null); }, [editor, shapeId, variant]);
+  const ports = useValue('nf ports', () => { const s = board.getNode(shapeId); return portKey(s && variant === 'node' ? portInfoOf(board, s, catalogNow()) : null); }, [board, shapeId, variant]);
   const [outK, insK] = ports.split('|'); const out = (outK || null) as PortKind | null;
   const ins = (insK ? insK.split(',') : []).map((x) => { const [k, r] = x.split(':'); return { kind: k as PortKind, room: Number(r) }; });
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
   /* far off screen (more than a screen away): an empty shell, so its media, timers and controls aren't mounted while you pan a big board.
      It fills back in a screen before it comes into view; selected cards always stay whole. Re-renders only when this flips. */
-  const offscreen = useValue('nf offscreen', () => { if (variant !== 'node' || perfOff()) return false; const b = editor.getShapePageBounds(shapeId); if (!b) return false;
-    const v = editor.getViewportPageBounds(); const mx = v.w, my = v.h;
-    return (b.maxX < v.minX - mx || b.minX > v.maxX + mx || b.maxY < v.minY - my || b.minY > v.maxY + my) && !editor.getSelectedShapeIds().includes(shapeId); }, [editor, shapeId, variant]);
-  const metaName = useValue('nf name', () => { const n = (editor.getShape(shapeId)?.meta as any)?.name; return renamable && typeof n === 'string' ? n.trim() : ''; }, [editor, shapeId, renamable]);
+  const offscreen = useValue('nf offscreen', () => { if (variant !== 'node' || perfOff()) return false; const b = board.boundsOf(shapeId); if (!b) return false;
+    const v = board.viewportBounds(); const mx = v.w, my = v.h;
+    return (b.maxX < v.minX - mx || b.minX > v.maxX + mx || b.maxY < v.minY - my || b.minY > v.maxY + my) && !board.selection().includes(shapeId); }, [board, shapeId, variant]);
+  const metaName = useValue('nf name', () => { const n = (board.getNode(shapeId)?.meta as any)?.name; return renamable && typeof n === 'string' ? n.trim() : ''; }, [board, shapeId, renamable]);
   const cleanup = useRef<() => void>(() => {});
   useEffect(() => () => cleanup.current(), []);
 
@@ -91,22 +91,22 @@ export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status,
     if (!def?.output || e.button !== 0) return;
     e.preventDefault(); e.stopPropagation();
     if (!out) { toast('This card has nothing to pass on yet.'); return; }
-    const at = { x: e.clientX, y: e.clientY }; const all = boardPorts(editor, catalogNow()); const byId = new Map(all.map((p) => [p.id, p]));
+    const at = { x: e.clientX, y: e.clientY }; const all = boardPorts(board, catalogNow()); const byId = new Map(all.map((p) => [p.id, p]));
     setStart(at); document.body.classList.add('nf-port-dragging');
     portDragAtom.set({ fromId: shapeId, fromType: type, kind: out, x: at.x, y: at.y, targetId: null, overId: null, legal: legalTargets(out, shapeId, all), hint: '' });
     const move = (ev: PointerEvent) => {
-      const p = editor.screenToPage({ x: ev.clientX, y: ev.clientY });
-      const under = editor.getShapesAtPoint(p, { hitInside: true, margin: 8 }).map((s) => byId.get(s.id)).filter((x): x is PortInfo => !!x);
+      const p = board.screenToBoard({ x: ev.clientX, y: ev.clientY });
+      const under = board.nodesAt(p, { margin: 8 }).map((s) => byId.get(s.id)).filter((x): x is PortInfo => !!x);
       const { target, over } = pickTypedTarget(under, out, shapeId);
-      const hint = over && !target ? (over.ins.some((i) => i.kind === out) ? `${nameOfNode(editor, over.id)} is full` : takesLine(nameOfNode(editor, over.id), over.ins)) : '';
+      const hint = over && !target ? (over.ins.some((i) => i.kind === out) ? `${nameOfNode(board, over.id)} is full` : takesLine(nameOfNode(board, over.id), over.ins)) : '';
       portDragAtom.update((d) => (d ? { ...d, x: ev.clientX, y: ev.clientY, targetId: target?.id ?? null, overId: over?.id ?? null, hint } : d));
     };
     const up = (ev: PointerEvent) => {
       const d = portDragAtom.get();
-      if (d?.targetId && d.fromId === shapeId) { editor.markHistoryStoppingPoint('connect node'); linkShapes(editor, shapeId, d.targetId as TLShapeId); }
+      if (d?.targetId && d.fromId === shapeId) { board.mark('connect node'); linkShapes(board, shapeId, d.targetId as NodeId); }
       else if (d?.overId && d.hint) toast(`${d.hint}.`);
       else if (d && !d.overId && ev.type === 'pointerup') { const moved = Math.hypot(ev.clientX - at.x, ev.clientY - at.y) > 24;
-        if (moved) nextStepAtom.set({ fromId: shapeId, kind: out, screen: { x: ev.clientX, y: ev.clientY }, page: editor.screenToPage({ x: ev.clientX, y: ev.clientY }) }); }
+        if (moved) nextStepAtom.set({ fromId: shapeId, kind: out, screen: { x: ev.clientX, y: ev.clientY }, page: board.screenToBoard({ x: ev.clientX, y: ev.clientY }) }); }
       endDrag();
     };
     cleanup.current = listenPortDrag(window, { move, up, cancel: endDrag });
@@ -114,7 +114,7 @@ export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status,
 
   if (offscreen) return <div className={`nf nf-${variant} nf-shell`} data-shape-id={shapeId} data-node-kind={def?.kind ?? 'node'} data-offscreen="1" aria-hidden />;
   /* keyboard: a card is a focus stop (Tab moves between cards); Enter selects it, the same as a click */
-  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' && !editor.getSelectedShapeIds().includes(shapeId)) { e.preventDefault(); e.stopPropagation(); editor.select(shapeId); } };
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' && !board.selection().includes(shapeId)) { e.preventDefault(); e.stopPropagation(); board.select([shapeId]); } };
   const canDrop = role === 'drop';
   const cls = `nf nf-${variant} nf-${def?.kind ?? 'node'} nf-tint-${tint ?? def?.tint ?? 'text'}${selected ? ' nf-sel' : ''}${hovered ? ' nf-hover' : ''}${canDrop ? ' nf-drop' : ''}${role === 'src' ? ' nf-dragging' : ''}${role ? ` nf-r-${role}` : ''}${className ? ` ${className}` : ''}`;
   /* input dots sit around the middle of the left edge, 20 px apart */

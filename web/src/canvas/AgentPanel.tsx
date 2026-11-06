@@ -12,9 +12,8 @@
 import { useDraftField } from '../shared/batch1';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { Editor } from 'tldraw';
-import { useValue } from 'tldraw';
-import { useCanvasEditor } from './agentApi';
+import { useValue, type BoardApi } from './boardApi';
+import { useCanvasBoard } from './agentApi';
 import { useCatalog, catalogNow } from './catalog';
 import { startAgentBridge, nameOf as cardNameOf, type FeedEntry, type Proposal, type PickAsk } from './agentBridge';
 import { handAtom, handOf, fx, setAgentName, reducedMotion } from './agentHand';
@@ -44,17 +43,17 @@ const time = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit'
 const STARTER_ICON: Record<StarterId, (p: { size?: number }) => JSX.Element> = { short: SparkleIcon, film: DirectorIcon, product: ProductIcon, animate: ExtendIcon, takes: VideoIcon, material: MaterialIcon, free: ExploreIcon };
 type Demo = { running: boolean; runId: string | null; title: string | null };
 
-/** Board.tsx puts the editor in agentApi's context; the dock lives outside <Tldraw>, so wait for a live one (after a board switch the
- *  context can still hold the previous board's editor for a moment: a disposed editor never counts). */
-function useEditorReady(): Editor | null {
-  const live = () => { const e = useCanvasEditor(); return e && !e.isDisposed ? e : null; };
-  const [editor, setEditor] = useState<Editor | null>(live);
+/** Board.tsx puts the board in agentApi's context; the dock lives outside it, so wait for a live one (after a board switch the
+ *  context can still hold the previous board for a moment: a disposed board never counts). */
+function useBoardReady(): BoardApi | null {
+  const live = () => { const e = useCanvasBoard(); return e && !e.disposed ? e : null; };
+  const [board, setBoard] = useState<BoardApi | null>(live);
   useEffect(() => {
-    if (editor && !editor.isDisposed) { const t = window.setInterval(() => { if (editor.isDisposed) setEditor(live()); }, 500); return () => window.clearInterval(t); }
-    const t = window.setInterval(() => { const e = live(); if (e) { setEditor(e); window.clearInterval(t); } }, 120);
+    if (board && !board.disposed) { const t = window.setInterval(() => { if (board.disposed) setBoard(live()); }, 500); return () => window.clearInterval(t); }
+    const t = window.setInterval(() => { const e = live(); if (e) { setBoard(e); window.clearInterval(t); } }, 120);
     return () => window.clearInterval(t);
-  }, [editor]);
-  return editor && !editor.isDisposed ? editor : null;
+  }, [board]);
+  return board && !board.disposed ? board : null;
 }
 
 function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
@@ -145,10 +144,10 @@ function ListenHint({ boardId, name, onSetup }: { boardId: string; name: string;
 }
 
 /** "Pick the one you like": the cards as small thumbnails with a Pick button each; clicking a card on the board does the same. */
-function PickCard({ e, pick, editor, onPick, onFocus }: { e: FeedEntry; pick: PickAsk | null; editor: Editor | null; onPick: (cardId: string) => void; onFocus: (id: string) => void }) {
+function PickCard({ e, pick, board, onPick, onFocus }: { e: FeedEntry; pick: PickAsk | null; board: BoardApi | null; onPick: (cardId: string) => void; onFocus: (id: string) => void }) {
   const ids: string[] = e.meta?.pick?.cardIds ?? []; const live = !!pick && pick.id === e.meta?.pick?.id; const waiting = live && pick!.status === 'waiting'; const chosen = live ? pick!.chosen : null;
-  const cards = useValue('pick cards', () => ids.map((id) => { const s = editor?.getShape(id as any); const p: any = s?.props; const t = p?.takes?.[p?.take ?? 0];
-    return { id, here: !!s, name: (editor && cardNameOf(editor, id as any)) || String(p?.prompt ?? 'Card').slice(0, 40), poster: t?.poster || (t?.kind === 'image' ? t.url : '') || '' }; }), [editor, ids.join(',')]);
+  const cards = useValue('pick cards', () => ids.map((id) => { const s = board?.getNode(id as any); const p: any = s?.props; const t = p?.takes?.[p?.take ?? 0];
+    return { id, here: !!s, name: (board && cardNameOf(board, id as any)) || String(p?.prompt ?? 'Card').slice(0, 40), poster: t?.poster || (t?.kind === 'image' ? t.url : '') || '' }; }), [board, ids.join(',')]);
   return <section className={`ap-pick${waiting ? ' waiting' : ''}`} data-testid="agent-pick" data-state={waiting ? 'waiting' : chosen ? 'picked' : 'closed'}>
     <div className="ap-pick-h"><span className="ap-kicker">{waiting ? 'Your pick' : chosen ? 'You picked' : 'Pick one'}</span>{waiting && <small>Click one here or on the board</small>}</div>
     <div className="ap-pick-row" role="list">{cards.map((c) => <button key={c.id} type="button" role="listitem" className={`ap-pick-it${chosen === c.id ? ' on' : ''}${chosen && chosen !== c.id ? ' off' : ''}`} data-testid="agent-pick-item"
@@ -243,7 +242,7 @@ const askedOnce = new Set<string>();
 type AgentPresence = { connected: boolean; listening?: boolean; /** a canvas_* call on this board lately (2026-10-28) */ working?: boolean; listenVia?: 'wait' | 'channel' | null; channel?: boolean; lastAgentAt: number | null; agentName: string | null; sessions?: { id: string; name: string }[] };
 export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoard, ask = '' }: { /** words to send once (Explore's Ask an agent, /canvas?ask=) */ ask?: string; boardId: string; open: boolean; onClose: () => void; onBusy?: (busy: boolean) => void;
   /** the board list changed (made, renamed, deleted) */ onBoards?: () => void; /** your agent wants this board shown */ onOpenBoard?: (boardId: string, name: string, by: string) => void }) {
-  const editor = useEditorReady(); useCatalog(); const toast = useToast();
+  const board = useBoardReady(); useCatalog(); const toast = useToast();
   const [config, setConfig] = useState<any>(null);
   const [agent, setAgent] = useState<AgentPresence>({ connected: false, listening: false, lastAgentAt: null, agentName: null, sessions: [] });
   const [connection, setConnection] = useState(true);
@@ -254,8 +253,8 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   const [agentStatus, setAgentStatus] = useState<{ state: string; name: string; at: number } | null>(null);
   const fresh = useRef(new Set<number>()); /* agent messages that arrived live: they type themselves out */
   const hand = useValue('agent hand', () => handAtom.get(), []);
-  const editorNow = useCanvasEditor();
-  const runningN = useValue('running cards', () => (editorNow && !editorNow.isDisposed ? editorNow.getCurrentPageShapes().filter((x) => x.type === 'ohf-gen' && (x.props as any).status === 'running').length : 0), [editorNow]);
+  const boardNow = useCanvasBoard();
+  const runningN = useValue('running cards', () => (boardNow && !boardNow.disposed ? boardNow.nodes().filter((x) => x.type === 'ohf-gen' && (x.props as any).status === 'running').length : 0), [boardNow]);
   const [text, setText] = useDraftField('canvas-agent', 'prompt', ''); /* an unsent message survives a reload (2026-10-27) */ const [sending, setSending] = useState(false);
   const [busy, setBusy] = useState<Record<string, 'go' | 'cancel'>>({});
   const [rerolling, setRerolling] = useState<Record<string, boolean>>({});
@@ -296,19 +295,19 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   const mcpUrl = useMemo(() => { const raw = config?.mcp?.httpUrl as string | undefined; return raw ? raw.replace('127.0.0.1', 'localhost') : ''; }, [config]);
 
   const glowAt = useCallback((id?: string | null) => {
-    if (!editor || !id) return; const b = editor.getShapePageBounds(id as any); if (!b) return;
-    const v = editor.pageToViewport({ x: b.minX, y: b.minY }); const r = editor.getContainer().getBoundingClientRect(); const z = editor.getZoomLevel();
+    if (!board || !id) return; const b = board.boundsOf(id as any); if (!b) return;
+    const v = board.boardToViewport({ x: b.minX, y: b.minY }); const r = board.container().getBoundingClientRect(); const z = board.zoom();
     setGlow({ left: r.left + v.x, top: r.top + v.y, width: b.w * z, height: b.h * z, key: Date.now() });
     window.clearTimeout(glowTimer.current); glowTimer.current = window.setTimeout(() => setGlow(null), 1900);
-  }, [editor]);
+  }, [board]);
   const focus = useCallback((id?: string | null) => {
-    if (!editor || !id) return; const s = editor.getShape(id as any); if (!s) return;
-    editor.select(id as any); const b = editor.getShapePageBounds(id as any); if (b) editor.centerOnPoint(b.center, { animation: { duration: 260 } }); window.setTimeout(() => glowAt(id), 280);
-  }, [editor, glowAt]);
-  const focusMany = useCallback((ids: string[]) => { if (!editor) return; const live = ids.filter((id) => editor.getShape(id as any)); if (!live.length) return; editor.select(...(live as any[])); editor.zoomToSelection({ animation: { duration: 320 } }); }, [editor]);
+    if (!board || !id) return; const s = board.getNode(id as any); if (!s) return;
+    board.select([id as any]); const b = board.boundsOf(id as any); if (b) board.centerOn(b.center, { duration: 260 }); window.setTimeout(() => glowAt(id), 280);
+  }, [board, glowAt]);
+  const focusMany = useCallback((ids: string[]) => { if (!board) return; const live = ids.filter((id) => board.getNode(id as any)); if (!live.length) return; board.select(live); board.zoomToSelection({ duration: 320 }); }, [board]);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!board) return;
     let closed = false;
     setFeed([]); setProposals([]);
     const base = `/api/canvas/boards/${encodeURIComponent(boardId)}/agent`;
@@ -325,7 +324,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
         if (st?.agent) setAgent(st.agent); if (st?.demo) setDemo(st.demo); if (st?.pick) setPick(st.pick);
       } catch { /* the dock still works live */ }
     })();
-    const close = startAgentBridge(boardId, editor, {
+    const close = startAgentBridge(boardId, board, {
       onConnection: (o) => { if (!closed) setConnection(o); },
       onHello: (d) => { if (closed) return; if (d?.agent) setAgent(d.agent); if (d?.demo) setDemo(d.demo); setPick(d?.pick ?? null);
         /* after a reconnect (the app restarted) a quote the server no longer knows can't run: close it here, so no dead Go button stays */
@@ -347,7 +346,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
       onError: () => { /* EventSource reconnects */ },
     });
     return () => { closed = true; close(); };
-  }, [boardId, editor, glowAt]);
+  }, [boardId, board, glowAt]);
 
   /* Follow transcript growth (including TypedText and live media cards), not the board's Follow agent camera toggle.
      Immediate scrolling avoids smooth-scroll events mistaking an in-flight animation for a reader scrolling away. */
@@ -364,14 +363,14 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   /** The attached pictures become Upload cards (the same card a board drop makes, named after the file) beside what you selected, or in view.
    *  Each uploads on its own: one refused says why and the others still land. Uploading is free; nothing runs. */
   const placePics = async (items: { file: File }[]): Promise<DockPicture[]> => {
-    if (!items.length || !editor) return [];
+    if (!items.length || !board) return [];
     const urls = await Promise.all(items.map(async ({ file }) => { try { const [m] = await uploadMedia([file]); if (!m?.url) throw new Error('Upload failed'); return m.url; }
       catch (e) { toast(`${file.name}: ${(e as Error).message || 'Upload failed'}`, 'error'); return null; } }));
-    const { defaultW: w, defaultH: h } = NODE_DEFS.upload; const sel = editor.getSelectionPageBounds();
-    let near = sel ? { x: sel.maxX + 60 + w / 2, y: sel.minY + h / 2 } : editor.getViewportPageBounds().center; const out: DockPicture[] = [];
+    const { defaultW: w, defaultH: h } = NODE_DEFS.upload; const sel = board.selectionBounds();
+    let near = sel ? { x: sel.maxX + 60 + w / 2, y: sel.minY + h / 2 } : board.viewportBounds().center; const out: DockPicture[] = [];
     items.forEach(({ file }, i) => { const url = urls[i]; if (!url) return; const name = pictureName(file.name);
-      const id = createAuxNode(editor, 'upload', { at: freeSpot(editor, w, h, near), select: false, media: { url, poster: mediaPoster('image', url), mediaKind: 'image', label: name } });
-      const b = editor.getShapePageBounds(id); if (b) near = { x: b.maxX + 40 + w / 2, y: b.center.y };
+      const id = createAuxNode(board, 'upload', { at: freeSpot(board, w, h, near), select: false, media: { url, poster: mediaPoster('image', url), mediaKind: 'image', label: name } });
+      const b = board.boundsOf(id); if (b) near = { x: b.maxX + 40 + w / 2, y: b.center.y };
       out.push({ card_id: id, name, url }); });
     return out;
   };
@@ -382,13 +381,13 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
       const route = dockRoute({ connected: agentConnected, demoRunning: demoRef.current.running, confirmWaiting: !!confirmRef.current });
       /* while the demo waits for your OK, what you type is the answer (an edit, or Looks good) */
       /* your connected agent gets what you selected as context (card ids, names, workflow, status), plus the pictures you added */
-      const selected = agentConnected && editor ? editor.getSelectedShapeIds().slice(0, 50) : [];
+      const selected = agentConnected && board ? board.selection().slice(0, 50) : [];
       const pictures = await placePics(attached);
       if (attached.length) { for (const x of attached) URL.revokeObjectURL(x.preview); setPics([]); }
       if (attached.length && !pictures.length) throw new Error('The pictures could not be added. Nothing was sent.');
-      if (editor && pictures.length) editor.select(...([...selected, ...pictures.map((p) => p.card_id)] as any[]));
+      if (board && pictures.length) board.select([...selected, ...pictures.map((p) => p.card_id)]);
       const ids = [...selected, ...pictures.map((p) => p.card_id).filter((id) => !selected.includes(id as any))].slice(0, 50);
-      const selection = agentConnected && editor ? ids.map((id) => { const s: any = editor.getShape(id as any); return { id, name: cardNameOf(editor, id as any) ?? null, type: s?.type ?? null, workflow: s?.props?.flow ?? null, status: s?.props?.status ?? null }; }) : [];
+      const selection = agentConnected && board ? ids.map((id) => { const s: any = board.getNode(id as any); return { id, name: cardNameOf(board, id as any) ?? null, type: s?.type ?? (board.getLink(id) ? 'arrow' : null), workflow: s?.props?.flow ?? null, status: s?.props?.status ?? null }; }) : [];
       /* no agent reads the dock: the pictures are on the board, and only typed words go on to the demo */
       if (!body && (!agentConnected || route !== 'messages')) { toast(pictures.length === 1 ? 'Added the picture to the board.' : `Added ${pictures.length} pictures to the board.`); return; }
       const r = route === 'messages'
@@ -415,30 +414,30 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   /* the agent's name on its cursor */
   useEffect(() => { setAgentName(agentConnected ? agent.agentName || 'Your AI' : 'Agent'); }, [agentConnected, agent.agentName]);
   /* the hand leaves a moment after the demo ends (or right away when you stop it) */
-  useEffect(() => { if (!editor || demo.running) return; const t = window.setTimeout(() => handOf(editor).leave(), 2600); return () => window.clearTimeout(t); }, [editor, demo.running]);
-  useEffect(() => () => { if (editor) handOf(editor).leave(); }, [editor]); /* the dock closes (board switch): the hand goes with it */
+  useEffect(() => { if (!board || demo.running) return; const t = window.setTimeout(() => handOf(board).leave(), 2600); return () => window.clearTimeout(t); }, [board, demo.running]);
+  useEffect(() => () => { if (board) handOf(board).leave(); }, [board]); /* the dock closes (board switch): the hand goes with it */
   /* pick one: the choices pulse on the board until one is chosen; a click on one of them (it becomes the only selection) is the choice */
   const choose = useCallback(async (cardId: string) => {
     const pk = pickRef.current; if (!pk || pk.status !== 'waiting' || !pk.cardIds.includes(cardId) || choosing.current) return; choosing.current = true;
     try {
-      const r = await fetch(`/api/canvas/boards/${encodeURIComponent(boardId)}/agent/pick`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pick_id: pk.id, card_id: cardId, ...(editor ? { title: cardNameOf(editor, cardId as any) ?? undefined } : {}) }) });
+      const r = await fetch(`/api/canvas/boards/${encodeURIComponent(boardId)}/agent/pick`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pick_id: pk.id, card_id: cardId, ...(board ? { title: cardNameOf(board, cardId as any) ?? undefined } : {}) }) });
       const b = await r.json().catch(() => ({})); if (!r.ok) throw new Error(b?.error || 'Could not save your pick.');
       if (b?.pick) setPick(b.pick);
     } catch (e) { toast((e as Error).message, 'error'); } finally { choosing.current = false; }
-  }, [boardId, editor, toast]);
+  }, [boardId, board, toast]);
   const pickRef = useRef(pick); pickRef.current = pick; const choosing = useRef(false); const pickSaid = useRef(false);
   useEffect(() => {
-    if (!editor) return;
-    if (pick?.status === 'waiting') { fx.pick(pick.cardIds); handOf(editor).say('Waiting for your pick', true); pickSaid.current = true; }
-    else { fx.pick([]); if (pick?.status === 'picked' && pick.chosen) fx.chosen(pick.chosen); if (pickSaid.current) { pickSaid.current = false; handOf(editor).hush(); } } /* the pick resolved: the label goes with it */
+    if (!board) return;
+    if (pick?.status === 'waiting') { fx.pick(pick.cardIds); handOf(board).say('Waiting for your pick', true); pickSaid.current = true; }
+    else { fx.pick([]); if (pick?.status === 'picked' && pick.chosen) fx.chosen(pick.chosen); if (pickSaid.current) { pickSaid.current = false; handOf(board).hush(); } } /* the pick resolved: the label goes with it */
     if (pick?.status !== 'waiting') return;
-    const off = editor.store.listen(() => { const sel = editor.getSelectedShapeIds(); if (sel.length === 1 && pick.cardIds.includes(sel[0])) void choose(sel[0]); }, { scope: 'session' });
+    const off = board.onChange(() => { const sel = board.selection(); if (sel.length === 1 && pick.cardIds.includes(sel[0])) void choose(sel[0]); }, 'view');
     return () => { off(); };
-  }, [editor, pick, choose]);
+  }, [board, pick, choose]);
   useEffect(() => () => fx.pick([]), []);
 
   const stop = async () => {
-    if (editor) handOf(editor).leave(); /* the hand goes at once, not after the demo's last step */
+    if (board) handOf(board).leave(); /* the hand goes at once, not after the demo's last step */
     try { await fetch(`/api/canvas/boards/${encodeURIComponent(boardId)}/agent/demo/stop`, { method: 'POST' }); setDemo({ running: false, runId: null, title: null }); }
     catch { toast('Could not stop the agent. Try again.', 'error'); }
   };
@@ -511,13 +510,13 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
             if (e.type === 'message') {
               if (Array.isArray(e.meta?.plan)) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} />
                 <PlanCard title={String(e.meta.title ?? 'Plan')} steps={e.meta.plan} done={plan?.seq === e.seq ? plan.done : e.meta.plan.length} finished={plan?.seq === e.seq ? plan.finished : true} live={plan?.seq === e.seq && demo.running} /></div>;
-              if (e.meta?.pick?.cardIds) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><PickCard e={e} pick={pick} editor={editor} onPick={(id) => void choose(id)} onFocus={focus} /></div>;
+              if (e.meta?.pick?.cardIds) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><PickCard e={e} pick={pick} board={board} onPick={(id) => void choose(id)} onFocus={focus} /></div>;
               if (e.meta?.confirm?.id && confirm?.id === e.meta.confirm.id) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><ConfirmCard label={confirm!.label} busy={sending} onOk={() => void send(confirm!.label, undefined, confirm!.id)} /></div>;
               if (suggest && e === last) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} />
                 <button type="button" className="ap-chip ap-chip-main" disabled={sending} onClick={() => pickStarter(suggest.id)} data-testid="agent-suggest">Want to see “{suggest.label}”?</button></div>;
               return <Message key={e.id} e={e} who={who} live={fresh.current.has(e.seq)} status={statusOf(e)} onFocus={focus} />;
             }
-            if (e.type === 'activity' && e.meta?.tool === 'add_card' && e.cardId) return <AgentMediaCard key={e.id} editor={editor} cardId={e.cardId} meta={{ ...e.meta, title: e.text.replace(/^Added “|”$/g, '') }} onFocus={focus} onReroll={(id, t) => void reroll(id, t)} rerolling={!!rerolling[e.cardId]} />;
+            if (e.type === 'activity' && e.meta?.tool === 'add_card' && e.cardId) return <AgentMediaCard key={e.id} board={board} cardId={e.cardId} meta={{ ...e.meta, title: e.text.replace(/^Added “|”$/g, '') }} onFocus={focus} onReroll={(id, t) => void reroll(id, t)} rerolling={!!rerolling[e.cardId]} />;
             if (e.type === 'activity' && e.proposalId && /^Proposed/.test(e.text)) { const p = byId.get(e.proposalId);
               return p ? <ProposalCard key={e.id} p={p} busy={busy[p.id]} onDecide={(d) => void decide(p, d)} onFocus={focusMany} /> : <EventRow key={e.id} e={e} onFocus={focus} />; }
             return <EventRow key={e.id} e={e} onFocus={focus} />;

@@ -1,7 +1,7 @@
 /** The shared node frame's non-visual bits (NodeFrame.tsx draws; this keeps the pointer rule and the one port drag). */
-import { atom } from 'tldraw';
+import { atom } from './boardApi';
 
-/** Pointer events in a node's own controls stay with them (a click doesn't drag the card, typing doesn't reach tldraw).
+/** Pointer events in a node's own controls stay with them (a click doesn't drag the card, typing doesn't reach the board).
  *  A node's popovers (the model menu, workflow picker, settings, pre-flight list) render in a portal on <body>, but React still bubbles
  *  their events through the node: anything outside the node's own DOM is one of those menus and must never reach tldraw, or its pointer
  *  capture swallows the click (2026-10-28: the model menu's rows are divs, so picking an image model on a card did nothing). */

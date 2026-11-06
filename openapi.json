@@ -4327,7 +4327,7 @@
         "tags": [
           "Canvas"
         ],
-        "summary": "One board with its tldraw snapshot → {id, name, createdAt, updatedAt, rev, shapes, snapshot}; 404 unknown id",
+        "summary": "One board with what was saved last → {id, name, createdAt, updatedAt, rev, shapes, snapshot}. snapshot is a tldraw document snapshot {store, schema} (version 1) until the board is first saved as a board document {format: \"iiayn-board\", version: 2, nodes, links} (version 2); null for a new board; 404 unknown id",
         "responses": {
           "200": {
             "description": "OK",
@@ -4435,7 +4435,7 @@
         "tags": [
           "Canvas"
         ],
-        "summary": "Save the board. JSON {snapshot: {store, schema} (tldraw document snapshot), rev?} → {id, rev, updatedAt, shapes}. A stale rev → 409 rev_conflict {rev}; inline data: media (images must go through POST /api/media) → 400 inline_media; over 12 MB → 413 too_large",
+        "summary": "Save the board. JSON {snapshot, rev?} → {id, rev, updatedAt, shapes}. snapshot is either a tldraw document snapshot {store, schema} (version 1) or a board document {format: \"iiayn-board\", version: 2, nodes: [{id: \"shape:…\", type, x, y, w, h, z, parentId?, props, meta}], links: [{id: \"shape:…\", from, to, order, snap?}]} (version 2; invalid → 400 invalid_snapshot). The first version-2 save keeps the old version-1 snapshot on the server for rollback. A stale rev → 409 rev_conflict {rev}; inline data: media (images must go through POST /api/media) → 400 inline_media; over 12 MB → 413 too_large",
         "responses": {
           "200": {
             "description": "OK",

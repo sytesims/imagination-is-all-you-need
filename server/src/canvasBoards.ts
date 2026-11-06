@@ -1,6 +1,10 @@
 /**
  * Canvas boards (2026-10-24, step 1): the /canvas page's saved boards. One row per board in the `canvas_boards` table (db.ts JSON-row
- * pattern). The board document is the tldraw store snapshot JSON (getSnapshot(editor.store).document), stored as-is.
+ * pattern). The board is stored as-is in `snapshot`, in one of two formats (2026-11-06, the move to React Flow):
+ *  - version 1: the tldraw store snapshot JSON (getSnapshot(editor.store).document), `{ store, schema }`;
+ *  - version 2: the board document `{ format: 'iiayn-board', version: 2, nodes, links }` (shared/boardDoc.ts).
+ * Server readers (shapeCount, the agent's saved summary) read both through boardDocOf, one code path. The first version-2 save of a
+ * board keeps its last version-1 snapshot in `legacySnapshot` (rollback until the move is confirmed; never sent to the page).
  *
  * Media never lives inside a snapshot: pictures dropped or uploaded on a board go through POST /api/media and the snapshot keeps
  * the /files/... URL. A save that carries inline data: media is refused (400 inline_media), so a board stays small and its files
@@ -8,9 +12,9 @@
  *
  *  GET    /api/canvas/boards           → { items: [{ id, name, createdAt, updatedAt, rev, shapes, projectId }] } newest first
  *  POST   /api/canvas/boards           { name? } → the new board (name defaults to "Untitled board N")
- *  GET    /api/canvas/boards/:id       → { id, name, createdAt, updatedAt, rev, snapshot }
+ *  GET    /api/canvas/boards/:id       → { id, name, createdAt, updatedAt, rev, shapes, snapshot } (snapshot: whatever was saved last, v1 or v2)
  *  PATCH  /api/canvas/boards/:id       { name?, projectId? } → the board summary (rename; the board's project, null = All generations)
- *  PUT    /api/canvas/boards/:id       { snapshot, rev? } → { id, rev, updatedAt }; a stale rev → 409 rev_conflict
+ *  PUT    /api/canvas/boards/:id       { snapshot: v1 or v2, rev? } → { id, rev, updatedAt }; a stale rev → 409 rev_conflict
  *  POST   /api/canvas/boards/:id/save  same as PUT (for a keepalive save when the page closes)
  *  DELETE /api/canvas/boards/:id       → { ok: true }
  *  GET    /api/canvas/boards/:id/spend → { runs, running, estUsd, countedUsd, simulated } (step 2: jobs started from this board, input.boardId)
@@ -23,9 +27,13 @@ import { jobs } from './jobs.js';
 import { jobSpendView, jobThumb } from './billing.js';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
+import { boardItemCount, boardDocError, isV2 } from './shared/boardDoc.js';
 
-export interface CanvasBoard { id: string; name: string; createdAt: number; updatedAt: number; rev: number; snapshot: unknown | null; /** the board's project (Assets drawer filter; results made from the board go there in step 2); null = All generations */ projectId?: string | null }
-export type BoardSummary = Omit<CanvasBoard, 'snapshot'> & { shapes: number };
+export interface CanvasBoard { id: string; name: string; createdAt: number; updatedAt: number; rev: number; snapshot: unknown | null;
+  /** the board's last version-1 (tldraw) snapshot, kept on its first version-2 save (rollback); not part of any response */
+  legacySnapshot?: unknown;
+  /** the board's project (Assets drawer filter; results made from the board go there in step 2); null = All generations */ projectId?: string | null }
+export type BoardSummary = Omit<CanvasBoard, 'snapshot' | 'legacySnapshot'> & { shapes: number };
 
 /** Snapshots above this are refused (a board of URLs is a few hundred KB even with hundreds of shapes). */
 export const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024;
@@ -33,11 +41,8 @@ export const MAX_NAME = 80;
 const getRow = db.prepare('SELECT data FROM canvas_boards WHERE id = ?');
 export const getBoard = (id: string): CanvasBoard | null => { const r = getRow.get(id) as { data: string } | undefined; return r ? JSON.parse(r.data) : null; };
 
-/** Shapes on a board: records whose typeName is 'shape' in a tldraw document snapshot ({ store: { id: record } }). */
-export function shapeCount(snapshot: unknown): number {
-  const store = (snapshot as any)?.store ?? (snapshot as any)?.document?.store; if (!store || typeof store !== 'object') return 0;
-  let n = 0; for (const r of Object.values(store)) if ((r as any)?.typeName === 'shape') n++; return n;
-}
+/** Items on a board, either format: nodes + links (on a version-1 board also what the move would drop, i.e. its tldraw shape count). */
+export function shapeCount(snapshot: unknown): number { return boardItemCount(snapshot); }
 /** A project deleted since reads as null (All generations). */
 const liveProject = (id: string | null | undefined) => (id && getProject(id) ? id : null);
 export const summary = (b: CanvasBoard): BoardSummary => ({ id: b.id, name: b.name, createdAt: b.createdAt, updatedAt: b.updatedAt, rev: b.rev, shapes: shapeCount(b.snapshot), projectId: liveProject(b.projectId) });
@@ -70,13 +75,17 @@ export function createBoard(name?: unknown): CanvasBoard {
 /** Validate and store a snapshot. Returns the saved board or an error tuple. */
 export function saveSnapshot(id: string, body: any): CanvasBoard | { status: number; code: string; error: string; rev?: number } {
   const b = getBoard(id); if (!b) return { status: 404, code: 'not_found', error: 'No board with that id.' };
-  const snap = body?.snapshot; if (!snap || typeof snap !== 'object' || Array.isArray(snap)) return { status: 400, code: 'invalid_snapshot', error: 'Send the board as { snapshot: { store, schema } }.' };
-  if (!snap.store || typeof snap.store !== 'object' || !snap.schema || typeof snap.schema !== 'object') return { status: 400, code: 'invalid_snapshot', error: 'The snapshot needs a store and a schema.' };
+  const snap = body?.snapshot; if (!snap || typeof snap !== 'object' || Array.isArray(snap)) return { status: 400, code: 'invalid_snapshot', error: "Send the board as { snapshot: { store, schema } } or { snapshot: { format: 'iiayn-board', version: 2, nodes, links } }." };
+  const v2 = isV2(snap);
+  if (v2) { const why = boardDocError(snap); if (why) return { status: 400, code: 'invalid_snapshot', error: `The board document is not valid: ${why}.` }; }
+  else if (!snap.store || typeof snap.store !== 'object' || !snap.schema || typeof snap.schema !== 'object') return { status: 400, code: 'invalid_snapshot', error: 'The snapshot needs a store and a schema.' };
   if (body.rev != null && Number(body.rev) !== b.rev) return { status: 409, code: 'rev_conflict', error: 'This board was saved somewhere else. Reload to get the latest.', rev: b.rev };
   const where = inlineMediaPath(snap); if (where) return { status: 400, code: 'inline_media', error: `Media must be uploaded, not stored inside the board (found inline data at ${where.slice(0, 120)}).` };
   const json = JSON.stringify(snap); if (json.length > MAX_SNAPSHOT_BYTES) return { status: 413, code: 'too_large', error: 'This board is too big to save.' };
   const name = cleanName(body.name);
-  const nb: CanvasBoard = { ...b, ...(name ? { name } : {}), snapshot: snap, rev: b.rev + 1, updatedAt: Date.now() };
+  /* first version-2 save over a version-1 board: keep the old tldraw snapshot for rollback */
+  const legacy = v2 && b.legacySnapshot === undefined && b.snapshot && !isV2(b.snapshot) ? { legacySnapshot: b.snapshot } : {};
+  const nb: CanvasBoard = { ...b, ...legacy, ...(name ? { name } : {}), snapshot: snap, rev: b.rev + 1, updatedAt: Date.now() };
   put('canvas_boards', id, nb); return nb;
 }
 

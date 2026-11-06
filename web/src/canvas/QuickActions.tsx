@@ -6,7 +6,7 @@
  * The tooltip prices are the same GET /price quote a card would show (shared priceToken words), fetched once per action and kind on first hover.
  */
 import { useEffect, useState } from 'react';
-import type { Editor, TLShapeId } from 'tldraw';
+import type { BoardApi, NodeId } from './boardApi';
 import { availableFlows, flowById, flowSpec, placeInputs, type InputKind } from '../shared/genFlows';
 import { readQuoteBody, shownCredits } from '../shared/quote';
 import { quoteParams } from '../shared/usePrefill';
@@ -30,13 +30,13 @@ export function actionPrice(flowId: string, kind: InputKind, url: string): Promi
 }
 
 /** The icon bar. `show`: hovered or selected (the bar fades in). */
-export function QuickActions({ editor, sourceId, kind, url, show }: { editor: Editor; sourceId: TLShapeId; kind: string; url: string; show: boolean }) {
+export function QuickActions({ board, sourceId, kind, url, show }: { board: BoardApi; sourceId: NodeId; kind: string; url: string; show: boolean }) {
   const cat = useCatalog(); const have = new Set(availableFlows(cat).map(f => f.id)); const acts = (QUICK_ACTIONS[kind as 'image' | 'video'] ?? []).filter(a => have.has(a.flow));
   const [p, setP] = useState<Record<string, string | null>>({});
   useEffect(() => { if (!show || !acts.length) return; let on = true; acts.forEach(a => { if (a.id in p) return; void actionPrice(a.flow, kind as InputKind, url).then(t => { if (on) setP(m => ({ ...m, [a.id]: t })); }); }); return () => { on = false; }; }, [show, acts.length]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!acts.length) return null;
   return <div className={`cv-qa${show ? ' on' : ''}`} role="toolbar" aria-label="Quick actions" data-card-control data-testid="cv-quick">
     {acts.map(a => <button key={a.id} type="button" className="cv-qa-b" data-testid={`cv-quick-${a.id}`} aria-label={`${a.label}: makes a new card${p[a.id] ? `, ${p[a.id]}` : ''}`}
-      {...tip(`${a.label}${p[a.id] ? ` · ${p[a.id]}` : ''}. A new card; runs when you press Generate`)} onClick={e => { e.stopPropagation(); quickCard(editor, sourceId, a); }}><a.icon size={15} /></button>)}
+      {...tip(`${a.label}${p[a.id] ? ` · ${p[a.id]}` : ''}. A new card; runs when you press Generate`)} onClick={e => { e.stopPropagation(); quickCard(board, sourceId, a); }}><a.icon size={15} /></button>)}
   </div>;
 }

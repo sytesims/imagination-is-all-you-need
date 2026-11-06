@@ -4,7 +4,7 @@
  * view files stay Fast Refresh friendly.
  */
 import { IMAGE_PAGE } from '../../../server/src/shared/pages';
-import { atom } from 'tldraw';
+import { atom } from './boardApi';
 import { flowById, flowInfo } from '../shared/genFlows';
 import { catalogNow } from './catalog';
 import { workflowOpenOf, withSearch } from '../shared/workflowLinks';
