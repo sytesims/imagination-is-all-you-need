@@ -12,6 +12,7 @@ import { submitCard } from './genRun';
 import { batchOf } from './cardModel';
 import { timesQuote } from '../../../server/src/shared/swatchBatch';
 import { boardCtx } from './boardCtx';
+import { lockVerdict, PriceChangedError, isPriceStop, usdOfQuote, type PriceLock } from './priceLock';
 
 /** The effective prompt: a Prompt / Note node wired in wins over the card's own text. */
 export function effectivePrompt(board: BoardApi, id: NodeId, own: string): string { return promptInto(board, id) || own; }
@@ -26,8 +27,10 @@ export async function quoteNode(board: BoardApi, id: NodeId, o: { pending?: bool
   return fetch(`/api/tools/${sp.tool.id}/price?${u}`).then(readQuoteBody).then(q => timesQuote(q, n)).catch(() => null);
 }
 
-/** Run the card: a fresh quote first, then the jobs API. Throws a plain message when something is missing or the server refuses. */
-export async function submitNode(board: BoardApi, id: NodeId): Promise<string> {
+/** Run the card: a fresh quote first, then the jobs API. Throws a plain message when something is missing or the server refuses.
+ *  `lock` (release 1): the price that was approved (a proposal row, or the price the card showed when the person pressed Go). A rise of 10% or
+ *  more, or another model or place, throws PriceChangedError before anything is sent; the jobs route checks the same rule again. */
+export async function submitNode(board: BoardApi, id: NodeId, o: { lock?: PriceLock | null } = {}): Promise<string> {
   const s = board.getNode(id); if (!s || s.type !== GEN_TYPE) throw new Error('That card isn’t on the board any more.'); const p: any = s.props;
   if (p.status === 'running') throw new Error('It’s already running.');
   const st = cardState(board, s, catalogNow()); if (!st.spec) throw new Error('Still loading the workflows. Try again in a moment.');
@@ -36,8 +39,12 @@ export async function submitNode(board: BoardApi, id: NodeId): Promise<string> {
   const prompt = effectivePrompt(board, id, p.prompt);
   const miss = missingOf(st.spec, st.bySlot, prompt); if (miss) throw new Error(miss);
   const q = await quoteNode(board, id); if (q && q.runnable === false) throw new Error(String((q.blockedCode === 'spend_cap' ? q.blockedReason : null) ?? q.reasonText ?? q.reason ?? q.error ?? q.blockedReason ?? 'This model can’t run here right now.'));
+  const stop = lockVerdict(o.lock, q); if (stop) throw stop;
   const ctx = boardCtx();
-  return submitCard(board, id, { spec: st.spec, bySlot: st.bySlot, inputs: st.inputs, prompt, projectId: ctx.projectId, boardId: ctx.boardId, quote: q, modelName: modelNameOf(st.spec), maker: makerOf(st.spec) });
+  try { return await submitCard(board, id, { spec: st.spec, bySlot: st.bySlot, inputs: st.inputs, prompt, projectId: ctx.projectId, boardId: ctx.boardId, quote: q, modelName: modelNameOf(st.spec), maker: makerOf(st.spec), lock: o.lock ?? null }); }
+  catch (e: any) { /* the jobs route's own check said no (409 route_changed on a locked run): the same words as the page's check */
+    if (o.lock && isPriceStop(e)) throw new PriceChangedError(e.reason === 'route' ? 'route' : 'dearer', o.lock.usd, usdOfQuote(e.quote) ?? (typeof e.quote?.credits === 'number' ? e.quote.credits / 100 : null), e.quote ?? null);
+    throw e; }
 }
 
 /** The cards a card still waits on, with their state (for runOrder). */
@@ -46,9 +53,10 @@ const waitsOf = (board: BoardApi) => (id: string): Upstream[] => waitingInputsOf
  *  started only some cards never leaves one silently back as a draft. A card that is running (another click started it) is left alone. */
 export function markNotStarted(board: BoardApi, id: string, error: string) {
   const s = board.getNode(id as NodeId); if (!s || s.type !== GEN_TYPE || (s.props as any).status === 'running') return;
+  if (/^(Price changed|Model or place changed) · /.test(error)) return; /* a price stop isn't a failure: the card stays as it was and a fresh proposal asks again */
   board.batch(() => board.patchNode(s.id, { props: { status: 'failed', jobId: '', error: String(error || 'This card didn’t start.').slice(0, 400) } } as any), { history: 'ignore' });
 }
 export type { OrderedRun } from './nodeLogic';
 /** Run several cards in graph order on this board (nodeLogic.runInOrder): Go on a proposal, a group's Run all. */
-export const submitInOrder = (board: BoardApi, ids: string[], o: Pick<RunDeps, 'stop' | 'onLater' | 'timeoutMs'> = {}): Promise<OrderedRun> =>
-  runInOrder(ids, { ...o, waits: waitsOf(board), submit: id => submitNode(board, id as NodeId), exists: id => !!board.getNode(id as NodeId), notStarted: (id, e) => markNotStarted(board, id, e) });
+export const submitInOrder = (board: BoardApi, ids: string[], o: Pick<RunDeps, 'stop' | 'onLater' | 'timeoutMs'> & { /** per card: the approved price (a proposal's rows); cards that start later in a chain keep theirs */ locks?: Record<string, PriceLock | null> } = {}): Promise<OrderedRun> =>
+  runInOrder(ids, { ...o, waits: waitsOf(board), submit: id => submitNode(board, id as NodeId, { lock: o.locks?.[id] ?? null }), exists: id => !!board.getNode(id as NodeId), notStarted: (id, e) => markNotStarted(board, id, e) });

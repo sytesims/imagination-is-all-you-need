@@ -714,13 +714,16 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
   // DEARER run asks again: now costs more than the quote → 409 route_changed with the fresh quote (same object GET /price returns); nothing is
   // charged. The same or a lower price just runs (on whichever place the server picked). A different place with no quoted price asks, to be safe.
   { const qr = fields.quotedRouteId?.trim(); const qc0 = fields.quotedCredits != null && fields.quotedCredits !== '' ? Number(fields.quotedCredits) : null; const qc = qc0 != null && Number.isFinite(qc0) ? qc0 : null;
-    const nowRoute = routed ? routed.first.routeId : null; const nowCost = routedCost ?? cost;
-    if ((await import('./shared/priceChange.js')).priceAskAgain({ quotedRoute: qr || null, quotedCredits: qc, route: nowRoute, credits: nowCost })) {
-      const qs = new URLSearchParams(); for (const [k, v] of Object.entries(fields)) if (typeof v === 'string' && v.length <= 4000 && !['quotedRouteId', 'quotedCredits', 'webhookUrl', 'rights'].includes(k)) qs.set(k, v);
+    const nowRoute = routed ? routed.first.routeId : null; const nowCost = routedCost ?? cost; const PC = await import('./shared/priceChange.js');
+    /* Canvas price lock (priceLock=1, release 1): a rise under 10% runs; 10% or more, or another model or place, stops (PC.priceLockStop) */
+    const lock = /^(1|true)$/i.test(String(fields.priceLock ?? '')); const lockStop = lock ? PC.priceLockStop({ quotedRoute: qr || null, quotedCredits: qc, route: nowRoute, credits: nowCost }) : null;
+    if (lock ? !!lockStop : PC.priceAskAgain({ quotedRoute: qr || null, quotedCredits: qc, route: nowRoute, credits: nowCost })) {
+      const qs = new URLSearchParams(); for (const [k, v] of Object.entries(fields)) if (typeof v === 'string' && v.length <= 4000 && !['quotedRouteId', 'quotedCredits', 'priceLock', 'webhookUrl', 'rights'].includes(k)) qs.set(k, v);
       for (const f of Object.keys(files)) if (files[f]?.length && !qs.has(f)) qs.set(f, '1'); // uploads → markers (same as POST /price)
       if (Number(inp.refVideoSeconds) > 0) qs.set('refVideoSeconds', String(inp.refVideoSeconds)); qs.set('provider', prov.id);
       const fresh = await app.inject({ method: 'GET', url: `/api/tools/${tool.id}/price?${qs}` }); let quote: any = null; try { quote = fresh.json(); } catch { /* */ }
-      return reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: ROUTE_CHANGED_MSG, userMessage: ROUTE_CHANGED_MSG, detail: 'Review the new price and press Generate again.', charged: false, calm: true, quote, quotedCredits: qc, credits: nowCost, dearer: true,
+      return reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: ROUTE_CHANGED_MSG, userMessage: ROUTE_CHANGED_MSG, detail: 'Review the new price and press Generate again.', charged: false, calm: true, quote, quotedCredits: qc, credits: nowCost, dearer: lockStop !== 'route',
+        ...(lock ? { lock: true, reason: lockStop, quotedRouteId: qr || null, routeId: nowRoute } : {}),
         refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }); // P2 (BUG-HUNT-8 #6): says nothing was charged; calm = not an error
     } }
   // The spend guard (spendGuard.ts) prices the run and writes its Spend row, and refuses (402 spend_cap) a paid run past the optional monthly limit.
@@ -747,6 +750,10 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
   const mf = fields.requestedModel ? FB.modelFallbackFor(tool, prov.id, fields.requestedModel, await FB.requestedCreditsFor(tool, String(fields.requestedModel), inp, extra)) : null;
   if (mf) inp.modelFallback = mf;
   const fallback = FB.planNotice(routed ? routed.routing : undefined, prov.id, routed ? routed.first.routeId : null, routedCost ?? cost, mf);
+  // Board budget (Canvas release 1): a run started from a board (boardId) that would go over the budget the person set on it is refused here,
+  // before anything is enqueued (nothing reaches a provider). Free, local and sample runs cost $0 and always pass.
+  if (fields.boardId && !wantFree && !runCost.demo) { const bb = (await import('./canvasBoards.js')).boardBudgetBlock(fields.boardId, Number(runCost.estUsd) || 0);
+    if (bb) return reply.code(402).send({ error: bb.message, errorType: 'board_budget', ...bb, charged: false, calm: true, refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }); }
   // Agent budgets (agentBudget.ts): a run started with X-OHF-Agent-Budget that would go over that budget is refused here, before the job is enqueued (nothing reaches a provider). Local / free runs cost $0.
   const AB = await import('./agentBudget.js'); const ag = AB.admitAgentRun(req, reply, { jobId: id, toolId: tool.id, model: MR?.modelKey ?? prov.id, estUsd: wantFree ? 0 : runCost.estUsd, credits: wantFree || runCost.demo ? 0 : routedCost ?? cost });
   if (!('agent' in ag)) return ag;

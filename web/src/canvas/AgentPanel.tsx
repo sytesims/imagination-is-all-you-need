@@ -16,6 +16,7 @@ import { useValue, type BoardApi } from './boardApi';
 import { useCanvasBoard } from './agentApi';
 import { useCatalog, catalogNow } from './catalog';
 import { pickFromSelection, livePickChoices, pickOffscreen } from './pickAsk';
+import { priceChangedText } from './priceLock';
 import { startAgentBridge, nameOf as cardNameOf, type FeedEntry, type Proposal, type PickAsk } from './agentBridge';
 import { handAtom, handOf, fx, setAgentName, reducedMotion } from './agentHand';
 import { flowById, flowInfo } from '../shared/genFlows';
@@ -209,15 +210,17 @@ function ProposalCard({ p, busy, onDecide, onFocus }: { p: Proposal; busy?: 'go'
     {p.note && <p className="ap-prop-note">{p.note}</p>}
     <ul className="ap-items">{p.items.map((it, i) => {
       const q = it.quote; const free = q?.localRun === true || q?.cost?.billedTo === 'local'; const demo = q?.demo === true;
-      const skip = !runIds.has(it.cardId);
-      return <li key={it.cardId} className={skip ? 'has-problem' : ''} data-testid="agent-proposal-item" data-skipped={skip ? '1' : undefined}>
+      const skip = !runIds.has(it.cardId); const moved = it.priceChanged;
+      return <li key={it.cardId} className={skip ? 'has-problem' : moved ? 'price-changed' : ''} data-testid="agent-proposal-item" data-skipped={skip ? '1' : undefined} data-price-changed={moved ? '1' : undefined}>
         <span className="ap-item-n">{i + 1}</span>
-        <div className="ap-item-t"><b>{it.title}</b><small>{(() => { const f = flowById(it.workflow); return f ? flowInfo(f, catalogNow()).name : 'Card'; })() /* a workflow card's own name (Material Swap), not its id */}{it.model ? ` · ${it.model}` : ''}{Number(it.quote?.runs) > 1 ? ` · ${it.quote.runs} swatches` : ''}</small>{skip && <small className="ap-item-why" title={it.problem ?? undefined}>{it.problem ?? "Can't run here"}</small>}</div>
+        <div className="ap-item-t"><b>{it.title}</b><small>{(() => { const f = flowById(it.workflow); return f ? flowInfo(f, catalogNow()).name : 'Card'; })() /* a workflow card's own name (Material Swap), not its id */}{it.model ? ` · ${it.model}` : ''}{Number(it.quote?.runs) > 1 ? ` · ${it.quote.runs} swatches` : ''}</small>{skip && <small className="ap-item-why" title={it.problem ?? undefined}>{it.problem ?? "Can't run here"}</small>}
+          {moved && <small className="ap-item-moved" data-testid="agent-proposal-price-changed">{priceChangedText(moved.reason, moved.wasUsd, moved.nowUsd)} · asked again below</small>}</div>
         <span className="ap-item-p">{skip ? <em className="ap-item-skip">Skipped</em> : q ? <GenPrice q={q} credits={it.credits} demo={demo} free={free} compact /> : <em>—</em>}</span>
       </li>;
     })}</ul>
     <div className="ap-total"><span>Total</span><b data-testid="agent-proposal-total">{nRun === 0 ? '—' : totalWords(runItems, p.totalUsd)}</b></div>
     {budget?.remainingUsd != null && <div className="ap-budget"><span>Agent budget left</span><b>${budget.remainingUsd.toFixed(2)} of ${(budget.budgetUsd ?? 0).toFixed(2)}</b></div>}
+    {p.boardBudget && <div className="ap-budget" data-testid="agent-proposal-board-budget"><span>Board budget left</span><b>${p.boardBudget.leftUsd.toFixed(2)} of ${p.boardBudget.usd.toFixed(2)}</b></div>}
     {p.reason && <p className={`ap-warn${p.overBudget ? ' over' : ''}`} data-testid="agent-proposal-reason">{p.reason}</p>}
     {!p.reason && nSkip > 0 && pending && <p className="ap-skipnote" data-testid="agent-proposal-skipped">{nSkip === 1 ? '1 card can’t run here, so Go skips it.' : `${nSkip} cards can’t run here, so Go skips them.`} Nothing is charged for {nSkip === 1 ? 'it' : 'them'}.</p>}
     {p.error && <p className="ap-warn over">{p.error}</p>}

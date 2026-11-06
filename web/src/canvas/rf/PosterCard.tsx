@@ -30,6 +30,8 @@ import { cardState, modelNameOf, missingOf } from '../cardState';
 import { promptSourcesInto } from '../graph';
 import { liveJobs, retryCard } from '../genRun';
 import { submit } from '../agentApi';
+import { lockOfQuote, PriceChangedError } from '../priceLock';
+import { askConfirm } from '../../shared/Dialog';
 import { chooseForSlot } from '../CardInputs';
 import { CardName } from '../CardName';
 import { RUN_EVT, open3d } from '../canvasEvents';
@@ -157,7 +159,16 @@ export const PosterCard = memo(function PosterCard({ id, selected, w }: { id: No
   const nSw = spec ? batchOf(spec.slots, st?.bySlot ?? {})?.inputs.length ?? 1 : 1; const qDraft = nSw > 1 ? timesQuote(q1, nSw) : q1;
   const [busy, setBusy] = useState(false); const [hot, setHot] = useState(false); const hotT = useRef(0); const [tone, setTone] = useState<Tone | null>(null);
   /* the same run as everywhere: a fresh quote, then the jobs API (nodeRun.submit); what's missing comes back in its words */
-  const go = async () => { if (busy || !gen || p.status === 'running') return; setBusy(true); try { await submit(board, id); } catch (e: any) { toast(e?.issues?.[0]?.message ?? e?.message ?? 'That didn’t start.', 'error'); board.select([id]); } finally { setBusy(false); } };
+  /* release 1, price lock: Go holds the run to the price this card shows; a rise of 10% or more, or another model or place, asks first */
+  const shownQuote = gen ? (p.status === 'draft' ? qDraft : p.quote) : null;
+  const go = async () => { if (busy || !gen || p.status === 'running') return; setBusy(true);
+    try { await submit(board, id, { lock: lockOfQuote(shownQuote) }); }
+    catch (e: any) {
+      if (e instanceof PriceChangedError) { const fresh = lockOfQuote(e.fresh);
+        const yes = fresh && await askConfirm({ title: e.reason === 'route' ? 'The model or place changed' : 'The price went up', body: [`${e.message}.`, 'Nothing was charged.'], confirm: `Run it for $${(fresh.usd ?? 0).toFixed(2)}`, cancel: 'Not now' });
+        if (yes) { try { await submit(board, id, { lock: fresh }); } catch (e2: any) { toast(e2?.message ?? 'That didn’t start.', 'error'); } } return; }
+      toast(e?.issues?.[0]?.message ?? e?.message ?? 'That didn’t start.', 'error'); board.select([id]); }
+    finally { setBusy(false); } };
   const goRef = useRef(go); goRef.current = go;
   useEffect(() => { if (!gen) return; const f = (e: Event) => { if ((e as CustomEvent).detail?.cardId === id) void goRef.current(); }; addEventListener(RUN_EVT, f); return () => removeEventListener(RUN_EVT, f); }, [gen, id]);
   /* far off screen: an empty shell (as NodeFrame does), so a 300-card board only mounts what is near the view */
