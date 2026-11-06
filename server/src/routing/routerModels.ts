@@ -37,7 +37,7 @@ import { hasClipUpload, clipLink } from './renderUpload.js';
 import { renderModelOf, renderNeeds, renderBillSeconds, renderQualityOf, RENDER_KLING, RENDER_ALEPH, RENDER_RAY, RENDER_SEEDANCE } from '../shared/renderModels.js';
 import { DATA_DIR } from '../config.js';
 import { env } from '../env.js';
-import { keyValue } from './keys.js';
+import { places } from '../services/places.js';
 import { handOff, bytesDataUri, kindOfFile, canLink as canLinkFor } from '../mediaHandoff.js';
 
 export type RouterOut = { url?: string; b64?: string; mime?: string };
@@ -198,7 +198,7 @@ export function avRefIssue(id: AvId, i: In): string | null {
 /** Seedance audio data URI: data:audio/<format>;base64 (the schema's own form, lower-case format: wav or mp3). */
 const seedanceAudioUri = (p: string) => handOff(p, 'audio', 'comfy-router', { accepts: ['data-uri'], mime: `audio/${path.extname(p).slice(1).toLowerCase() === 'wav' ? 'wav' : 'mp3'}` });
 /** Comfy key set (the upload uses it), or the server's own public address (OPENHIGGSFIELD_PUBLIC_BASE_URL, keyless fallback). */
-const hasComfyKey = () => !!keyValue({ envKey: 'COMFY_API_KEY', envAliases: [] });
+const hasComfyKey = () => !!places.comfyKey(); // through a Comfy place (services/places.ts)
 const canLink = () => canLinkFor('comfy-router');
 /** Seedance: register uploads as Seedance assets (asset://, the official node's flow). OPENHIGGSFIELD_SEEDANCE_ASSETS=0 sends the plain storage link instead. */
 const seedanceAssets = () => !/^(0|false|off|no)$/i.test(env('SEEDANCE_ASSETS') ?? '');

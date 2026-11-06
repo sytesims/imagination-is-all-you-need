@@ -1,7 +1,7 @@
 /**
  * One-click install. LoRA → ComfyUI models/loras (mock: recorded in the db and shown as installed).
- * Workflow → a style preset (db) or a new tool: a plugin folder plugins/hub-<slug>/ that passes plugins:check
- * (loaded on the next server start, like every plugin). The tool runs our Z-Image Turbo template with the item's name as the style,
+ * Workflow → a style preset (db) or a new tool: a plugin folder plugins/hub-<slug>/ that passes plugins:check, loaded at once through the
+ * workflow-folders plugin (its own fiber; requiresRestart only when it couldn't load now), and taken out again on uninstall. The tool runs our Z-Image Turbo template with the item's name as the style,
  * not the community workflow itself (that is not downloaded).
  */
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -9,7 +9,7 @@ import path from 'node:path';
 import { db } from '../db.js';
 import { PLUGINS_DIR } from '../config.js';
 import { env } from '../env.js';
-import { validateManifest } from '../plugins.js';
+import { validateManifest, addPluginFolder, removePlugin } from '../plugins.js';
 import { commercialFlags, type HubItem } from './catalog.js';
 
 db.exec('CREATE TABLE IF NOT EXISTS hub_installed (id TEXT PRIMARY KEY, data TEXT NOT NULL)');
@@ -79,7 +79,7 @@ function writePlugin(item: HubItem): { pluginId: string; dir: string } | { error
   return { pluginId, dir };
 }
 
-export function install(item: HubItem, asRaw?: string): Installed | { error: string; status: number } {
+export async function install(item: HubItem, asRaw?: string): Promise<Installed | { error: string; status: number }> {
   const as: InstallAs = item.type === 'lora' ? 'lora' : asRaw === 'tool' ? 'tool' : 'style';
   if (item.type === 'lora' && asRaw && asRaw !== 'lora') return { error: 'a LoRA installs as "lora"', status: 400 };
   if (item.type === 'workflow' && asRaw && !['style', 'tool'].includes(asRaw)) return { error: 'a workflow installs as "style" or "tool"', status: 400 };
@@ -97,16 +97,17 @@ export function install(item: HubItem, asRaw?: string): Installed | { error: str
     rec = { ...base, mock: false, style: { id: `hub-${slug(item.name)}`, label: item.name, prompt: `${item.name}, ${item.tags.join(', ')}`, loras: [] } };
   } else {
     const r = writePlugin(item); if ('error' in r) return { error: r.error, status: 409 };
-    rec = { ...base, mock: false, pluginId: r.pluginId, path: r.dir, requiresRestart: true };
+    const st = await addPluginFolder(r.dir, false); // workflow-folders: a fiber for this folder, no restart
+    rec = { ...base, mock: false, pluginId: r.pluginId, path: r.dir, requiresRestart: !st.ok };
   }
   q.put.run(id, JSON.stringify(rec));
   return rec;
 }
 
-export function uninstall(id: string): Installed | null {
+export async function uninstall(id: string): Promise<Installed | null> {
   const rec = getInstalled(id); if (!rec) return null;
   if (rec.as === 'tool' && rec.pluginId?.startsWith('hub-')) {
-    const dir = path.join(PLUGINS_DIR, rec.pluginId);
+    const dir = path.join(PLUGINS_DIR, rec.pluginId); await removePlugin(rec.pluginId); // its fiber first (tool, graph)
     if (path.dirname(dir) === path.resolve(PLUGINS_DIR) && existsSync(dir)) rmSync(dir, { recursive: true, force: true });
   }
   q.del.run(id);

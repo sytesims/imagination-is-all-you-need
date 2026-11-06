@@ -72,7 +72,7 @@ export function registerWorkflowImport(app: FastifyInstance) {
   });
   app.delete<{ Params: { id: string } }>('/api/workflows/:id', async (req, reply) => {
     if (HOSTED) return reply.code(403).send(hostedNo);
-    const r = removeWorkflow(String(req.params.id)); if (!r.ok) return reply.code(r.code).send({ error: r.error, errorType: r.code === 404 ? 'not_found' : 'forbidden' });
+    const r = await removeWorkflow(String(req.params.id)); if (!r.ok) return reply.code(r.code).send({ error: r.error, errorType: r.code === 404 ? 'not_found' : 'forbidden' });
     setKv('plugins_disabled', getKv<string[]>('plugins_disabled', []).filter((x) => x !== req.params.id));
     return { id: req.params.id, removed: true };
   });

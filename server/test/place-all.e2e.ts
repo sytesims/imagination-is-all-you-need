@@ -15,10 +15,11 @@ Object.assign(process.env, { OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_DATA
   OPENHIGGSFIELD_COMFY_DETECT_URLS: 'http://127.0.0.1:9', OPENHIGGSFIELD_MOCK_KEYS: '1', OPENHIGGSFIELD_PROFILE: '', OPENHIGGSFIELD_BILLING_MODE: 'team' /* the app keeps a ledger */ });
 for (const k of Object.keys(process.env)) if (/(_KEY|_TOKEN)$|^COMFY_(BASE|DEPLOY|RUNNER)_URL$/.test(k) && k !== 'OPENHIGGSFIELD_MOCK_KEYS') delete process.env[k];
 const ALL = ['place-comfy-local', 'place-comfy-cloud', 'place-comfy-router', 'place-fal', 'place-replicate', 'place-direct', 'place-sample'];
+const TOOLS = ['studio-video', 'studio-image', 'studio-audio', 'studio-3d', 'studio-edit', 'apps-gallery', 'workflow-folders']; // the studios and workflow folders (Phase 3)
 const KIND: Record<string, string> = { 'place-comfy-local': 'local', 'place-comfy-cloud': 'comfy-cloud', 'place-comfy-router': 'comfy-router', 'place-fal': 'fal', 'place-replicate': 'replicate', 'place-direct': 'direct' };
 
 const { readProfile } = await import('../src/kernel/profile.js');
-assert.deepEqual(readProfile('desktop').plugins, [...ALL, 'legacy']);
+assert.deepEqual(readProfile('desktop').plugins, [...ALL, ...TOOLS, 'legacy']);
 const { BUILTIN_PLUGINS, boot } = await import('../src/boot.js');
 const { places, PLACE_PLUGIN } = await import('../src/services/places.js');
 const { allRoutesFor, routesFor, findRoute } = await import('../src/routing/routes.js'); const { listTools, getTool } = await import('../src/tools/registry.js');
@@ -46,7 +47,7 @@ const MODEL: Record<string, [string, string, string]> = { // a tool, a model and
   'comfy-cloud': ['h3-video', 'cloud-h3-wf', 'comfy-cloud:cloud-h3-wf'], fal: ['create-image', 'comfy-qwen-image', 'fal:fal-ai/qwen-image'],
   replicate: ['create-image', 'comfy-qwen-image', 'replicate:qwen/qwen-image'], direct: ['create-image', 'api-nano-banana', 'direct:google/gemini-3.1-flash-image'] };
 for (const [kind, [, , rid]] of Object.entries(MODEL)) assert.ok(findRoute(rid)?.kind === kind, `${rid} is a ${kind} route`);
-const ctx = await boot({ name: 'all', plugins: [...ALL, 'legacy'], file: 'all.yml' }, { legacy: false });
+const ctx = await boot({ name: 'all', plugins: [...ALL, ...TOOLS, 'legacy'], file: 'all.yml' }, { legacy: false });
 assert.equal(places.managed, true); assert.deepEqual(places.list().map((p) => p.kind), ['local', 'comfy-cloud', 'comfy-router', 'fal', 'replicate', 'direct', 'sample']);
 const fibers = new Map<string, any>(); { const { mounted } = await import('../src/kernel/index.js'); for (const m of mounted) fibers.set(m.name, m.fiber); }
 for (const id of Object.keys(KIND)) {
@@ -98,7 +99,7 @@ ok('place-sample off â†’ no sample runs (demoAuto, freeSamples off); on again â†
   ok('a reported cost and extra outputs never change the charge (same ledger rows: the quote, once); the cost is kept on the attempt; our request id is stored before the call'); }
 
 // ---- e2e: a profile with only fal, Replicate and samples: your computer and Comfy Cloud refuse a submit, nothing charged ----
-const few = path.join(dir, 'few.yml'); fs.writeFileSync(few, 'name: few\nplugins:\n  - place-fal\n  - place-replicate\n  - place-sample\n  - legacy\n');
+const few = path.join(dir, 'few.yml'); fs.writeFileSync(few, `name: few\nplugins:\n  - place-fal\n  - place-replicate\n  - place-sample\n${TOOLS.map((x) => `  - ${x}\n`).join('')}  - legacy\n`);
 let srv: ChildProcess | null = null;
 try {
   const port = testPort(9491); const B = `http://127.0.0.1:${port}`; const env: Record<string, string> = {};

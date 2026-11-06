@@ -4,7 +4,7 @@
  */
 import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner } from '../services/places.js';
-import { replicateRun, replicateGet, replicateCancel, outputUrls } from '../providers/replicate.js';
+import { replicateRun, replicateGet, replicateCancel, outputUrls, replicateImageInput } from '../providers/replicate.js';
 import { replicateAuthFor } from '../security/keyHosts.js';
 import { liveBackend } from '../routing/keys.js';
 import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
@@ -21,6 +21,9 @@ export const replicatePlaceOf = (keys: KeyReader): PlaceRunner => ({
       onSubmit: (id) => h.onSubmit({ kind: 'replicate', id }),
       onStatus: (p) => h.onStatus(p.status === 'starting' ? 'submitted' : 'rendering') });
     return { url: res.urls[0], outputs: res.urls.map((url) => ({ kind: route.output ?? 'image', url })), refresh: () => replicateGet(res.requestId, key).then((p) => outputUrls(p)[0]), auth: (u) => replicateAuthFor(u, key) };
+  },
+  async build(r, { job, prompt, seed, extras }) { // Replicate image models (providers/replicate.ts replicateImageInput)
+    return replicateImageInput(r.endpoint, { prompt, seed, imageUrls: extras.imageUrls, imageSize: extras.imageSize, aspectRatio: extras.aspect ?? (r.endpoint === 'google/nano-banana-pro' || r.endpoint === 'black-forest-labs/flux-2-pro' ? job.input.aspect : undefined), imageRes: job.input.imageResolution });
   },
   resume: () => true,
   async cancel(h, r, f) { const key = keys.value(r); return key ? replicateCancel(h.id, key, f) : null; },

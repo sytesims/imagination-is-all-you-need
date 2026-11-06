@@ -1,86 +1,72 @@
-import { photosReelTool } from './photosReel.js';
+/**
+ * The tool registry behind ctx.tools (services/tools.ts). Nothing registers here at import time (plan R3): a booted server's tools come from
+ * its plugins (the studios in plugins-builtin/studios.ts, the workflow folders in plugins-builtin/workflow-folders.ts), each undone when its
+ * plugin is disposed. Code that runs without booting (scripts, tests) gets the built-in tools (tools/builtin.ts, the desktop profile's set)
+ * on its first read, as before.
+ *
+ * Nav order (GET /api/tools, menus) is each tool's explicit `order`, then the order tools were registered in; never import order.
+ */
 import type { ToolDef } from './types.js';
 import { invalidateTools } from '../toolsCache.js';
-import { objectSwapTool, motionTransferTool, restyleTool } from './videoSwap.js';
-import { reshootTool } from './reshoot.js';
-import { cameraApp, photoFxApp, upscaleApp } from './apps.js';
-import { createImageTool, h3VideoTool, audioTool, soundtrackTool, voiceStudioTool, imageUpscaleTool } from './media.js';
-import { cinemaTool } from '../cinema/tool.js';
-import { APP_GALLERY, makeGalleryApp } from './apps.js';
-import { soulTool } from './soul/index.js';
-import { h3ExtendTool } from './h3/index.js';
-import { NEW_EDIT_TOOLS } from './editVideo/index.js';
 import { withClipTrim } from '../clipTrim.js';
-import { threeDTool, turntableTool } from './threeD.js';
-import { previzTool } from './previz.js';
-import { makeItRealTool } from './makeItReal.js';
-import { footageFxTool } from './footageFx.js';
-import { finishTool } from './finish.js';
-import { promptEditTool } from './promptEdit.js';
-import { twoPersonSwapTool } from './twoPersonSwap.js';
-import './comfyFeatured.js'; // official Comfy templates (2026-10-27): Gemini Omni 1.1 Flash, Topaz Bloom 2, Wan Animate 2 on Comfy Cloud
+import { STUDIO_TOOLS, STUDIO_IDS, galleryEntries, BUILTIN_TOOL_STUDIO, SOON, type ToolEntry } from './builtin.js';
 
-const tools = new Map<string, ToolDef>();
+/** A workflow folder's tool (plugins/, <data>/plugins) lists after every built-in, in the order the folders load. */
+export const FOLDER_ORDER = 10_000;
+
+interface Entry { tool: ToolDef; order: number; seq: number }
+const tools = new Map<string, Entry>();
 const aliases = new Map<string, string>();
-export function registerTool(t: ToolDef, ...alias: string[]) {
+let seq = 0; let sorted: ToolDef[] | null = null;
+/** true once boot.ts mounted the tools service: from then on only plugins add tools. */
+export const toolRegistry = { managed: false };
+/** The tools service takes over (services/tools.ts): whatever the no-boot fallback (or a direct load) registered before goes, so the
+ *  profile's plugins decide which tools exist (a test that read the registry before booting gets only its profile's tools). */
+export function manageTools() { toolRegistry.managed = true; if (!tools.size) return; tools.clear(); aliases.clear(); sorted = null; invalidateTools(); }
+let filled = false;
+/** Without a boot: the built-in tools, on the first read (a booted server never does this). */
+function ensure() {
+  if (toolRegistry.managed || filled) return; filled = true;
+  for (const s of STUDIO_IDS) for (const e of STUDIO_TOOLS[s]) add(e);
+  for (const e of galleryEntries((id) => tools.get(id)?.tool)) add(e); // after every base tool (Upscale is the gallery's own)
+}
+const add = (e: ToolEntry) => registerTool(e.tool, { order: e.order, aliases: e.aliases });
+
+export function registerTool(t: ToolDef, o: { order?: number; aliases?: string[] } = {}) {
+  ensure();
   if (tools.has(t.id)) throw new Error(`duplicate tool id ${t.id}`);
   withClipTrim(t); // every tool with a clip takes the shared range (trimStart / trimEnd: the Trim sheet)
-  tools.set(t.id, t);
-  alias.forEach((a) => aliases.set(a, t.id));
-  invalidateTools(); // a plugin tool added after start shows in GET /api/tools at once
+  tools.set(t.id, { tool: t, order: o.order ?? FOLDER_ORDER, seq: seq++ });
+  (o.aliases ?? []).forEach((a) => aliases.set(a, t.id));
+  sorted = null; invalidateTools(); // a plugin tool added after start shows in GET /api/tools at once
 }
-/** Takes a tool out again (a workflow you added and then removed, workflowImport.ts). Built-in tools never call this. */
+/** Takes a tool out again (its plugin was disposed: a workflow you removed, a studio turned off). */
 export function unregisterTool(id: string) {
   if (!tools.delete(id)) return false;
   for (const [a, t] of [...aliases]) if (t === id) aliases.delete(a);
-  hidden.delete(id); invalidateTools(); return true;
+  hidden.delete(id); sorted = null; invalidateTools(); return true;
 }
 /** Disabled plugin tools (POST /api/plugins/:id {enabled:false}): hidden from lookups and lists without a restart. */
 const hidden = new Set<string>();
-export const setToolHidden = (id: string, on: boolean) => { if (on) hidden.add(id); else hidden.delete(id); };
-export const isToolHidden = (id: string) => hidden.has(id);
-export const getTool = (id: string) => { const t = tools.get(id) ?? tools.get(aliases.get(id) ?? ''); return t && !hidden.has(t.id) ? t : undefined; };
+export const setToolHidden = (id: string, on: boolean) => { if (on) hidden.add(id); else hidden.delete(id); sorted = null; };
+/** Hidden (turned off on the Plugins page), or a built-in tool whose studio plugin is off in this profile. */
+export const isToolHidden = (id: string) => hidden.has(id) || toolOff(id);
+/** A built-in tool (or alias) whose studio plugin isn't loaded (only on a booted server; without a boot every studio is on). */
+export const toolOff = (id: string) => toolRegistry.managed && BUILTIN_TOOL_STUDIO.has(id) && !tools.has(aliases.get(id) ?? id);
+/** The studio plugin a built-in tool belongs to (for "turned off" details), or null. */
+export const studioOf = (id: string) => BUILTIN_TOOL_STUDIO.get(id) ?? null;
+/** A tool by id or alias, hidden ones included (the gallery wraps its base tool with this). */
+export const findTool = (id: string) => { ensure(); return (tools.get(id) ?? tools.get(aliases.get(id) ?? ''))?.tool; };
+export const getTool = (id: string) => { const t = findTool(id); return t && !hidden.has(t.id) ? t : undefined; };
 /** True when a tool (or an alias) already has this id, hidden ones included: a new workflow may never take it. */
-export const toolIdTaken = (id: string) => tools.has(id) || aliases.has(id);
-export const listTools = () => [...tools.values()].filter((t) => !hidden.has(t.id));
+export const toolIdTaken = (id: string) => { ensure(); return tools.has(id) || aliases.has(id); };
+export const listTools = (): ToolDef[] => {
+  ensure();
+  sorted ??= [...tools.values()].sort((a, b) => a.order - b.order || a.seq - b.seq).map((e) => e.tool).filter((t) => !hidden.has(t.id));
+  return [...sorted];
+};
 export const DEFAULT_TOOL_ID = 'object-swap';
 
 /** Roadmap ("Soon") entries live here too, so the nav can't drift from the registry. Not runnable. */
 export interface SoonEntry { id: string; name: string; group: string; category: string; status: 'soon' }
-const soon: SoonEntry[] = [];
-export const registerSoon = (id: string, name: string, group = 'Soon') => { if (!tools.has(id)) soon.push({ id, name, group, category: group, status: 'soon' }); };
-export const listSoon = () => soon.filter((s) => !tools.has(s.id));
-
-// ---- Registered tools (order = nav order) ----
-registerTool(objectSwapTool, 'face-swap');
-registerTool(motionTransferTool);
-registerTool(restyleTool);
-registerTool(reshootTool);
-registerTool(cameraApp);
-registerTool(photoFxApp);
-registerTool(upscaleApp);
-registerTool(createImageTool);
-registerTool(h3VideoTool);
-registerTool(h3ExtendTool);
-registerTool(audioTool);
-registerTool(soundtrackTool);
-registerTool(cinemaTool, 'director');
-registerTool(voiceStudioTool, 'voice-studio');
-registerTool(imageUpscaleTool);
-registerTool(soulTool, 'opensoul');
-registerTool(threeDTool, 'image-to-3d'); // 3D page (2026-10-23): /3d
-registerTool(turntableTool, 'turntable');
-registerTool(previzTool, 'previz'); // Direct a Shot (2026-10-24): /3d?workflow=plan-a-shot
-registerTool(makeItRealTool); // Direct a Shot step 3 (2026-10-24): LTX-2.5 + Layout to Render, local and free
-registerTool(footageFxTool); // Footage Effects (2026-10-26): Lightricks LTX-2.5 IC-LoRA effects on your own clip, local and free
-registerTool(twoPersonSwapTool); // Swap Two People (2026-10-27): H3 Character Swap twice in one Comfy Cloud job (tools/twoPersonSwap.ts)
-registerTool(promptEditTool); // Prompt Edit (2026-10-27): Bernini-R on Comfy Cloud, one sentence edits a clip (tools/promptEdit.ts)
-registerTool(finishTool); // Finish (2026-10-27): eight one-click finishing looks (ffmpeg, our own graphs), free on this computer
-for (const t of NEW_EDIT_TOOLS) registerTool(t, ...(({ 'sdr-hdr': ['hdr'], 'depth-map': ['depth'] } as Record<string, string[]>)[t.id] ?? [])); // Edit Video tools (tools/editVideo)
-// Apps gallery (data in tools/apps.ts APP_GALLERY): each app is a runnable tool `app-<id>` wrapping its base tool.
-registerTool(photosReelTool);
-for (const a of APP_GALLERY) { const b = tools.get(a.base); if (b) registerTool(makeGalleryApp(a, b)); else console.warn(`[apps] ${a.id}: unknown base tool ${a.base}`); }
-
-// ---- Roadmap (CLEANROOM-SPEC P1/P2; our own names). Registering a real tool with the same id removes it from Soon. ----
-[['edit-recreate', 'Edit Recreate'], ['scene-studio', 'Scene Studio'], ['reframe', 'Reframe'], ['cutout', 'Cutout'],
- ['character-builder', 'Character Builder'], ['lipsync', 'Lipsync'], ['storyboard', 'Storyboard']].forEach(([id, name]) => registerSoon(id, name));
+export const listSoon = (): SoonEntry[] => { ensure(); return SOON.filter(([id]) => !tools.has(id)).map(([id, name]) => ({ id, name, group: 'Soon', category: 'Soon', status: 'soon' })); };
