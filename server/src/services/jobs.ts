@@ -11,13 +11,13 @@
  */
 import { Service, type Context } from '../kernel/index.js';
 import type { Job } from '../jobs.js';
-import { onJob, type JobEvent, type JobEventMap } from './jobEvents.js';
+import { onJob, manageJobListeners, type JobEvent, type JobEventMap } from './jobEvents.js';
 
 const Q = () => import('../queue.js');
 const J = () => import('../jobs.js');
 
 export class JobsService extends Service {
-  constructor(ctx: Context) { super(ctx, 'jobs'); }
+  constructor(ctx: Context) { super(ctx, 'jobs'); manageJobListeners(); }
   /** Listen to a job event (undone when the calling plugin is disposed). */
   on<E extends JobEvent>(e: E, fn: JobEventMap[E]) { return this.ctx.effect(() => onJob(e, fn), `job event ${e}`); }
   async enqueue(...a: Parameters<typeof import('../queue.js').enqueue>) { return (await Q()).enqueue(...a); }
