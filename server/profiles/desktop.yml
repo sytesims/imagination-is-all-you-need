@@ -1,0 +1,7 @@
+# The desktop app (npm start / npm run dev). One plugin id per line; leave a line out to turn that plugin off.
+# The places service is part of the kernel and always on. `legacy` (today's server) always starts last.
+name: desktop
+plugins:
+  - place-fal         # fal (your fal key)
+  - place-replicate   # Replicate (your Replicate token)
+  - legacy

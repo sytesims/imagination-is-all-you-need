@@ -233,7 +233,7 @@ for (const f of files) if (f.rel !== 'mediaHandoff.ts' && /\.toString\(\s*['"]ba
 const src = (rel: string) => code(files.find((f) => f.rel === rel)!.text);
 assert.match(src('comfy/plans.ts'), /export function buildPlan\([^)]*\)[^{]*\{\s*const j = \{ \.\.\.j0, input: withRefGrammar\(/, 'buildPlan rewrites the input first');
 assert.match(src('comfy/cloudWorkflows.ts'), /isStandalone\(w\)\) \{ const plan = w\.plan\(\{ \.\.\.j, input: withRefGrammar\(/, 'standalone cloud plans (H3 CrossView) rewrite the input first');
-assert.match(src('routing/jobRefs.ts'), /setPlanModelKey\(/, 'local graphs use the runners\' model key'); assert.match(src('index.ts'), /import '\.\/routing\/jobRefs\.js'/, 'the server loads it at start');
+assert.match(src('routing/jobRefs.ts'), /setPlanModelKey\(/, 'local graphs use the runners\' model key'); assert.match(src('legacy.ts'), /import '\.\/routing\/jobRefs\.js'/, 'the server loads it at start');
 assert.match(src('routing/routeRequest.ts'), /export async function routeRequest\([^\n]*\n\s*const gi = refInputFor\(job, r\);/, 'routeRequest rewrites the input first');
 // web: removing a photo that counts as @imageN renumbers the prompt's mentions (shared/mentions.ts), the start photo included
 const appTool = fs.readFileSync(path.join(SRC, '../../web/src/tools/app/AppTool.tsx'), 'utf8');
