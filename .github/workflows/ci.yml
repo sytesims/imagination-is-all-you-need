@@ -2,11 +2,11 @@ name: CI
 
 # Pull requests: Build and start on all three systems. The one-line install runs only when the PR touches the installer,
 # setup/launcher scripts or package files (then on every system, plus get.sh in a fresh Ubuntu container); it hung on
-# Ubuntu's package mirror for unrelated PRs, so they skip it. main (push, nightly, by hand) still runs it everywhere.
-# main (push, nightly, by hand): everything.
+# Ubuntu's package mirror for unrelated PRs, so they skip it. Pushes to main/v2, nightly and by hand still run it everywhere.
+# main and v2 (push), nightly, by hand: everything.
 on:
   push:
-    branches: [main]
+    branches: [main, v2]
   pull_request:
   schedule:
     - cron: '0 3 * * *' # nightly full run on main, so there is a complete run even on busy days
@@ -15,10 +15,11 @@ on:
 permissions:
   contents: read
 
-# A newer push to the same PR or to main cancels the older run. The nightly run has its own group, so pushes never cancel it.
+# A newer push to the same PR cancels the older run. Pushes to main/v2 (and runs by hand) get a group per commit, so every
+# commit gets a complete run: neither cancelled nor dropped while pending behind a newer one. The nightly run has its own group.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'nightly' || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'nightly' || github.event_name == 'pull_request' && github.ref || format('{0}-{1}', github.ref, github.sha) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # Which systems the one-line install runs on. On a PR the checkout is GitHub's merge commit, so HEAD^1 is the base
@@ -32,7 +33,7 @@ jobs:
       build_os: ${{ steps.pick.outputs.build_os }}
       full: ${{ steps.pick.outputs.full }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 2
       - id: pick
@@ -66,8 +67,8 @@ jobs:
         # 24 (what the installers add) and 26 (the newest long-term support line); the one-line install below runs on 22
         node: ['24', '26']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
           check-latest: true
@@ -92,8 +93,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
@@ -103,11 +104,14 @@ jobs:
       - name: Install dependencies (root, then mcp/ through the postinstall step)
         run: npm ci --no-audit --no-fund
       # ffmpeg: the mock API renders its sample results with it (catalog's local create-image run fails with "ffmpeg 127" without it)
+      - name: Cache ffmpeg
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ci-ffmpeg
+          key: ffmpeg-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/ci/install-tools.sh') }}
       - name: Install ffmpeg
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends ffmpeg
-          ffmpeg -version | head -1
+        timeout-minutes: 12
+        run: bash scripts/ci/install-tools.sh
       - name: Build (tsc)
         run: npm run mcp:build
       - name: Tests
@@ -127,8 +131,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
@@ -157,8 +161,8 @@ jobs:
       HOMEBREW_NO_AUTO_UPDATE: '1'
       HOMEBREW_NO_INSTALL_CLEANUP: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -168,8 +172,10 @@ jobs:
       - name: Name this commit as a branch to clone
         run: git branch ci-install HEAD
 
+      # get.sh installs ffmpeg itself (apt, Homebrew) on purpose; normally 1-3 min, so a mirror stall fails in 10 instead of hanging 25
       - name: Install with get.sh (piped into bash)
         if: runner.os != 'Windows'
+        timeout-minutes: 10
         shell: bash
         run: |
           DIR="$RUNNER_TEMP/one line/Imagination"
@@ -191,6 +197,7 @@ jobs:
 
       - name: Install with get.ps1 (Windows PowerShell, as a script block)
         if: runner.os == 'Windows'
+        timeout-minutes: 10
         shell: powershell
         run: |
           $dir = Join-Path $env:RUNNER_TEMP 'one line\Imagination'
@@ -216,9 +223,11 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
     steps:
       - name: Add git (for the checkout)
-        run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
-      - uses: actions/checkout@v4
+        timeout-minutes: 5
+        run: apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update && apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends git ca-certificates
+      - uses: actions/checkout@v5
       - name: Install with get.sh (Node 24 from NodeSource)
+        timeout-minutes: 10 # normally ~1 min; apt is part of what it tests, so a mirror stall fails fast
         shell: bash
         run: |
           git config --global --add safe.directory '*'
