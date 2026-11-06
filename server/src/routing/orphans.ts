@@ -25,6 +25,7 @@ export function cloudRouteOf(j: Job): string | null {
 }
 /** Mark the interrupted attempt ended (it can never finish) and cancel the remote job. Returns true when Cloud confirmed the cancel. */
 export async function cancelOrphan(j: Job, why = 'The server restarted while this was running'): Promise<boolean> {
+  if (!places.managed) await import('../services/placesBuiltin.js'); // no boot (scripts, tests): the built-in places answer, as routing/run.ts and queue.ts load them
   const a = j.routeAttempts?.[j.routeAttempts.length - 1];
   if (a && a.status === 'running') { a.status = 'failed'; a.endedAt = Date.now(); a.error = why; }
   const h = j.remote; j.remote = null;
