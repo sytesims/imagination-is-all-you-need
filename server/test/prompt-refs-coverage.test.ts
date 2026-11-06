@@ -203,6 +203,7 @@ const SENDERS: Record<string, { calls?: RegExp; why: string }> = {
   'comfyRouter.ts': { why: 'Comfy Router transport: sends the body it is given' }, 'comfy/cloudV2.ts': { why: 'Comfy Cloud transport: sends the graph it is given' },
   'comfy/native.ts': { why: 'local ComfyUI transport: sends the graph it is given' }, 'comfy/storage.ts': { why: 'uploads media to Comfy storage; no prompt' },
   'mediaHandoff.ts': { why: 'the shared media hand-off: uploads files to fal / Replicate storage; no prompt' },
+  'plugins-builtin/place-fal.ts': { why: 'fal place plugin: sends the body routing/run.ts built with routeRequest' }, 'plugins-builtin/place-replicate.ts': { why: 'Replicate place plugin: sends the body routing/run.ts built with routeRequest' },
   'providers/fal.ts': { why: 'fal transport (falImageInput is called only from routeRequest)' }, 'providers/replicate.ts': { why: 'Replicate transport (replicateImageInput only from routeRequest)' },
   'providers/byteplus.ts': { why: 'BytePlus lab body builders (route.direct.build), called only from routeRequest' }, 'providers/gemini.ts': { why: 'Gemini lab body builders, called only from routeRequest' },
   'providers/openai.ts': { why: 'OpenAI lab body builders, called only from routeRequest' }, 'hostedRequests.ts': { why: 'lab body builders (route.direct.build / route.request), called only from routeRequest' },
