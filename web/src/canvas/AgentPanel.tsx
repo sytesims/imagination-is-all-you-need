@@ -15,6 +15,7 @@ import { createPortal } from 'react-dom';
 import { useValue, type BoardApi } from './boardApi';
 import { useCanvasBoard } from './agentApi';
 import { useCatalog, catalogNow } from './catalog';
+import { pickFromSelection, livePickChoices, pickOffscreen } from './pickAsk';
 import { startAgentBridge, nameOf as cardNameOf, type FeedEntry, type Proposal, type PickAsk } from './agentBridge';
 import { handAtom, handOf, fx, setAgentName, reducedMotion } from './agentHand';
 import { flowById, flowInfo } from '../shared/genFlows';
@@ -143,15 +144,26 @@ function ListenHint({ boardId, name, onSetup }: { boardId: string; name: string;
   </div>;
 }
 
+/** "Claude asks ↗": while a pick waits and none of its cards is on screen, a calm chip on the board's edge. Nothing moves until you click
+ *  it; then the board glides to the cards. */
+function PickEdgeChip({ board, ids, who }: { board: BoardApi; ids: string[]; who: string }) {
+  const off = useValue('pick offscreen', () => { const bs = ids.map((id) => board.boundsOf(id as any)).filter(Boolean) as any[]; return pickOffscreen(bs, board.viewportBounds()); }, [board, ids.join(',')]);
+  const box = useValue('pick board box', () => { board.camera(); const r = board.container().getBoundingClientRect(); return { left: r.left + r.width / 2, top: r.top + 14 }; }, [board]);
+  if (!off) return null;
+  const go = () => { const bs = ids.map((id) => board.boundsOf(id as any)).filter(Boolean) as any[]; if (!bs.length) return;
+    const x = Math.min(...bs.map((b) => b.minX)), y = Math.min(...bs.map((b) => b.minY)); board.fitBounds({ x, y, w: Math.max(...bs.map((b) => b.maxX)) - x, h: Math.max(...bs.map((b) => b.maxY)) - y }, { duration: 420, zoom: Math.max(0.5, board.zoom()) }); };
+  return createPortal(<button type="button" className="ap-pick-edge" style={{ left: box.left, top: box.top }} onClick={go} data-testid="pick-edge-chip">{who} asks you to pick<span aria-hidden> ↗</span></button>, document.body);
+}
+
 /** "Pick the one you like": the cards as small thumbnails with a Pick button each; clicking a card on the board does the same. */
-function PickCard({ e, pick, board, onPick, onFocus }: { e: FeedEntry; pick: PickAsk | null; board: BoardApi | null; onPick: (cardId: string) => void; onFocus: (id: string) => void }) {
+function PickCard({ e, pick, board, onPick, onFocus, onGlow }: { e: FeedEntry; pick: PickAsk | null; board: BoardApi | null; onPick: (cardId: string) => void; onFocus: (id: string) => void; onGlow: (id: string) => void }) {
   const ids: string[] = e.meta?.pick?.cardIds ?? []; const live = !!pick && pick.id === e.meta?.pick?.id; const waiting = live && pick!.status === 'waiting'; const chosen = live ? pick!.chosen : null;
   const cards = useValue('pick cards', () => ids.map((id) => { const s = board?.getNode(id as any); const p: any = s?.props; const t = p?.takes?.[p?.take ?? 0];
     return { id, here: !!s, name: (board && cardNameOf(board, id as any)) || String(p?.prompt ?? 'Card').slice(0, 40), poster: t?.poster || (t?.kind === 'image' ? t.url : '') || '' }; }), [board, ids.join(',')]);
   return <section className={`ap-pick${waiting ? ' waiting' : ''}`} data-testid="agent-pick" data-state={waiting ? 'waiting' : chosen ? 'picked' : 'closed'}>
     <div className="ap-pick-h"><span className="ap-kicker">{waiting ? 'Your pick' : chosen ? 'You picked' : 'Pick one'}</span>{waiting && <small>Click one here or on the board</small>}</div>
     <div className="ap-pick-row" role="list">{cards.map((c) => <button key={c.id} type="button" role="listitem" className={`ap-pick-it${chosen === c.id ? ' on' : ''}${chosen && chosen !== c.id ? ' off' : ''}`} data-testid="agent-pick-item"
-      disabled={!c.here || (!waiting && !chosen)} aria-pressed={chosen === c.id} onClick={() => (waiting ? onPick(c.id) : onFocus(c.id))} onMouseEnter={() => waiting && onFocus(c.id)}
+      disabled={!c.here || (!waiting && !chosen)} aria-pressed={chosen === c.id} onClick={() => (waiting ? onPick(c.id) : onFocus(c.id))} onMouseEnter={() => waiting && onGlow(c.id)} /* a look only: hovering never selects, picks or moves the board */
       aria-label={waiting ? `Pick ${c.name}` : c.name}>
       <span className="ap-pick-img">{c.poster ? <img src={c.poster} alt="" draggable={false} /> : <SparkleIcon size={16} />}{chosen === c.id && <i className="ap-pick-ok"><CheckIcon size={11} /></i>}</span>
       <b>{c.name}</b></button>)}</div>
@@ -426,13 +438,21 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
     } catch (e) { toast((e as Error).message, 'error'); } finally { choosing.current = false; }
   }, [boardId, board, toast]);
   const pickRef = useRef(pick); pickRef.current = pick; const choosing = useRef(false); const pickSaid = useRef(false);
+  /* the pulse and the "Waiting for your pick" label follow the server's PickAsk.status only: they clear on a pick, a cancel, the server's
+     timeout, or when this board closes. Only a click on one of the cards AFTER the ask counts (pickFromSelection); a card that was already
+     selected, a camera move or hovering the dock picks nothing, and nothing moves the camera or opens a panel (the edge chip does, on click). */
   useEffect(() => {
     if (!board) return;
-    if (pick?.status === 'waiting') { fx.pick(pick.cardIds); handOf(board).say('Waiting for your pick', true); pickSaid.current = true; }
+    const waitingNow = pick?.status === 'waiting';
+    if (waitingNow) { fx.pick(livePickChoices(pick!.cardIds, (id) => !!board.getNode(id as any))); handOf(board).say('Waiting for your pick', true); pickSaid.current = true; }
     else { fx.pick([]); if (pick?.status === 'picked' && pick.chosen) fx.chosen(pick.chosen); if (pickSaid.current) { pickSaid.current = false; handOf(board).hush(); } } /* the pick resolved: the label goes with it */
-    if (pick?.status !== 'waiting') return;
-    const off = board.onChange(() => { const sel = board.selection(); if (sel.length === 1 && pick.cardIds.includes(sel[0])) void choose(sel[0]); }, 'view');
-    return () => { off(); };
+    if (!waitingNow) return;
+    let before = [...board.selection()]; let pressed = false;
+    const offIn = board.onInput((e) => { if (e.kind === 'pointer_down') pressed = true; });
+    const offView = board.onChange(() => { const now = board.selection(); const id = pickFromSelection({ before, now, choices: pick!.cardIds, pressedSinceAsk: pressed }); before = [...now]; if (id) void choose(id); }, 'view');
+    /* a choice you delete drops out of the pulse */
+    const offDoc = board.onChange(() => fx.pick(livePickChoices(pick!.cardIds, (id) => !!board.getNode(id as any))), 'board');
+    return () => { offIn(); offView(); offDoc(); fx.pick([]); if (pickSaid.current) { pickSaid.current = false; handOf(board).hush(); } };
   }, [board, pick, choose]);
   useEffect(() => () => fx.pick([]), []);
 
@@ -510,7 +530,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
             if (e.type === 'message') {
               if (Array.isArray(e.meta?.plan)) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} />
                 <PlanCard title={String(e.meta.title ?? 'Plan')} steps={e.meta.plan} done={plan?.seq === e.seq ? plan.done : e.meta.plan.length} finished={plan?.seq === e.seq ? plan.finished : true} live={plan?.seq === e.seq && demo.running} /></div>;
-              if (e.meta?.pick?.cardIds) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><PickCard e={e} pick={pick} board={board} onPick={(id) => void choose(id)} onFocus={focus} /></div>;
+              if (e.meta?.pick?.cardIds) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><PickCard e={e} pick={pick} board={board} onPick={(id) => void choose(id)} onFocus={focus} onGlow={glowAt} /></div>;
               if (e.meta?.confirm?.id && confirm?.id === e.meta.confirm.id) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><ConfirmCard label={confirm!.label} busy={sending} onOk={() => void send(confirm!.label, undefined, confirm!.id)} /></div>;
               if (suggest && e === last) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} />
                 <button type="button" className="ap-chip ap-chip-main" disabled={sending} onClick={() => pickStarter(suggest.id)} data-testid="agent-suggest">Want to see “{suggest.label}”?</button></div>;
@@ -549,6 +569,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
       {dropOver && <div className="ap-dropzone" data-testid="agent-dropzone" aria-hidden><span><PaperclipIcon size={18} />Drop pictures to add them</span></div>}
       {sheet && <ConnectSheet config={config} mcpUrl={mcpUrl} onClose={() => setSheet(false)} boardId={boardId} />}
     </aside>
+    {board && pick?.status === 'waiting' && <PickEdgeChip board={board} ids={pick.cardIds} who={agentConnected ? agentLabel : 'Agent'} />}
     {glow && createPortal(<div className="ap-glow" key={glow.key} style={{ left: glow.left, top: glow.top, width: glow.width, height: glow.height }} aria-hidden />, document.body)}
   </>;
 }

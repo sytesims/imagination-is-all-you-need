@@ -52,3 +52,54 @@ export function linkedFrom(types: string[]): string {
 export function panelSlide(left: number, right: number, boardW: number): number {
   const over = right + 24 - boardW; return over > 0 ? Math.min(over, Math.max(0, left - 80)) : 0;
 }
+
+/* ------------------------------------------------------------------ auto titles (2026-11-06, Canvas release 1: never "Untitled") */
+/** Words that carry no subject ("a", "make", "image of"…): skipped when a prompt becomes a title. */
+const STOP = new Set(('a an the of in on at to for from with without by into onto over under near and or but as is are be it its this that these those '
+  + 'my your our their his her she he they we i me you them us some very really just please make create generate show render draw give get turn add put '
+  + 'image picture photo photograph shot clip video sound song music track of style').split(' '));
+/** One title word: letters and digits only (keeps an inner hyphen or apostrophe). */
+const word = (w: string) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+const cap = (s: string) => (s ? s[0].toLocaleUpperCase() + s.slice(1) : s);
+/** True when the text is written without spaces between words (Chinese, Japanese, Thai…): titles take its first characters instead. */
+const unspaced = (s: string) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u.test(s);
+
+/** A prompt as a short title: its first 3–4 content words ("A red coat in a white studio" → "Red coat white studio"); text written without
+ *  spaces keeps its first 24 characters. '' when there's nothing to say. */
+export function promptTitle(prompt: string): string {
+  const t = prompt.replace(/\s+/g, ' ').trim(); if (!t) return '';
+  if (unspaced(t)) { const c = [...t.replace(/[\s"“”'‘’.,;:!?。、，！？]+/g, ' ').trim()]; return c.length > 24 ? `${c.slice(0, 24).join('').trim()}…` : c.join(''); }
+  const ws = t.split(' ').map(word).filter(Boolean); const content = ws.filter((w) => !STOP.has(w.toLowerCase()));
+  const pick = (content.length ? content : ws).slice(0, 4);
+  /* four short words, else three */
+  const out = pick.join(' ').length > 30 ? pick.slice(0, 3) : pick;
+  return cap(out.join(' ')); /* later words keep their case ("Tokyo", "DJ") */
+}
+
+/** What a card's title is made from (plain data, so the board, the panel and the tests share one rule). */
+export interface TitleFacts {
+  /** the name you gave it (meta.name): always wins */ name?: string | null;
+  kind: 'gen' | 'result' | 'upload' | 'other';
+  /** gen: its workflow id and shown name */ flow?: string; flowName?: string;
+  prompt?: string;
+  /** gen: what's wired in, by slot (`many`: the several-file slot, e.g. Material Swap's swatches) */ inputs?: { label: string; many?: boolean }[];
+  /** upload: the file's name; result: the title it was placed with */ fileName?: string; title?: string;
+}
+/** A card's title, never "Untitled": your name; else Material Swap → "<swatch> <object>" ("Velvet armchair"); an upload → its file name
+ *  without the extension; anything with a prompt → its first content words; else the workflow's name. */
+export function autoTitle(f: TitleFacts): string {
+  const own = cleanName(f.name ?? ''); if (own) return own;
+  if (f.kind === 'upload') return stem(f.fileName ?? '') || 'Upload';
+  if (f.kind === 'result') return cleanName(f.title ?? '') || promptTitle(f.prompt ?? '') || 'Result';
+  if (f.kind === 'gen') {
+    if (f.flow === 'material-swap' && f.inputs?.length) {
+      const sw = f.inputs.filter((i) => i.many).map((i) => stem(i.label)).filter(Boolean); const obj = stem(f.inputs.find((i) => !i.many)?.label ?? '');
+      const swatch = sw.length > 1 ? `${sw.length} materials` : sw[0] ?? '';
+      if (swatch && obj) return cap(`${swatch} ${obj.toLocaleLowerCase()}`); if (obj) return cap(obj);
+    }
+    return promptTitle(f.prompt ?? '') || (f.flowName ?? '').trim() || 'Generate';
+  }
+  return promptTitle(f.prompt ?? '') || 'Card';
+}
+/** A file or card label without its folder or extension, tidy spaces ("velvet_swatch.jpg" → "velvet swatch"). */
+const stem = (s: string) => cleanName((s.split(/[\\/]/).pop() ?? '').replace(/\.[a-z0-9]{1,5}$/i, '').replace(/[_]+/g, ' '));

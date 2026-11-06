@@ -330,11 +330,18 @@ function rememberProposal(p: Proposal) {
   broadcast(p.boardId, 'proposal', p);
 }
 function updateProposal(p: Proposal) { broadcast(p.boardId, 'proposal_update', p); }
-/** Ask the user to pick one of these cards: the page pulses them and a click is the choice. A newer ask replaces a waiting one. */
+/** How long a pick waits for the user before it closes by itself (the page's badge and pulse go with it). */
+export const PICK_TTL_MS = Math.max(1000, Number(process.env.OPENHIGGSFIELD_PICK_TTL_MS) || 15 * 60_000);
+/** A waiting pick older than the time it may wait. */
+export const pickExpired = (p: Pick<PickAsk, 'status' | 'createdAt'> | null | undefined, at: number, ttl = PICK_TTL_MS) => !!p && p.status === 'waiting' && at - p.createdAt >= ttl;
+/** Ask the user to pick one of these cards: the page pulses them and a click is the choice. A newer ask replaces a waiting one; an ask nobody
+ *  answers closes after PICK_TTL_MS. */
 function startPick(boardId: string, cardIds: string[], text: string, by: PickAsk['by']): PickAsk {
   const s = stateOf(boardId); endPick(boardId);
   const p: PickAsk = { id: uid('pick'), boardId, cardIds: [...new Set(cardIds)], text, chosen: null, status: 'waiting', createdAt: now(), by };
-  s.pick = p; broadcast(boardId, 'pick', p); return p;
+  s.pick = p; broadcast(boardId, 'pick', p);
+  setTimeout(() => { if (s.pick === p && pickExpired(p, now())) endPick(boardId); }, PICK_TTL_MS + 50).unref?.();
+  return p;
 }
 /** A waiting pick ends unanswered (Stop, or a newer ask). */
 function endPick(boardId: string) { const s = states.get(boardId); if (s?.pick?.status === 'waiting') { s.pick.status = 'cancelled'; broadcast(boardId, 'pick', s.pick); } }

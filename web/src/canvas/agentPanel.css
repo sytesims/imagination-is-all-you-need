@@ -378,3 +378,9 @@
 .ap-read.read svg{color:var(--success,#3DDC97)}
 @keyframes ap-read-pulse{0%,100%{opacity:.35}50%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.ap-read.waiting i{animation:none}}
+
+/* "Claude asks you to pick ↗" (2026-11-06): the asked cards are off screen; a click glides there, nothing moves by itself */
+.ap-pick-edge{position:fixed;z-index:41;transform:translateX(-50%);display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,122,26,.55);
+  background:rgba(20,21,26,.88);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:#FFD2AE;font:600 12.5px/1 var(--font-ui,Inter,sans-serif);cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.ap-pick-edge:hover{background:rgba(40,28,18,.92);color:#fff}
+.ap-pick-edge span{color:var(--accent,#FF7A1A)}
