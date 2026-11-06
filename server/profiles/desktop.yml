@@ -7,6 +7,8 @@ plugins:
   - place-comfy-router  # Comfy Router (your Comfy key)
   - place-fal           # fal (your fal key)
   - place-replicate     # Replicate (your Replicate token)
+  - place-sunra         # Sunra (your Sunra key; its models stay hidden until the key is set)
+  # place-kie is installable and off here: add a line `- place-kie` above legacy to use kie.ai (a reseller; docs/PROVIDERS-AND-MODELS.md)
   - place-direct        # the labs' own APIs: BFL, Google, OpenAI, BytePlus, MiniMax, LTX (their keys)
   - place-sample        # free samples, and samples on the mock backend
   - legacy

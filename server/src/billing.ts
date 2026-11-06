@@ -54,6 +54,12 @@ export const PROVIDER_BILLING: ProviderBilling[] = [
   { id: 'replicate', name: 'Replicate', failureRule: 'not-charged', failureNote: 'Replicate says: if a run fails, you are not charged (public models).', failureSource: 'https://replicate.com/docs/topics/billing',
     actualCost: 'none', actualNote: 'Predictions report run time, not cost.', balance: 'none', balanceNote: 'Replicate has no balance or usage API.', scopedKeys: 'Not documented.',
     billingUrl: 'https://replicate.com/account/billing', docsUrl: 'https://replicate.com/docs/reference/http' },
+  { id: 'sunra', name: 'Sunra', failureRule: 'not-charged', failureNote: 'Sunra says: failed predictions are not charged; credits reserved for the request are released.', failureSource: 'https://docs.sunra.ai/platform/errors',
+    actualCost: 'per-job', actualNote: 'The request status reports the settled charge (billing.amount in USD); it is recorded as the run’s cost. Sunra adds a 5% fee to each API top-up (not in our prices).', balance: 'none', balanceNote: 'Sunra shows the API balance in its dashboard.', scopedKeys: 'Yes: budget keys with a spending cap.',
+    billingUrl: 'https://sunra.ai/dashboard/billing', docsUrl: 'https://docs.sunra.ai/platform/pricing' },
+  { id: 'kie', name: 'kie.ai · reseller, may change without notice', failureRule: 'not-charged', failureNote: 'kie.ai says failed tasks consume no credits (creditsConsumed 0). It is a reseller: prices and models may change without notice.', failureSource: 'https://docs.kie.ai/market/common/get-task-detail',
+    actualCost: 'per-job', actualNote: 'Each finished task reports creditsConsumed (200 credits = $1); it is recorded as the run’s cost.', balance: 'none', balanceNote: 'kie.ai shows the credit balance in its dashboard.', scopedKeys: 'Not documented.',
+    billingUrl: 'https://kie.ai/pricing', docsUrl: 'https://docs.kie.ai/' },
   { id: 'bfl', name: 'Black Forest Labs', failureRule: 'not-charged', failureNote: 'BFL says only finished generations (status Ready) use credits; moderated requests are free.', failureSource: 'https://help.bfl.ai/articles/4212278032-my-prompt-is-getting-moderated',
     actualCost: 'per-job', actualNote: 'Each request returns its cost in BFL credits (1 credit = $0.01).', balance: 'api', balanceNote: 'Read from BFL’s credits endpoint.', scopedKeys: 'Not documented.',
     billingUrl: 'https://docs.bfl.ai/quick_start/pricing', docsUrl: 'https://docs.bfl.ai/api-reference/get-the-users-credits' },
@@ -86,7 +92,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 export function billedToOf(kind: string | null | undefined, routeId?: string | null): BilledTo {
   if (!kind || kind === 'local') return 'local';
   if (kind === 'comfy-router' || kind === 'comfy-cloud') return 'comfy';
-  if (kind === 'fal' || kind === 'replicate') return kind;
+  if (kind === 'fal' || kind === 'replicate' || kind === 'sunra' || kind === 'kie') return kind;
   const r = routeId ? findRoute(routeId) : undefined; return providerForEnvKey(r?.envKey) ?? (routeId?.startsWith('direct:bfl') ? 'bfl' : 'direct');
 }
 export interface CostEstimate { billedTo: BilledTo; billedToName: string; estUsd: number; estUnits?: number; unitLabel?: string; failureRule: FailureRule; failureNote: string; estimated: boolean;

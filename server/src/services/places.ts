@@ -65,6 +65,23 @@ export type MediaKind = 'image' | 'video' | 'audio';
 /** A failed attempt in plain classes (research §3 item 9). Derived from what the runners already put on the job (reasonCode, errorType,
  *  busy flags); passed to failedNotCharged as extra information. It never decides a refund on its own. */
 export type PlaceErrorClass = 'busy' | 'rate_limited' | 'out_of_credit' | 'moderation' | 'bad_input' | 'provider_down' | 'unknown';
+/** A place's own failure, already sorted into a class (Sunra's error codes, kie's 200-with-a-code bodies). routing/run.ts writes the class onto
+ *  the job (placeErrorFields), so errorClassOf reads it back. temporary: worth trying again (hostedPoll.ts keeps polling a temporary one). */
+export class PlaceError extends Error {
+  readonly cls: PlaceErrorClass; readonly temporary: boolean; readonly status?: number;
+  constructor(message: string, cls: PlaceErrorClass, o: { temporary?: boolean; status?: number } = {}) { super(message); this.name = 'PlaceError'; this.cls = cls; this.temporary = o.temporary ?? (cls === 'rate_limited' || cls === 'provider_down'); this.status = o.status; }
+}
+/** The job fields for a PlaceError class (the ones errorClassOf reads). */
+export function placeErrorFields(e: PlaceError): { reasonCode: string; errorType: string } | null {
+  switch (e.cls) {
+    case 'bad_input': return { reasonCode: 'input_invalid', errorType: 'invalid_input' };
+    case 'moderation': return { reasonCode: 'content_blocked', errorType: 'nsfw' };
+    case 'out_of_credit': return { reasonCode: 'provider_credits', errorType: 'credits' };
+    case 'rate_limited': return { reasonCode: 'rate_limited', errorType: 'temporary' };
+    case 'provider_down': return { reasonCode: 'provider_outage', errorType: e.temporary ? 'temporary' : 'provider_outage' };
+    default: return null;
+  }
+}
 /** Everything run.ts hands a runner that runs a whole attempt itself (PlaceRunner.attempt). */
 export interface AttemptKit {
   timeoutMs: number;
@@ -134,14 +151,19 @@ export interface PlaceRunner {
 }
 
 /** Every place kind. A kind listed here with no plugin loaded is off: its routes are hidden. */
-export const PLACE_KINDS: readonly PlaceKind[] = ['local', 'comfy-cloud', 'comfy-router', 'fal', 'replicate', 'direct', 'sample'];
+export const PLACE_KINDS: readonly PlaceKind[] = ['local', 'comfy-cloud', 'comfy-router', 'fal', 'replicate', 'sunra', 'kie', 'direct', 'sample'];
 export const PLUGGABLE_KINDS: ReadonlySet<string> = new Set<string>(PLACE_KINDS);
 /** Queue places (one request per output through runner.run): any route of their kind runs, the route being the model slug (routing/runnable.ts). */
-export const QUEUE_PLACES: ReadonlySet<string> = new Set<PlaceKind>(['fal', 'replicate']);
+export const QUEUE_PLACES: ReadonlySet<string> = new Set<PlaceKind>(['fal', 'replicate', 'sunra', 'kie']);
+/** Places shipped as code but not in the desktop profile (installable: the user adds the line to their profile). Off unless a plugin registers
+ *  them, also in scripts and tests that run without booting. */
+export const INSTALLABLE_KINDS: ReadonlySet<string> = new Set<PlaceKind>(['kie']);
+/** Places whose routes are hidden until their key is set (nothing listed, quoted or picked by Auto before that). */
+export const KEY_GATED_KINDS: ReadonlySet<string> = new Set<PlaceKind>(['sunra', 'kie']);
 /** The plugin that registers each place (for "the place-… plugin is off" details). */
-export const PLACE_PLUGIN: Record<PlaceKind, string> = { local: 'place-comfy-local', 'comfy-cloud': 'place-comfy-cloud', 'comfy-router': 'place-comfy-router', fal: 'place-fal', replicate: 'place-replicate', direct: 'place-direct', sample: 'place-sample' };
+export const PLACE_PLUGIN: Record<PlaceKind, string> = { local: 'place-comfy-local', 'comfy-cloud': 'place-comfy-cloud', 'comfy-router': 'place-comfy-router', fal: 'place-fal', replicate: 'place-replicate', sunra: 'place-sunra', kie: 'place-kie', direct: 'place-direct', sample: 'place-sample' };
 /** job.remote kind → place kind. */
-const REMOTE_PLACE: Record<RemoteHandle['kind'], PlaceKind> = { fal: 'fal', replicate: 'replicate', direct: 'direct', router: 'comfy-router', cloud: 'comfy-cloud' };
+const REMOTE_PLACE: Record<RemoteHandle['kind'], PlaceKind> = { fal: 'fal', replicate: 'replicate', sunra: 'sunra', kie: 'kie', direct: 'direct', router: 'comfy-router', cloud: 'comfy-cloud' };
 /** The built-in places for code that runs without booting (scripts, tests): services/placesBuiltin.ts fills it when routing/run.ts loads.
  *  Not imported here, so the routing modules that read ctx.places (routes.ts, select.ts) don't pull every runner in at import time. */
 const BUILT_IN = new Map<string, PlaceRunner>();
@@ -177,7 +199,9 @@ export class Places {
   /** The place that stored this job.remote kind. */
   byRemote(kind: RemoteHandle['kind'] | null | undefined): PlaceRunner | undefined { return kind ? this.get(REMOTE_PLACE[kind]) : undefined; }
   /** A place kind whose plugin is off in this profile (without a boot every place is on, as in the desktop profile). */
-  off(kind: string | null | undefined): boolean { return this.managed && !!kind && PLUGGABLE_KINDS.has(kind) && !this.get(kind); }
+  off(kind: string | null | undefined): boolean { return !!kind && PLUGGABLE_KINDS.has(kind) && !this.get(kind) && (this.managed || INSTALLABLE_KINDS.has(kind)); }
+  /** A route of a key-gated place (Sunra, kie) while its key isn't set: hidden from lists, menus and Auto (findRoute still finds it). */
+  hidden(r: RouteDef): boolean { return KEY_GATED_KINDS.has(r.kind) && !this.ready(r); }
   list(): PlaceRunner[] { return PLACE_KINDS.map((k) => this.get(k)).filter((p): p is PlaceRunner => !!p); }
   /** The runner for this route, when it runs it (a 'direct' route without a lab connection runs through its tool's own code). */
   runnerOf(r: RouteDef): PlaceRunner | undefined { const p = this.get(r.kind); return p && (!p.handles || p.handles(r)) ? p : undefined; }

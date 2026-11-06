@@ -88,7 +88,7 @@ export function limitsOf(c: any) {
 /** Places a job can run (registry runOn), with their labels. Falls back to the documented list when the API is down. */
 export async function runOnPlaces(): Promise<{ id: string; label: string; billedTo: string }[]> {
   try { const r: any = await get('/api/models/registry'); if (Array.isArray(r?.runOn) && r.runOn.length) return r.runOn; } catch { /* below */ }
-  return ['local', 'comfy-cloud', 'fal', 'replicate', 'bfl', 'minimax', 'ltx', 'openai', 'google', 'byteplus', 'dashscope', 'luma', 'direct'].map((id) => ({ id, label: id, billedTo: id }));
+  return ['local', 'comfy-cloud', 'fal', 'replicate', 'sunra', 'kie', 'bfl', 'minimax', 'ltx', 'openai', 'google', 'byteplus', 'dashscope', 'luma', 'direct'].map((id) => ({ id, label: id, billedTo: id }));
 }
 
 /** API paths the MCP server calls. test/catalog.ts checks each one is in the server's /api/openapi.json, so a renamed route fails a test. */

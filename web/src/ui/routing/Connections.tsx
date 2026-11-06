@@ -38,12 +38,14 @@ import { SecretInput } from '../../shared/SecretInput';
 type Prov = { id: string; name: string; envKey?: string; configured: boolean; mockedKey?: boolean; keysUrl?: string; docsUrl?: string; keySetAt?: string | null; keySource?: 'saved' | 'env' | 'mock' | null; keyEnvVar?: string | null; keyFormat?: 'ok' | 'unexpected' | 'unchecked' | null; disabledReason?: string | null };
 type ProvList = { providers: Prov[]; canStoreKeys: boolean; storeKeysNote?: string };
 /** Card names (the settings list names some providers by their API; Connections uses the account name). */
-const NAME: Record<string, string> = { local: LOCAL_LABEL, comfy: 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', bfl: 'Black Forest Labs', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google Gemini API', byteplus: 'BytePlus ModelArk', dashscope: 'Alibaba Cloud', luma: 'Luma AI', hf: 'Hugging Face' };
+const NAME: Record<string, string> = { local: LOCAL_LABEL, comfy: 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', sunra: 'Sunra', kie: 'kie.ai · reseller, may change without notice', bfl: 'Black Forest Labs', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google Gemini API', byteplus: 'BytePlus ModelArk', dashscope: 'Alibaba Cloud', luma: 'Luma AI', hf: 'Hugging Face' };
 /** Billing id → run-on id (the models' runsOn rows). */
-const RUN_ON_OF: Record<string, string> = { local: 'local', comfy: 'comfy-cloud', fal: 'fal', replicate: 'replicate', bfl: 'bfl', minimax: 'minimax', ltx: 'ltx', openai: 'openai', google: 'google', byteplus: 'byteplus', dashscope: 'dashscope', luma: 'luma' };
+const RUN_ON_OF: Record<string, string> = { local: 'local', comfy: 'comfy-cloud', fal: 'fal', replicate: 'replicate', sunra: 'sunra', kie: 'kie', bfl: 'bfl', minimax: 'minimax', ltx: 'ltx', openai: 'openai', google: 'google', byteplus: 'byteplus', dashscope: 'dashscope', luma: 'luma' };
 /** Providers that are also model makers reuse the maker tile (web/src/shared/makers.ts); the rest get the tile's neutral glyph. */
 const MAKER_OF: Record<string, string> = { bfl: 'bfl', minimax: 'minimax', ltx: 'lightricks', openai: 'openai', google: 'google', byteplus: 'bytedance', luma: 'luma', comfy: 'comfy', fal: 'fal', dashscope: 'alibaba-qwen' };
-const MAIN_DIRECT = ['fal', 'replicate', 'openai', 'google', 'byteplus', 'bfl', 'minimax', 'ltx']; const MORE_DIRECT = ['dashscope', 'luma'];
+/** Places whose models stay hidden until their key is set (server services/places.ts KEY_GATED_KINDS): their card always shows, so the key can be added. */
+const KEY_GATED = ['sunra', 'kie'];
+const MAIN_DIRECT = ['fal', 'replicate', 'sunra', 'openai', 'google', 'byteplus', 'bfl', 'minimax', 'ltx']; const MORE_DIRECT = ['dashscope', 'luma', 'kie' /* installable: listed only when place-kie is on */];
 /** C7: one chip for the failed-run rule; the provider's own sentence is the tooltip. */
 const RULE_CHIP: Record<FailureRule, [string, 'ok' | 'warn' | 'calm']> = { 'not-charged': ['Failed runs: not charged', 'ok'], 'may-charge': ['Failed runs: may be charged', 'warn'], unknown: ['Failed runs: not published', 'calm'] };
 
@@ -91,9 +93,10 @@ export function Connections() {
   const toggleLocal = () => void putGlobal({ useLocal: !useLocal });
   // Other providers (2026-10-27): a direct account whose models all run on Comfy (or here) is hidden unless Show other providers is on (Settings → Routing);
   // a saved key keeps its card (and keeps working). The server hides the same places from the model menus (server routing/hiddenPlaces.ts).
-  const showOther = !!rt?.global?.showOtherProviders; const needed = (id: string) => showOther || unlocks(tools, RUN_ON_OF[id]).n > 0 || (!!prov(id)?.configured && !prov(id)?.mockedKey);
+  const showOther = !!rt?.global?.showOtherProviders; const needed = (id: string) => showOther || KEY_GATED.includes(id) || unlocks(tools, RUN_ON_OF[id]).n > 0 || (!!prov(id)?.configured && !prov(id)?.mockedKey);
   const hiddenDirect = tools.length ? [...MAIN_DIRECT, ...MORE_DIRECT].filter(id => prov(id) && !needed(id)) : [];
-  const card = (id: string) => <KeyCard key={id} p={prov(id)} info={info(id)} acct={acct(id)} canStore={!!d?.canStoreKeys && !SAMPLE_SITE} unlock={unlocks(tools, RUN_ON_OF[id])} onDone={after} hostedOff={owOnly} />;
+  const card = (id: string) => { const u = unlocks(tools, RUN_ON_OF[id]); // a key-gated place lists its models only once its key is set: say so instead of "nothing runs here"
+    return <KeyCard key={id} p={prov(id)} info={info(id)} acct={acct(id)} canStore={!!d?.canStoreKeys && !SAMPLE_SITE} unlock={u} onDone={after} hostedOff={owOnly} factsLine={KEY_GATED.includes(id) && !u.n ? 'Its models show up in Run on once your key is set' : undefined} />; };
   return <section className="prov-settings conn set-sec" id="connections" data-testid="providers-settings" aria-labelledby="conn-h" aria-busy={!d || !rt}>
     <span id="providers" className="conn-anchor" aria-hidden />
     <h2 id="conn-h">Connections</h2>

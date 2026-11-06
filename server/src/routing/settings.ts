@@ -13,6 +13,7 @@ import { invalidateTools } from '../toolsCache.js';
 import { openWeightsOnly } from '../providers.js';
 import { aKey } from '../shared/modelIds.js';
 import { FAL_ENV, REPLICATE_ENV, COMFY_ENV } from './routes.js';
+import { places } from '../services/places.js';
 export interface ProviderSetting { id: string; name: string; envKey: string; envAliases: string[]; configured: boolean; mockedKey?: boolean; docsUrl: string; keysUrl: string;
   /** Runs open weights: local ComfyUI (always) and Comfy (Comfy Cloud runs our open graphs; its partner/API nodes are not open weights). Everything else is a hosted API. */
   openWeights: boolean; openWeightsNote: string | null;
@@ -31,6 +32,10 @@ const P: Omit<ProviderSetting, 'configured' | 'openWeights' | 'openWeightsNote' 
   { id: 'comfy', name: 'Comfy Cloud (one key)', /* BH9 P1-8: was 'Comfy API (partner nodes / Router / Cloud)' */ envKey: COMFY_ENV, envAliases: [], docsUrl: 'https://docs.comfy.org/tutorials/partner-nodes/overview', keysUrl: 'https://platform.comfy.org/profile/api-keys' },
   { id: 'fal', name: 'fal', envKey: FAL_ENV, envAliases: ['FAL_KEY'], docsUrl: 'https://docs.fal.ai/model-apis/model-endpoints/queue', keysUrl: 'https://fal.ai/dashboard/keys' },
   { id: 'replicate', name: 'Replicate', envKey: REPLICATE_ENV, envAliases: ['REPLICATE_API_TOKEN'], docsUrl: 'https://replicate.com/docs/reference/http', keysUrl: 'https://replicate.com/account/api-tokens' },
+  /** Sunra (place-sunra, 2026-11-06): its routes stay hidden until this key is set. */
+  { id: 'sunra', name: 'Sunra', envKey: 'OPENHIGGSFIELD_SUNRA_KEY', envAliases: [], docsUrl: 'https://docs.sunra.ai/multimodal/queue', keysUrl: 'https://sunra.ai/dashboard/api-tokens' },
+  /** kie.ai (place-kie, installable only): listed only when the plugin is in the profile (providerSettings). */
+  { id: 'kie', name: 'kie.ai · reseller, may change without notice', envKey: 'OPENHIGGSFIELD_KIE_KEY', envAliases: [], docsUrl: 'https://docs.kie.ai/market/common/get-task-detail', keysUrl: 'https://kie.ai/api-key' },
   { id: 'minimax', name: 'MiniMax (direct API)', envKey: 'OPENHIGGSFIELD_MINIMAX_API_KEY', envAliases: [], docsUrl: 'https://platform.minimax.io/docs/guides/video-generation', keysUrl: 'https://platform.minimax.io/user-center/basic-information/interface-key' },
   { id: 'ltx', name: 'LTX (direct API)', envKey: 'OPENHIGGSFIELD_LTX_API_KEY', envAliases: [], docsUrl: 'https://docs.ltx.io/', keysUrl: 'https://docs.ltx.io/quickstart' /* "Sign in to the Developer Console to create your API key" */ },
   // Official lab APIs, batch 2 (2026-10-23)
@@ -82,7 +87,7 @@ function keyMeta(p: { id: string; envKey: string; envAliases: string[] }, config
   const sv = (getKv<Record<string, SavedKey>>(KEYS_KV, {}) ?? {})[p.id]; const saved = !!sv && sv.fp === fpOf(v);
   return { keySetAt: saved ? sv.setAt : null, keyHint: keyHintOf(v), keySource: saved ? 'saved' as const : 'env' as const, keyEnvVar: ev, keyFormat: keyFormatOf(p.id, v) };
 }
-export const providerSettings = (): ProviderSetting[] => P.map((p) => { const real = !!p.envKey && !!keyVarInUse([p.envKey, ...p.envAliases]); const conf = !!p.envKey && keyConfigured(p.envKey, p.envAliases);
+export const providerSettings = (): ProviderSetting[] => P.filter((p) => !(p.id === 'kie' && places.off('kie')) /* installable: only with place-kie on */).map((p) => { const real = !!p.envKey && !!keyVarInUse([p.envKey, ...p.envAliases]); const conf = !!p.envKey && keyConfigured(p.envKey, p.envAliases);
   // Item 5: only local ComfyUI is badged open weights; 'Comfy API (partner nodes …)' is an API provider. Its key still runs open Comfy Cloud
   // graphs (cloud-*-wf, providerGroup 'Comfy Cloud' per route), so open-weights-only mode keeps it enabled.
   const ow = p.id === 'local'; const owOnlyOk = ow || p.id === 'comfy' || ACCOUNT_ONLY.has(p.id);
