@@ -73,7 +73,7 @@ Options:
 | `--serial` | one at a time (slow, but the simplest to read) |
 | `--timeout 300` | stop a test after 300 seconds (default 240) |
 | `--shard 2/6` | run the 2nd of 6 equal parts (what CI uses) |
-| `--save-times` | remember how long each test took in `scripts/test-times.json` (used to start long tests first and to split shards evenly) |
+| `--save-times` | remember how long each test took in `scripts/test-times.json` (used to start long tests first and to split shards evenly). The file holds CI times (median `ok … (Ns)` lines of recent full runs), so refresh it from CI logs rather than from a fast laptop |
 
 ### Why tests don't get in each other's way
 
