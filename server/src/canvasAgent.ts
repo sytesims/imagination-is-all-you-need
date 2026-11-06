@@ -559,6 +559,8 @@ async function executePublicOp(boardId: string, op: Op, req: FastifyRequest | nu
   return { ok: true, result: { ...r.result, ...(arrowId ? { arrowId } : {}) } };
 }
 
+/** The demo's line when nothing in a step can run here (the proposal's own reason already starts "None of these…" when several cards are skipped). */
+const noneRunWords = (reason: string | null | undefined) => { const why = String(reason ?? 'no model for them on this server').replace(/\.$/, ''); return /^None of these/.test(why) ? `${why}.` : `None of these can run here yet: ${why}.`; };
 async function proposeRun(boardId: string, op: { card_ids: string[]; note?: string }, req: FastifyRequest | null, by: 'mcp' | 'demo' | 'user' = 'mcp'): Promise<OpResult> {
   const budget = req ? budgetOfRequest(req) : null;
   if (budget && 'error' in budget) return { ok: false, error: budget.error, code: 'agent_budget_unknown' };
@@ -703,7 +705,7 @@ async function runDemo(run: DemoRun, plan: DemoPlan) {
       const pr = await proposeRun(boardId, { card_ids: phaseIds, note: phase.note }, null, 'demo');
       if (!pr.ok) { say(`I couldn’t price these cards: ${pr.error.replace(/\.$/, '')}. They stay on the board as drafts.`, { error: true }); return; }
       const p: Proposal = pr.result.proposal; runProposals.add(p.id);
-      if (!p.runCardIds.length) { say(`None of these can run here yet: ${String(p.reason ?? 'no model for them on this server').replace(/\.$/, '')}. They stay on the board as drafts.`, { error: true }); return; }
+      if (!p.runCardIds.length) { say(`${noneRunWords(p.reason)} They stay on the board as drafts.`, { error: true }); return; }
       const nRuns = p.items.filter((i) => p.runCardIds.includes(i.cardId)).reduce((a, i) => a + (Number(i.quote?.runs) > 1 ? Number(i.quote.runs) : 1), 0); /* a Material Swap card runs once per swatch */
       /* every paid step is its own decision: a later step says plainly it is a new run, and nothing goes on until its own Go */
       const k = plan.phases.indexOf(phase); const n = plan.phases.length;
@@ -828,7 +830,7 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
     const pr = await proposeRun(boardId, { card_ids: ids, note }, null, 'demo');
     if (!pr.ok) { say(`I couldn’t price these cards: ${pr.error.replace(/\.$/, '')}. They stay on the board as drafts.`, { error: true }); return null; }
     const p: Proposal = pr.result.proposal; runProposals.add(p.id);
-    if (!p.runCardIds.length) { say(`None of these can run here yet: ${String(p.reason ?? 'no model for them on this server').replace(/\.$/, '')}. They stay on the board as drafts.`, { error: true }); return null; }
+    if (!p.runCardIds.length) { say(`${noneRunWords(p.reason)} They stay on the board as drafts.`, { error: true }); return null; }
     say(`That’s ${plural(p.runCardIds.length, 'run')} (${priceWords(p)}).${skipNote(p)} Press Go when you’re ready, or Generate on any card yourself.`, { proposalId: p.id, waiting: true });
     let tick = 0;
     while (p.status === 'pending' && alive()) {
