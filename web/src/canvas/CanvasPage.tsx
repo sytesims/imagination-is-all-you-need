@@ -5,7 +5,7 @@
  * The AI dock (AgentPanel) sits on the left, 380 px, open by default; the board fills the rest and builds live as the agent works,
  * with a Follow agent toggle in the top bar.
  */
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { navigate, useSearch } from '../platform/router';
 import { BarPopover, PopSection, PopRow } from '../shared/BarPop';
 import { askConfirm, askText } from '../shared/Dialog';
@@ -22,10 +22,13 @@ import { CardPanel } from './CardPanel'; /* MOCKUP: the card panel */
 import { BOARD_LOOKS, boardLookAtom, setBoardLook } from './boardLook';
 import { BoardIcon, ChevronIcon, PanelIcon } from './icons';
 import { PlusIcon, PencilIcon, TrashIcon, SparkleIcon } from '../ui/Icons';
+import { canvasEngine, engineInUrl, saveEngine, savedEngine, type CanvasEngine } from './rf/engine';
 import './canvas.css';
 import './generate.css';
 import './node.css';
 
+/* the React Flow engine (behind the switch, rf/engine.ts): its own chunk, loaded only when it is on */
+const RfBoard = lazy(() => import('./rf/RfBoard'));
 const LAST = 'ohf-canvas-last-board';
 const AGENT_OPEN = 'ohf-canvas-dock-open'; /* the left dock (2026-10-26): a new key, so everyone starts with it open */
 const readLast = () => { try { return localStorage.getItem(LAST); } catch { return null; } };
@@ -61,6 +64,7 @@ function BoardSwitcher({ boards, current, save, onPick, onNew, onRename, onDelet
         </div>
       </PopSection>
       <LookSection />
+      <EngineSection />
       <PopSection>
         <div className="cv-board-actions" role="menu" aria-label="Board actions">
           <PopRow role="menuitem" icon={<PlusIcon size={16} />} label="New board" onClick={run(onNew)} testId="cv-board-new" />
@@ -70,6 +74,18 @@ function BoardSwitcher({ boards, current, save, onPick, onNew, onRename, onDelet
       </PopSection>
     </BarPopover>
   </div>;
+}
+
+/** Which engine draws the board (dev builds, or once the new one is on): Classic (tldraw) or the React Flow preview. Kept in this browser. */
+function EngineSection() {
+  const now = canvasEngine(); if (!(import.meta as any).env?.DEV && now !== 'rf' && savedEngine() !== 'rf') return null;
+  const pick = (e: CanvasEngine) => { saveEngine(e); const q = new URLSearchParams(location.search); q.delete('engine'); location.search = q.toString(); };
+  return <PopSection label="Board engine">
+    <div className="cv-looks" role="radiogroup" aria-label="Board engine" data-testid="cv-engine">
+      {([['tldraw', 'Classic', 'Today’s board'], ['rf', 'New (preview)', 'React Flow, being tested']] as const).map(([id, label, hint]) =>
+        <button key={id} type="button" role="radio" aria-checked={now === id} className={`cv-look${now === id ? ' on' : ''}`} data-testid={`cv-engine-${id}`} title={hint} onClick={() => pick(id)}><b>{label}</b></button>)}
+    </div>
+  </PopSection>;
 }
 
 /** The board's background look (Space, Haze, Night), kept in this browser. */
@@ -88,7 +104,8 @@ export default function CanvasPage() {
   const want = new URLSearchParams(search).get('board');
   const [boards, setBoards] = useState<BoardSummary[] | null>(null); const [board, setBoard] = useState<BoardDoc | null>(null);
   const [err, setErr] = useState(''); const [save, setSave] = useState<SaveState>('saved'); const [drawer, setDrawer] = useState(false); const [ask] = useState(() => new URLSearchParams(location.search).get('ask') ?? '') /* Explore's Ask an agent: read before the board link replaces the URL */; const [agentOpen, setAgentOpen] = useState(() => readAgentOpen() || !!ask); const [agentBusy, setAgentBusy] = useState(false); const [boardApi, setBoardApi] = useState<BoardApi | null>(null); const [panelOn, setPanelOn] = useState(false);
-  const go = (id: string, replace = false) => navigate(`/canvas?board=${encodeURIComponent(id)}`, { replace });
+  const [engine] = useState(canvasEngine); const [urlEngine] = useState(engineInUrl);
+  const go = (id: string, replace = false) => navigate(`/canvas?board=${encodeURIComponent(id)}${urlEngine ? `&engine=${urlEngine}` : ''}`, { replace });
 
   const refresh = useCallback(() => listBoards().then(bs => { setBoards(bs); return bs; }), []);
   /* pick the board to open */
@@ -124,7 +141,8 @@ export default function CanvasPage() {
   return <div className={`cv-root${agentOpen ? ' cv-agent-open' : ''}`} style={rootStyle} data-testid="canvas-page">
     {err ? <div className="cv-msg"><p>{err}</p><button type="button" className="cv-empty-btn" onClick={() => navigate(`/canvas${search}`, { replace: true })}>Try again</button></div>
       : board && current ? <>
-        <Board key={board.id} onBoard={setBoardApi} board={board} onSaveState={setSave} onSaved={onSaved} drawerOpen={drawer} setDrawerOpen={setDrawer} onProject={onProject} />
+        {engine === 'rf' ? <Suspense fallback={<div className="cv-msg"><Skeleton variant="tiles" count={3} /></div>}><RfBoard key={board.id} onBoard={setBoardApi} board={board} onSaveState={setSave} onSaved={onSaved} drawerOpen={drawer} setDrawerOpen={setDrawer} onProject={onProject} /></Suspense>
+          : <Board key={board.id} onBoard={setBoardApi} board={board} onSaveState={setSave} onSaved={onSaved} drawerOpen={drawer} setDrawerOpen={setDrawer} onProject={onProject} />}
         <div className="cv-topl">
           {!agentOpen && <button type="button" className={`cv-agent-btn${agentBusy ? ' busy' : ''}`} aria-pressed={false} aria-label="Show the AI panel" data-testid="cv-agent-toggle" onClick={toggleAgent}><SparkleIcon size={16} /><span>AI</span>{agentBusy && <i className="cv-agent-dot" aria-hidden />}</button>}
           <BoardSwitcher boards={boards ?? []} current={current} save={save} onPick={id => id !== board.id && go(id)} onNew={onNew} onRename={onRename} onDelete={onDelete} /><SpendChip boardId={board.id} /><FollowToggle busy={agentBusy} />

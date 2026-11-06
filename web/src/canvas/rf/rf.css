@@ -1,0 +1,74 @@
+/* The React Flow board (RfBoard.tsx, behind the engine switch). Our look through our tokens; React Flow's base.css only for layout,
+   never its default node / edge styles. Card looks stay in node.css (scoped to :is(.tl-container,.cv-rf)). */
+.cv-rf{overflow:hidden;background:#0F1113;font-family:var(--font-ui,Inter,system-ui,sans-serif);font-size:12px;color:var(--text-1,#F7F7F8)}
+.cv-rf .react-flow{position:absolute;inset:0;--xy-background-color:transparent;background:transparent}
+.cv-rf .react-flow__renderer,.cv-rf .react-flow__pane{background:transparent}
+.cv-rf .react-flow__pane{cursor:default}
+.cv-rf .react-flow__pane.draggable,.cv-rf[data-tool=hand] .react-flow__pane{cursor:grab}
+.cv-rf .react-flow__pane.dragging{cursor:grabbing}
+.cv-rf .react-flow__node{cursor:default;border:0;padding:0;background:none;box-shadow:none;border-radius:0;color:inherit;font:inherit;text-align:left}
+.cv-rf .react-flow__node:focus,.cv-rf .react-flow__node:focus-visible{outline:none}
+.cv-rf .react-flow__edges svg{overflow:visible}
+.cv-rf .react-flow__edge{cursor:pointer}
+.cv-rf .react-flow__edge .react-flow__edge-interaction{pointer-events:stroke}
+.cv-rf .lk.sel .lk-thread{stroke:var(--accent,#FF7A1A);stroke-opacity:.95}
+.cv-rf .lk.sel .lk-bridge{stroke:var(--accent,#FF7A1A)}
+
+/* a card inside its node: the wrappers tldraw gave it (node.css and the agent's effects key on .tl-shape[data-shape-id]) */
+.cv-rf .tl-shape.cv-rf-shape{position:relative;width:100%;height:100%;pointer-events:all;overflow:visible;contain:none;transform:none}
+.cv-rf .tl-shape.cv-rf-shape>.tl-html-container{position:absolute;inset:0;width:100%;height:100%;color:var(--text-1,#F7F7F8);transform:none}
+.cv-rf .react-flow__node-card .tl-html-container>*{height:100%}
+/* links need two ends on every node; they are never shown and never grabbed */
+.cv-rf .react-flow__handle.cv-rf-end{opacity:0;pointer-events:none;width:1px;height:1px;min-width:0;min-height:0;border:0;background:none}
+
+/* selection box and resize handles: the board's orange, calm */
+.cv-rf .react-flow__selection,.cv-rf .react-flow__nodesselection-rect{background:rgba(255,122,26,.06);border:1px solid rgba(255,122,26,.55);border-radius:2px}
+.cv-rf .react-flow__nodesselection-rect{background:transparent;border-color:transparent}
+.cv-rf .react-flow__resize-control.cv-rf-line{border-color:rgba(255,122,26,.55)}
+.cv-rf .react-flow__resize-control.cv-rf-line-quiet{border-color:transparent}
+.cv-rf .react-flow__resize-control.handle.cv-rf-handle-dot{width:calc(9px * max(1, var(--tl-scale,1)));height:calc(9px * max(1, var(--tl-scale,1)));border-radius:2px;background:#F7F7F8;border:1.5px solid var(--accent,#FF7A1A);box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.cv-rf .react-flow__resize-control.handle.cv-rf-handle-dot:not(.top.left):not(.top.right):not(.bottom.left):not(.bottom.right){display:none}
+
+/* sticky notes: tldraw's paper colours */
+.cv-sticky{box-sizing:border-box;transform-origin:0 0;padding:18px 20px;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.4);color:#1d1d1d;font-weight:500;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--font-ui,Inter,sans-serif)}
+.cv-sticky.sel{box-shadow:0 0 0 calc(2px * max(1, var(--tl-scale,1))) var(--accent,#FF7A1A),0 14px 34px rgba(0,0,0,.4)}
+.cv-sticky-ph{opacity:.4}
+.cv-sticky-edit{display:block;width:100%;min-height:1.35em;field-sizing:content;resize:none;border:0;outline:0;padding:0;margin:0;background:transparent;color:inherit;font:inherit;line-height:inherit;overflow:hidden}
+.cv-sticky.c-yellow{background:#FEE590}.cv-sticky.c-orange{background:#F2913F}.cv-sticky.c-red{background:#FF9D9D}.cv-sticky.c-green{background:#A9E8B4}.cv-sticky.c-blue{background:#9CC6FF}
+.cv-sticky.c-violet{background:#D0B6FF}.cv-sticky.c-grey{background:#D7D9DC}.cv-sticky.c-black{background:#2A2C30;color:#F7F7F8}.cv-sticky.c-white{background:#F7F7F8}
+.cv-sticky.c-light-blue{background:#BEE3FF}.cv-sticky.c-light-green{background:#CDEFC7}.cv-sticky.c-light-red{background:#FFC6C6}.cv-sticky.c-light-violet{background:#E6D6FF}
+/* D3 options (dev only, ?rfopt=sticky:card|minimal) */
+.cv-sticky.as-card{background:var(--surface-1,#131517)!important;color:var(--text-1,#F7F7F8);border:1px solid rgba(255,255,255,.08);border-left:4px solid var(--sticky,#FEE590);border-radius:18px;font-size:.8em!important}
+.cv-sticky.as-card.c-orange{--sticky:#F2913F}.cv-sticky.as-card.c-blue{--sticky:#9CC6FF}.cv-sticky.as-card.c-green{--sticky:#A9E8B4}.cv-sticky.as-card.c-red{--sticky:#FF9D9D}.cv-sticky.as-card.c-violet{--sticky:#D0B6FF}
+.cv-sticky.as-minimal{background:transparent!important;box-shadow:none;color:var(--text-1,#F7F7F8);border-left:2px solid rgba(255,255,255,.25);border-radius:0;padding:4px 14px}
+
+/* frames: a quiet outline, the name above (today's tldraw frame look) */
+.cv-frame{box-sizing:border-box;position:absolute;inset:0;border:calc(1px * max(1, var(--tl-scale,1))) solid rgba(255,255,255,.14);background:rgba(255,255,255,.018);border-radius:4px;pointer-events:none}
+.cv-frame.sel{border-color:rgba(255,122,26,.7)}
+.cv-frame-name{position:absolute;left:0;bottom:100%;margin-bottom:calc(6px * var(--tl-scale,1));transform:scale(min(var(--tl-scale,1),5));transform-origin:0 100%;font:600 15px/1 var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.005em;color:var(--text-1,#F7F7F8);background:rgba(15,17,19,.55);padding:3px 9px;border-radius:7px;white-space:nowrap;pointer-events:all;cursor:default}
+.cv-rf .react-flow__node-frame .react-flow__resize-control{pointer-events:all}
+
+/* a link card (an old board's bookmark) */
+.cv-linkcard{box-sizing:border-box;width:100%;height:100%;display:flex;flex-direction:column;gap:6px;overflow:hidden;padding:0 0 12px;border-radius:18px;background:var(--surface-1,#131517);border:1px solid rgba(255,255,255,.08);box-shadow:0 20px 52px rgba(0,0,0,.4)}
+.cv-linkcard.sel{border-color:rgba(255,122,26,.55)}
+.cv-linkcard img,.cv-linkcard-ph{width:100%;flex:1;min-height:0;object-fit:cover;background:rgba(255,255,255,.04)}
+.cv-linkcard b{padding:0 14px;font:600 14px/1.3 var(--font-ui,Inter,sans-serif)}
+.cv-linkcard p{margin:0;padding:0 14px;color:var(--text-2,#898A8B);font-size:12px;line-height:1.4;max-height:3.4em;overflow:hidden}
+.cv-linkcard a{padding:0 14px;color:var(--accent,#FF7A1A);font-size:12px;text-decoration:none}
+.cv-rf-unknown{box-sizing:border-box;width:100%;height:100%;display:grid;place-items:center;border:1px dashed rgba(255,255,255,.2);border-radius:14px;color:var(--text-2,#898A8B);font-size:13px;padding:12px;text-align:center}
+
+/* the agent's cursor, outline and laser */
+.cv-rf-agent{position:absolute;left:0;top:0;pointer-events:none;z-index:2000}
+.cv-rf-agent-sel{position:absolute;border:solid rgba(255,122,26,.8)}
+.cv-rf-laser{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
+.cv-rf-laser polyline{fill:none;stroke:#FF4D3D;stroke-linecap:round;stroke-linejoin:round;opacity:.85;filter:drop-shadow(0 0 6px rgba(255,77,61,.6))}
+.cv-rf-cursor{position:absolute;left:0;top:0;transform-origin:0 0;transition:none}
+.cv-rf-tag{position:absolute;left:16px;top:18px;display:flex;flex-direction:column;gap:2px;white-space:nowrap}
+.cv-rf-tag b{font:700 11px/14px var(--font-ui,Inter,sans-serif);letter-spacing:.02em;color:#FF7A1A;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.cv-rf-tag em{font:600 12px/16px var(--font-ui,Inter,sans-serif);font-style:normal;padding:4px 9px;border-radius:999px;background:#FF7A1A;color:#14151A;box-shadow:0 6px 18px rgba(255,122,26,.28),0 2px 6px rgba(0,0,0,.35);max-width:260px;overflow:hidden;text-overflow:ellipsis}
+
+/* React Flow's attribution: visible (free tier), quiet, on brand */
+.cv-rf .react-flow__attribution{background:transparent;padding:2px 8px;margin:0 0 6px 64px;font-size:10px;opacity:.55}
+.cv-rf .react-flow__attribution a{color:var(--text-2,#898A8B);text-decoration:none}
+.cv-rf-minimap{border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
+.cv-rf-dropped{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);margin:0;padding:6px 12px;border-radius:999px;background:rgba(20,21,26,.82);border:1px solid rgba(255,255,255,.08);color:var(--text-2,#898A8B);font-size:12px;pointer-events:none;z-index:5}

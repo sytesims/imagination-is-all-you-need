@@ -11,8 +11,15 @@
  * The reactive pieces (atom, useValue, useReactor) and useBoardApi come from the engine too: a value read inside useValue re-renders the
  * component when the board (or an atom) changes.
  */
-import { createContext } from 'react';
-export { atom, useValue, useReactor, useBoardApi, useToolButton, type Atom } from './boardApiTldraw';
+import { createContext, useContext } from 'react';
+import { useToolButton as useTldrawToolButton } from './boardApiTldraw';
+export { atom, useValue, useReactor, useBoardApi, type Atom } from './boardApiTldraw';
+
+/** A toolbar button's tool: is it there, is it on, pick it. */
+export interface ToolButtonState { available: boolean; on: boolean; pick: () => void }
+/** The engine's own tool hook (the React Flow board provides one; without it, tldraw's tool list). Fixed for a mounted board. */
+export const ToolHookContext = createContext<((id: string) => ToolButtonState) | null>(null);
+export function useToolButton(id: string): ToolButtonState { const own = useContext(ToolHookContext); return (own ?? useTldrawToolButton)(id); }
 
 export type NodeId = string;
 export type LinkId = string;
