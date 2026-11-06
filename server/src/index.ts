@@ -716,8 +716,8 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
       return reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: ROUTE_CHANGED_MSG, userMessage: ROUTE_CHANGED_MSG, detail: 'Review the new price and press Generate again.', charged: false, calm: true, quote, quotedCredits: qc, credits: nowCost, dearer: true,
         refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }); // P2 (BUG-HUNT-8 #6): says nothing was charged; calm = not an error
     } }
-  // The spend guard (spendGuard.ts) prices the run and writes its Spend row; it never refuses (spending limits were removed 2026-10-28). What caps spend:
-  // the quote the user saw (quotedCredits above), their OK, and an optional agent budget (admitAgentRun below).
+  // The spend guard (spendGuard.ts) prices the run and writes its Spend row, and refuses (402 spend_cap) a paid run past the optional monthly limit.
+  // Also capping spend: the quote the user saw (quotedCredits above), their OK, and an optional agent budget (admitAgentRun below).
   const sg = await spendGuard(reply, { kind: routed ? routed.first.kind : isLocalFree(prov.kind) ? 'local' : 'direct', routeId: routed?.first.routeId ?? null, credits: routedCost ?? cost, demo: !!routed?.routing.demo, free: wantFree });
   if ('sent' in sg) return sg.sent; const runCost = sg.runCost;
   if (!wantFree && !canAfford(routedCost ?? cost)) {
@@ -1136,7 +1136,7 @@ app.post<{ Params: { id: string }; Body: { output?: number; mode?: string } | un
   const inp = input as Record<string, any>; inp.upscaleOf = j.id; inp.upscaleOutput = idx;
   const prov = getProvider(up.providers[0]); const provId = prov?.id ?? 'comfy-open';
   const est = estimateSeconds(up, inp, 1, provId); const cost = isLocalFree(prov?.kind) ? 0 : est;
-  // S-01: the submit's spend guard (the run's cost + Spend row; it never refuses since spending limits were removed 2026-10-28) and the agent budget.
+  // S-01: the submit's spend guard (the run's cost + Spend row; refuses a paid run past the optional monthly limit) and the agent budget.
   // The upscale engines today are local (SeedVR2, $0) and FLUX 3 Upscaler is coming soon; a hosted upscale route is covered the day it lands.
   const sg = await spendGuard(reply, { kind: isLocalFree(prov?.kind) ? 'local' : 'direct', routeId: null, credits: cost, demo: false, free: false }); if ('sent' in sg) return sg.sent;
   if (!canAfford(cost)) return reply.code(402).send({ error: `Not enough credits: needs ${cost}, balance ${getBalance()}.`, errorType: 'credits' });
