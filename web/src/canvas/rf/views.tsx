@@ -27,7 +27,8 @@ import { reducedMotion } from '../agentHand';
 import { richTextPlain, richTextOf } from '../../../../server/src/shared/boardDoc';
 import { sizeOf, NOTE_SIZE } from './docMap';
 import type { BoardStore } from './store';
-import { PosterCard } from './PosterCard';
+import { PosterCard, TextPoster } from './PosterCard';
+import { PROMPT_TYPE, NOTE_TYPE } from '../nodeTypes';
 import { isPoster, posterRatio, ratioAtom } from './poster';
 import { posterPorts, posterPortY } from './posterPorts';
 
@@ -59,6 +60,11 @@ export const CardNode = memo(function CardNode({ id, selected, width }: NodeProp
   const ratio = useValue('rf card ratio', () => { const s = board.getNode(id); return s ? posterRatio(s as any, ratioAtom.get()) : null; }, [board, id]);
   if (!n) return null;
   /* release 1: generate cards, results and uploads with a file are posters (the picture is the card) */
+  if (n.type === PROMPT_TYPE || n.type === NOTE_TYPE) return <>
+    <Resizer id={id} type={n.type} selected={!!selected} />
+    <div className="tl-shape cv-rf-shape" data-shape-id={id} data-shape-type={n.type}><TextPoster id={id as NodeId} selected={!!selected} kind={n.type === NOTE_TYPE ? 'note' : 'prompt'} /></div>
+    <Ends />
+  </>;
   if (isPoster(n as any)) return <>
     <Resizer id={id} type={n.type} selected={!!selected} ratio={ratio} />
     <div className="tl-shape cv-rf-shape" data-shape-id={id} data-shape-type={n.type}><PosterCard id={id as NodeId} selected={!!selected} w={width ?? (Number((n.props as any).w) || 340)} /></div>
@@ -89,7 +95,8 @@ export const StickyNode = memo(function StickyNode({ id, selected }: NodeProps) 
   if (!n) return null;
   const { w, h } = sizeOf(n as any);
   const set = (t: string) => store.tx(() => board.patchNode(id, { props: { richText: richTextOf(t) } }));
-  const look = opt.sticky === 'card' ? ' as-card' : opt.sticky === 'minimal' ? ' as-minimal' : '';
+  /* release 1 (user, 6 Nov): a sticky note is a text poster too, tinted by its colour; ?rfopt=sticky:paper keeps the paper look */
+  const look = opt.sticky === 'card' ? ' as-card' : opt.sticky === 'minimal' ? ' as-minimal' : opt.sticky === 'paper' ? '' : ' as-poster';
   return <div className="tl-shape cv-rf-shape" data-shape-id={id} data-shape-type="note">
     <div className={`cv-sticky c-${p.color ?? 'yellow'}${selected ? ' sel' : ''}${look}`} style={{ width: w / scale, minHeight: h / scale, transform: `scale(${scale})`, fontSize: NOTE_FONT[p.size] ?? 22 }}
       onDoubleClick={() => { store.history.mark('edit note'); store.setView({ editing: id }); }} data-testid="rf-sticky">

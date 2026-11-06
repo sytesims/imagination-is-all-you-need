@@ -2,7 +2,7 @@
 // counts, deleted choices drop out, the edge chip, the server's timeout) and the Ctrl / ⌘ + wheel zoom curve.
 // Run: cd server && npx tsx test/canvas-card-look.test.ts
 import assert from 'node:assert/strict';
-const { autoTitle, promptTitle } = await import('../../web/src/canvas/cardLook.ts');
+const { autoTitle, promptTitle, failHeadline } = await import('../../web/src/canvas/cardLook.ts');
 const { pickFromSelection, livePickChoices, pickOffscreen } = await import('../../web/src/canvas/pickAsk.ts');
 const { wheelZoomFactor, wheelPixels, zoomAround, ZOOM_STEP_MAX } = await import('../../web/src/canvas/rf/zoom.ts');
 const { pickExpired } = await import('../src/canvasAgent.ts');
@@ -13,21 +13,30 @@ assert.equal(autoTitle({ kind: 'gen', name: '  Hero close-up ', prompt: 'anythin
 assert.equal(autoTitle({ kind: 'gen', flow: 'material-swap', inputs: [{ label: 'Armchair' }, { label: 'velvet.jpg', many: true }] }), 'Velvet armchair');
 assert.equal(autoTitle({ kind: 'gen', flow: 'material-swap', inputs: [{ label: 'armchair.png' }, { label: 'velvet', many: true }, { label: 'gold', many: true }] }), '2 materials armchair');
 assert.equal(autoTitle({ kind: 'gen', flow: 'material-swap', inputs: [{ label: 'Armchair' }], flowName: 'Material Swap' }), 'Armchair', 'no swatch yet: the object');
-assert.equal(autoTitle({ kind: 'gen', flow: 'create-image', prompt: 'A red coat in a white studio, soft light', flowName: 'Create Image' }), 'Red coat white');
-assert.equal(autoTitle({ kind: 'gen', flow: 'animate', prompt: 'She crosses the neon street, slow push-in, rain on the lens.' }), 'Crosses neon street');
+assert.equal(autoTitle({ kind: 'gen', flow: 'create-image', prompt: 'A red coat in a white studio, soft light', flowName: 'Create Image' }), 'Red coat in a white studio', 'small words stay; only a leading article goes');
+assert.equal(autoTitle({ kind: 'gen', flow: 'animate', prompt: 'She crosses the neon street, slow push-in, rain on the lens.' }), 'She crosses the neon street');
 assert.equal(autoTitle({ kind: 'gen', flow: 'create-image', prompt: '   ', flowName: 'Create Image' }), 'Create Image', 'an empty prompt: the workflow');
 assert.equal(autoTitle({ kind: 'gen', prompt: '' }), 'Generate');
 assert.equal(autoTitle({ kind: 'upload', fileName: 'kaito_sheet.final.png' }), 'kaito sheet.final');
 assert.equal(autoTitle({ kind: 'upload', fileName: '' }), 'Upload');
 assert.equal(autoTitle({ kind: 'result', title: 'Neon crossing' }), 'Neon crossing');
-assert.equal(autoTitle({ kind: 'result', title: '', prompt: 'a koi made of paper lanterns' }), 'Koi made paper');
+assert.equal(autoTitle({ kind: 'result', title: '', prompt: 'a koi made of paper lanterns' }), 'Koi made of paper lanterns');
 /* non-Latin: words written without spaces keep their first 24 characters; spaced scripts still use words */
-assert.equal(promptTitle('雨の夜、ネオンの通りを渡る女性、ゆっくりとしたプッシュイン、レンズに雨粒'), '雨の夜 ネオンの通りを渡る女性 ゆっくりとしたプ…');
-assert.equal(promptTitle('Девушка в красном пальто идёт по улице'), 'Девушка в красном');
-assert.equal(promptTitle('Make an image of Tokyo at night'), 'Tokyo night');
-assert.ok(promptTitle('Supercalifragilistic extraordinarily magnificent unbelievable kaleidoscope').split(' ').length === 3, 'long words: three');
+assert.equal(promptTitle('雨の夜、ネオンの通りを渡る女性、ゆっくりとしたプッシュイン'), '雨の夜、ネオンの通りを渡る女性、ゆっ…', 'no spaces: a short first clause is not enough, cut at 18 characters');
+assert.equal(promptTitle('ネオンの通りを渡る女性、ゆっくりとしたプッシュイン'), 'ネオンの通りを渡る女性', 'no spaces: the first clause');
+assert.equal(promptTitle('Девушка в красном пальто идёт по мокрой улице'), 'Девушка в красном пальто идёт по…', 'other scripts with spaces: cut at a word');
+assert.equal(promptTitle('Make an image of Tokyo at night'), 'Make an image of Tokyo at night');
+assert.equal(promptTitle('The lighthouse keeper finds a glowing bottle on the shore at dawn'), 'Lighthouse keeper finds…', 'a long clause ends neatly with …');
+assert.equal(promptTitle('"a koi in the rain."'), 'Koi in the rain');
 assert.notEqual(autoTitle({ kind: 'gen' }), 'Untitled');
-ok('auto titles: your name, Material Swap, prompt words, file names, non-Latin, never Untitled');
+ok('auto titles: your name, Material Swap, the prompt in its own words cut with …, file names, non-Latin, never Untitled');
+
+// ---- a failed card leads with its reason ----
+assert.deepEqual(failHeadline('Kling refused the start frame: its content check said no.'), { head: 'Kling refused the start frame', rest: 'Its content check said no.' });
+assert.deepEqual(failHeadline('Out of memory on your GPU. Try a smaller size'), { head: 'Out of memory on your GPU', rest: 'Try a smaller size.' });
+assert.deepEqual(failHeadline('Canceled.'), { head: 'Canceled', rest: '' });
+assert.equal(failHeadline(''), null, 'no reason: the shared wording'); assert.equal(failHeadline(null), null);
+ok('failed: the reason is the heading');
 
 // ---- the pick ask ----
 const choices = ['a', 'b'];

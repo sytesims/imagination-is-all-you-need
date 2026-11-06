@@ -54,26 +54,25 @@ export function panelSlide(left: number, right: number, boardW: number): number 
 }
 
 /* ------------------------------------------------------------------ auto titles (2026-11-06, Canvas release 1: never "Untitled") */
-/** Words that carry no subject ("a", "make", "image of"…): skipped when a prompt becomes a title. */
-const STOP = new Set(('a an the of in on at to for from with without by into onto over under near and or but as is are be it its this that these those '
-  + 'my your our their his her she he they we i me you them us some very really just please make create generate show render draw give get turn add put '
-  + 'image picture photo photograph shot clip video sound song music track of style').split(' '));
-/** One title word: letters and digits only (keeps an inner hyphen or apostrophe). */
-const word = (w: string) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+/** The most a title made from a prompt keeps before "…" (spaced scripts; text without spaces keeps fewer characters). */
+export const TITLE_MAX = 32, TITLE_MAX_UNSPACED = 18;
 const cap = (s: string) => (s ? s[0].toLocaleUpperCase() + s.slice(1) : s);
-/** True when the text is written without spaces between words (Chinese, Japanese, Thai…): titles take its first characters instead. */
+/** True when the text is written without spaces between words (Chinese, Japanese, Thai…). */
 const unspaced = (s: string) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u.test(s);
-
-/** A prompt as a short title: its first 3–4 content words ("A woman in a red coat" → "Woman red coat"); text written without
- *  spaces keeps its first 24 characters. '' when there's nothing to say. */
+/** A prompt as a short title, in its own words (user, 6 Nov): its first clause, a leading article dropped, cut neatly with "…" at a word
+ *  ("A red coat in a white studio, soft light" → "Red coat in a white studio"). '' when there's nothing to say. */
 export function promptTitle(prompt: string): string {
-  const t = prompt.replace(/\s+/g, ' ').trim(); if (!t) return '';
-  if (unspaced(t)) { const c = [...t.replace(/[\s"“”'‘’.,;:!?。、，！？]+/g, ' ').trim()]; return c.length > 24 ? `${c.slice(0, 24).join('').trim()}…` : c.join(''); }
-  const ws = t.split(' ').map(word).filter(Boolean); const content = ws.filter((w) => !STOP.has(w.toLowerCase()));
-  const pick = (content.length ? content : ws).slice(0, 4);
-  /* three words; a fourth only while the title stays short */
-  const out = pick.join(' ').length > 18 ? pick.slice(0, 3) : pick;
-  return cap(out.join(' ')); /* later words keep their case ("Tokyo", "DJ") */
+  let t = prompt.replace(/\s+/g, ' ').replace(/^["“”'‘’(\[]+/, '').trim(); if (!t) return '';
+  const tight = unspaced(t); const max = tight ? TITLE_MAX_UNSPACED : TITLE_MAX;
+  /* the first clause, unless it is too short to say anything */
+  const m = t.match(tight ? /^(.+?)[。、，！？.,;:!?]/u : /^(.+?)(?:[.;:!?]|,\s|\s[-–—]\s)/u); if (m && [...m[1].trim()].length >= (tight ? 4 : 10)) t = m[1].trim();
+  if (!tight) t = t.replace(/^(a|an|the)\s+/i, '');
+  t = t.replace(/[\s.,;:!?。、，！？"”’)]+$/u, '');
+  const chars = [...t]; if (chars.length <= max) return cap(t);
+  let cut = chars.slice(0, max).join(''); if (!tight && chars[max] !== ' ') { const sp = cut.lastIndexOf(' '); if (sp > max * 0.5) cut = cut.slice(0, sp); } /* a word cut in half goes */
+  /* never end on a little word ("finds a…") */
+  if (!tight) cut = cut.replace(/(\s+(a|an|the|of|in|on|at|to|for|with|and|or|by|from|into))+$/i, '');
+  return `${cap(cut.replace(/[\s,;:]+$/u, ''))}…`;
 }
 
 /** What a card's title is made from (plain data, so the board, the panel and the tests share one rule). */
@@ -103,3 +102,13 @@ export function autoTitle(f: TitleFacts): string {
 }
 /** A file or card label without its folder or extension, tidy spaces ("velvet_swatch.jpg" → "velvet swatch"). */
 const stem = (s: string) => cleanName((s.split(/[\\/]/).pop() ?? '').replace(/\.[a-z0-9]{1,5}$/i, '').replace(/[_]+/g, ' '));
+
+/** A failed card leads with its reason (user, 6 Nov): the run's error split into a heading and the rest ("Kling refused the start frame:
+ *  its content check said no." → "Kling refused the start frame" + "Its content check said no."). null when there is no reason (the card
+ *  then uses the shared failure wording). */
+export function failHeadline(error: string | null | undefined): { head: string; rest: string } | null {
+  const t = String(error ?? '').replace(/\s+/g, ' ').trim(); if (!t) return null;
+  const m = t.match(/^(.{6,90}?)(?::\s+|\.\s+|\s[-–—]\s)(.+)$/u);
+  const head = (m ? m[1] : t).replace(/[.:\s]+$/u, ''); const rest = m ? m[2].trim() : '';
+  return { head: cap(head), rest: rest ? cap(rest).replace(/([^.!?])$/u, '$1.') : '' };
+}

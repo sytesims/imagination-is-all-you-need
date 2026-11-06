@@ -115,9 +115,9 @@
 /* failed */
 .pc-failwrap{padding:56px 12px 12px}
 .pc-fail{width:100%;box-sizing:border-box;padding:12px;border-radius:12px;text-align:left;background:rgba(40,14,14,.62);box-shadow:inset 0 0 0 1px rgba(255,107,107,.35);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.pc-fail b{display:flex;gap:6px;font:600 12.5px/1.3 var(--font-ui);color:#FFB3B3}
+.pc-fail b{display:flex;gap:6px;font:600 13.5px/1.3 var(--font-ui);color:#FFC2C2}
 .pc-fail p{margin:6px 0 0;font:400 11.5px/1.45 var(--font-ui);color:rgba(255,255,255,.84);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
-.pc-charge{color:rgba(255,255,255,.62)}
+.pc-fail p.pc-charge{margin-top:4px;color:rgba(255,255,255,.62)}
 .pc-fixes{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
 .pc-fixes button:not(.pc-ghost):not(.pc-go){height:28px;border-radius:9px}
 
@@ -171,3 +171,32 @@
 .pc[data-tone-bottom=light] .pc-dots small{color:rgba(21,23,26,.6)}
 .pc[data-tone-bottom=light] .pc-chip{background:rgba(255,255,255,.72);color:#15171A;box-shadow:inset 0 0 0 1px rgba(21,23,26,.1)}
 .pc[data-tone-bottom=light] .pc-chip.free{color:#0E8F57}
+
+/* Prompt and Note cards as posters (user, 6 Nov): the text is the picture; a prompt is warm orange, a note soft yellow */
+.pc-text{--pc-k:#FF7A1A}.pc-text.pc-k-note{--pc-k:#F2C94C}
+.pc-textbg{position:absolute;inset:0;background:
+  radial-gradient(120% 85% at 0% 0%,color-mix(in srgb,var(--pc-k) 24%,transparent),transparent 62%),
+  radial-gradient(90% 70% at 100% 100%,color-mix(in srgb,var(--pc-k) 10%,transparent),transparent 60%),
+  radial-gradient(rgba(255,255,255,.06) 1px,transparent 1.2px) 0 0/12px 12px,#121417}
+.pc-k-note .pc-textbg{background:
+  linear-gradient(color-mix(in srgb,var(--pc-k) 10%,transparent),color-mix(in srgb,var(--pc-k) 4%,transparent)),
+  repeating-linear-gradient(transparent 0 27px,rgba(242,201,76,.07) 27px 28px),#15140F}
+.pc-text .pc-dq{top:58px;bottom:16px;cursor:text}
+.pc-text .pc-dq-l p{font-size:calc(22px * var(--pc-zk,1))}.pc-text .pc-dq-s p{font-size:calc(14.5px * var(--pc-zk,1));line-height:1.4}
+.pc-k-note .pc-dq::before{content:'';display:block;width:22px;height:3px;border-radius:2px;background:var(--pc-k);margin:2px 0 12px;opacity:.8}
+.pc-k-note .pc-dq p{font-family:var(--font-ui,Inter,sans-serif);font-weight:500;color:#F1EEE4}
+.pc-tedit{all:unset;display:block;box-sizing:border-box;width:100%;height:100%;white-space:pre-wrap;overflow:auto;font:500 calc(17px * var(--pc-zk,1))/1.32 var(--font-display,'Space Grotesk',Inter,sans-serif);color:#fff;cursor:text;caret-color:var(--pc-k)}
+.pc-text .pc-dq:has(.pc-tedit){-webkit-mask-image:none;mask-image:none;box-shadow:0 0 0 1px color-mix(in srgb,var(--pc-k) 45%,transparent);border-radius:10px;padding:6px 8px;margin:-6px -8px}
+.cv-rf[data-mood] .pc-text .pc-dq{top:16px}
+
+/* a sticky note as a text poster, tinted by its colour (rf/views.tsx StickyNode, the default look on this board) */
+.cv-rf .cv-sticky.as-poster{--st:#FEE590;position:relative;background:
+  radial-gradient(130% 90% at 0% 0%,color-mix(in srgb,var(--st) 26%,transparent),transparent 64%),
+  radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.2px) 0 0/12px 12px,#141517;
+  color:#F3F3F5;border-radius:18px;font-family:var(--font-display,'Space Grotesk',Inter,sans-serif);font-weight:500;letter-spacing:-.01em;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),inset 4px 0 0 color-mix(in srgb,var(--st) 85%,transparent),0 18px 44px rgba(0,0,0,.42)}
+.cv-rf .cv-sticky.as-poster.sel{box-shadow:0 0 0 calc(2px * max(1, var(--tl-scale,1))) var(--accent,#FF7A1A),inset 4px 0 0 color-mix(in srgb,var(--st) 85%,transparent),0 18px 44px rgba(0,0,0,.42)}
+.cv-rf .cv-sticky.as-poster .cv-sticky-ph{opacity:.42}
+.cv-rf .cv-sticky.as-poster.c-yellow{--st:#FEE590}.cv-rf .cv-sticky.as-poster.c-orange{--st:#F2913F}.cv-rf .cv-sticky.as-poster.c-red{--st:#FF9D9D}.cv-rf .cv-sticky.as-poster.c-green{--st:#A9E8B4}
+.cv-rf .cv-sticky.as-poster.c-blue{--st:#9CC6FF}.cv-rf .cv-sticky.as-poster.c-violet{--st:#D0B6FF}.cv-rf .cv-sticky.as-poster.c-grey{--st:#D7D9DC}.cv-rf .cv-sticky.as-poster.c-black{--st:#8A8D93}.cv-rf .cv-sticky.as-poster.c-white{--st:#F7F7F8}
+.cv-rf .cv-sticky.as-poster.c-light-blue{--st:#BEE3FF}.cv-rf .cv-sticky.as-poster.c-light-green{--st:#CDEFC7}.cv-rf .cv-sticky.as-poster.c-light-red{--st:#FFC6C6}.cv-rf .cv-sticky.as-poster.c-light-violet{--st:#E6D6FF}

@@ -36,7 +36,7 @@ import { RUN_EVT, open3d } from '../canvasEvents';
 import { portDragAtom } from '../nodeFrameModel';
 import { usePortDrag } from '../NodeFrame';
 import { perfOff } from '../CameraMotion';
-import { placeWord } from '../cardLook';
+import { placeWord, failHeadline, autoTitle } from '../cardLook';
 import { titleOf } from '../cardTitle';
 import { PORT_WORDS, type PortKind } from '../nodeLogic';
 import { posterMedia, noteRatio, toneOf, type Tone } from './poster';
@@ -206,7 +206,7 @@ export const PosterCard = memo(function PosterCard({ id, selected, w }: { id: No
         {queued ? <><b className="pc-big pc-big-s">Queued</b><small>{pr?.queuePosition ? `${ord(pr.queuePosition)} in line` : 'Waiting to start'}</small></>
           : <><b className="pc-big">{pct != null ? `${pct}%` : 'Starting'}</b><small>{etaText(pr?.etaSeconds) ? `about ${etaText(pr?.etaSeconds).replace('~', '')} left` : 'Working on it'}</small></>}</div>}
       {state === 'failed' && <Failed n={n} job={job ?? stubJob(p, 'failed')} />}
-      {running && <span className={`pc-bar${fill == null ? ' ind' : ''}`} aria-hidden><i style={fill == null ? undefined : { width: `${Math.max(3, pct ?? 3)}%` }} /></span>}
+      {running && !queued && <span className={`pc-bar${fill == null ? ' ind' : ''}`} aria-hidden><i style={fill == null ? undefined : { width: `${Math.max(3, pct ?? 3)}%` }} /></span>}
       {outdated && <span className="pc-tag warn" data-testid="pc-outdated">↻ {outdated}</span>}
     </>;
   }
@@ -232,9 +232,12 @@ export const PosterCard = memo(function PosterCard({ id, selected, w }: { id: No
 /** Failed: why, whether money moved, and the fixes (the shared FailActions), plus Edit (the panel). */
 function Failed({ n, job }: { n: BoardNode; job: JobState }) {
   const board = useBoardApi(); const toast = useToast(); const v = useFailView(job); const p: any = n.props;
+  /* the reason is the heading; the shared wording only when the run left none (user, 6 Nov) */
+  const why = failHeadline(p.error);
   return <div className="pc-mid pc-failwrap"><div className="pc-fail" data-testid="pc-failed" data-card-control>
-    <b><span aria-hidden>!</span> {v.title}</b>
-    <p>{p.error || v.line}{v.charge ? <> <span className="pc-charge">{v.charge}</span></> : null}</p>
+    <b data-testid="pc-fail-head"><span aria-hidden>!</span> {why ? why.head : v.title}</b>
+    {(why ? why.rest : v.line) && <p>{why ? why.rest : v.line}</p>}
+    {v.charge && <p className="pc-charge" data-testid="pc-fail-charge">{v.charge}</p>}
     <div className="pc-fixes">
       {p.jobId ? <FailActions job={job} view={v} max={1} compact skip={['details' as any]} onRetry={() => void retryCard(board, n.id).then(() => toast('Trying again with the same settings')).catch((e) => toast((e as Error).message, 'error'))} />
         : <button type="button" className="pc-go" onClick={() => void submit(board, n.id).catch((e) => toast((e as Error).message, 'error'))}>Try again</button>}
@@ -242,3 +245,30 @@ function Failed({ n, job }: { n: BoardNode; job: JobState }) {
     </div>
   </div></div>;
 }
+
+/** A Prompt or Note card as a poster (user, 6 Nov): its text is the picture, in big type on a softly tinted ground (a prompt warm orange,
+ *  a note soft yellow), the same family as a draft. Double-click the text to edit it in place (selecting it also opens it in the panel). */
+export const TextPoster = memo(function TextPoster({ id, selected, kind }: { id: NodeId; selected: boolean; kind: 'prompt' | 'note' }) {
+  const board = useBoardApi(); const n = useValue('tp node', () => board.getNode(id), [board, id]);
+  const feeds = useValue('tp feeds', () => board.linksFrom(id).length, [board, id]);
+  const [edit, setEdit] = useState(false); const [hot, setHot] = useState(false);
+  if (!n) return null;
+  const text = String((n.props as any).text ?? ''); const shot = String((n.meta as any)?.name ?? '').trim();
+  const title = autoTitle({ kind: 'other', name: shot, prompt: text }) === 'Card' ? (kind === 'note' ? 'Note' : 'Prompt') : autoTitle({ kind: 'other', name: shot, prompt: text });
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const sub = [kind === 'note' ? 'Note' : 'Prompt', words ? `${words} word${words === 1 ? '' : 's'}` : '', feeds ? `feeds ${feeds} card${feeds === 1 ? '' : 's'}` : kind === 'note' ? 'can feed a prompt' : ''].filter(Boolean).join(' · ');
+  const size = text.length <= 60 ? 'l' : text.length <= 170 ? 'm' : 's';
+  const set = (t: string) => board.batch(() => board.patchNode(id, { props: { text: t } } as any), { history: 'ignore' });
+  return <div className={`pc pc-text pc-k-${kind}${selected ? ' sel' : ''}${hot || selected ? ' hot labels' : ''}`} data-shape-id={id} data-testid="text-poster" data-kind={kind}
+    onPointerEnter={() => setHot(true)} onPointerLeave={() => setHot(false)}>
+    <div className="pc-clip"><div className="pc-textbg" aria-hidden /></div>
+    <header className="pc-head"><div className="pc-t"><CardName id={id} name={shot} shown={title} className="pc-name" testId="tp-title" /><small>{sub}</small></div></header>
+    <div className={`pc-dq pc-dq-${size}`} onDoubleClick={(e) => { e.stopPropagation(); setEdit(true); }} data-testid="tp-text">
+      {edit ? <textarea className="pc-tedit nodrag nowheel" autoFocus defaultValue={text} data-card-control data-testid="tp-edit" aria-label={kind === 'note' ? 'Note' : 'Prompt'}
+          onFocus={(e) => { const t = e.currentTarget; t.setSelectionRange(t.value.length, t.value.length); }} onChange={(e) => set(e.target.value)}
+          onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') e.currentTarget.blur(); }} onKeyUp={(e) => e.stopPropagation()} onBlur={() => setEdit(false)} />
+        : text.trim() ? <p>{text}</p> : <p className="pc-dq-soft">Double-click to write {kind === 'note' ? 'a note' : 'a prompt'}</p>}
+    </div>
+    <Ports id={id} type={n.type} ports={[]} out={'text'} linkedOut={feeds > 0} dragKind={null} />
+  </div>;
+});
