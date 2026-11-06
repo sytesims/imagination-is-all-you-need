@@ -160,9 +160,11 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
   /* pointer and wheel, for BoardApi.onInput (the follow-agent toggle stops on a manual pan) */
   useEffect(() => { const el = port.el; if (!el) return;
     const send = (kind: 'wheel' | 'pointer_down' | 'pointer_move' | 'pointer_up') => () => { for (const cb of port.inputs) cb({ kind, panning: panning.current }); };
-    const all: [string, () => void][] = [['wheel', send('wheel')], ['pointerdown', send('pointer_down')], ['pointermove', send('pointer_move')], ['pointerup', send('pointer_up')]];
+    const all: [string, () => void][] = [['wheel', send('wheel')], ['pointerdown', send('pointer_down')], ['pointermove', send('pointer_move')]];
     for (const [t, f] of all) el.addEventListener(t, f, { capture: true, passive: true });
-    return () => { for (const [t, f] of all) el.removeEventListener(t, f, { capture: true } as any); }; }, [port]);
+    /* a drag can end over the inspector or outside the board (the magnet still needs to hear it let go) */
+    const up = send('pointer_up'); addEventListener('pointerup', up, { capture: true, passive: true });
+    return () => { for (const [t, f] of all) el.removeEventListener(t, f, { capture: true } as any); removeEventListener('pointerup', up, { capture: true } as any); }; }, [port]);
 
   /* Ctrl / ⌘ + wheel (and a trackpad pinch, which the browser sends as ctrl + wheel) zooms on our own curve (zoom.ts), around the pointer */
   useEffect(() => { const el = port.el; if (!el) return;

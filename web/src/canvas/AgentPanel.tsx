@@ -204,8 +204,10 @@ function ProposalCard({ p, busy, onDecide, onFocus }: { p: Proposal; busy?: 'go'
   const disabled = p.overBudget || !!p.reason || nRun === 0;
   const runItems = p.items.filter((i) => runIds.has(i.cardId)); const nRuns = runItems.reduce((a, i) => a + (Number(i.quote?.runs) > 1 ? Number(i.quote.runs) : 1), 0); /* a Material Swap card runs once per swatch */ const allDemo = runItems.length > 0 && runItems.every((i) => i.quote?.demo === true);
   const budget = p.budget;
+  /* a price stop is calm (amber), said once: the rows say what moved, a fresh proposal below asks again */
+  const priceStop = p.items.some((i) => i.priceChanged) && !p.items.some((i) => !i.priceChanged && (p.failedIds ?? []).includes(i.cardId));
   return <article className={`ap-prop ${p.status}`} data-testid="agent-proposal" data-status={p.status}>
-    <div className="ap-prop-h"><span className="ap-kicker">{pending ? 'Needs your OK' : p.status === 'running' ? 'Starting' : p.status === 'approved' ? 'Approved' : p.status === 'cancelled' ? 'Cancelled' : p.status === 'drafts' ? 'Drafts · nothing to run yet' : 'Could not start'}</span>
+    <div className="ap-prop-h"><span className="ap-kicker">{pending ? 'Needs your OK' : p.status === 'running' ? 'Starting' : p.status === 'approved' ? 'Approved' : p.status === 'cancelled' ? 'Cancelled' : p.status === 'drafts' ? 'Drafts · nothing to run yet' : priceStop ? 'Price changed · asked again' : 'Could not start'}</span>
       <button type="button" className="ap-prop-n" onClick={() => onFocus(p.cardIds)} {...tip('Show these cards on the board')}>{nRuns} run{nRuns === 1 ? '' : 's'}{nSkip ? ` · ${nSkip} skipped` : ''}</button></div>
     {p.note && <p className="ap-prop-note">{p.note}</p>}
     <ul className="ap-items">{p.items.map((it, i) => {
@@ -223,7 +225,7 @@ function ProposalCard({ p, busy, onDecide, onFocus }: { p: Proposal; busy?: 'go'
     {p.boardBudget && <div className="ap-budget" data-testid="agent-proposal-board-budget"><span>Board budget left</span><b>${p.boardBudget.leftUsd.toFixed(2)} of ${p.boardBudget.usd.toFixed(2)}</b></div>}
     {p.reason && <p className={`ap-warn${p.overBudget ? ' over' : ''}`} data-testid="agent-proposal-reason">{p.reason}</p>}
     {!p.reason && nSkip > 0 && pending && <p className="ap-skipnote" data-testid="agent-proposal-skipped">{nSkip === 1 ? '1 card can’t run here, so Go skips it.' : `${nSkip} cards can’t run here, so Go skips them.`} Nothing is charged for {nSkip === 1 ? 'it' : 'them'}.</p>}
-    {p.error && <p className="ap-warn over">{p.error}</p>}
+    {p.error && <p className={`ap-warn${priceStop ? '' : ' over'}`} data-testid={priceStop ? 'agent-proposal-price-stop' : undefined}>{p.error}</p>}
     {pending && <div className="ap-prop-actions">
       <button type="button" className="ap-go" data-testid="agent-go" disabled={disabled || !!busy} onClick={() => onDecide('go')}>{busy === 'go' ? 'Starting…' : `Go${allDemo || p.totalUsd <= 0 ? '' : ` · ≈ $${p.totalUsd.toFixed(2)}`}`}</button>
       <button type="button" className="ap-cancel" data-testid="agent-cancel" disabled={!!busy} onClick={() => onDecide('cancel')}>{busy === 'cancel' ? 'Cancelling…' : 'Cancel'}</button>
@@ -232,7 +234,7 @@ function ProposalCard({ p, busy, onDecide, onFocus }: { p: Proposal; busy?: 'go'
     {p.status === 'approved' && <p className="ap-prop-state ok">Approved · {p.jobIds.length} run{p.jobIds.length === 1 ? '' : 's'} started</p>}
     {p.status === 'cancelled' && <p className="ap-prop-state">Cancelled. Nothing ran.</p>}
     {p.status === 'drafts' && <p className="ap-prop-state" data-testid="agent-proposal-drafts">These stay on the board as drafts. Nothing ran.</p>}
-    {p.status === 'failed' && <p className="ap-prop-state bad">Nothing ran. {p.error}</p>}
+    {p.status === 'failed' && (priceStop ? <p className="ap-prop-state">Nothing ran · price changed</p> : <p className="ap-prop-state bad">Nothing ran. {p.error}</p>)}
   </article>;
 }
 

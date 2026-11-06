@@ -119,7 +119,7 @@
 .ap-items li.has-problem .ap-item-t b,.ap-items li.has-problem .ap-item-n{opacity:.6}
 .ap-items li.has-problem .ap-item-why{color:var(--warning,#E8B44A)}
 .ap-items li.price-changed .ap-item-p{text-decoration:line-through;opacity:.55}
-.ap-items li .ap-item-moved{display:block;margin-top:3px;color:var(--warning,#E8B44A);font-weight:600}
+.ap-items li .ap-item-moved{display:block;white-space:normal;overflow:visible;text-overflow:clip;margin-top:3px;color:var(--warning,#E8B44A);font-weight:600}
 /* the row price: dollars on line 1, the rest ('this computer') on a smaller line 2 (GenPrice compact → .gp-sub) */
 .ap-item-p .gen-price{display:flex;flex-direction:column;align-items:flex-end;gap:2px;white-space:nowrap;text-align:right}
 .ap-item-p .gen-price .gp-dot{display:none}
