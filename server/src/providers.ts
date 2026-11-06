@@ -107,6 +107,14 @@ async function runWithProviderInner(job: Job, tool: ToolDef) {
   return p?.run ? p.run(job, tool) : tool.run(job);
 }
 
+/** One routed attempt run by the model's own code (your ComfyUI, a built-in tool, a provider's sample, a tool that calls its API itself):
+ *  runWithProvider without re-entering the router, then our final H3 encode (bitrate / audio off) on local, sample and tool runs too. */
+export async function runOwn(job: Job, tool: ToolDef) {
+  directRun.add(job.id);
+  try { await runWithProvider(job, tool); } finally { directRun.delete(job.id); }
+  if (tool.id === 'h3-video' && tool.routedPost && (job.status as string) === 'done') await tool.routedPost(job, { live: false });
+}
+
 // ---- Registered providers ----
 registerProvider({ id: 'comfy-open', name: 'Open weights (ComfyUI workflow)', kind: 'open-weights', via: 'local ComfyUI / comfy-api-proxy, workflows/*.json (mock unless OPENHIGGSFIELD_BACKEND=comfy)' });
 registerProvider({ id: 'comfy-funcamera', name: 'Open weights · Wan Fun Camera (fallback)', kind: 'open-weights', via: 'ComfyUI workflows/reshoot-funcamera-api.json (mock unless OPENHIGGSFIELD_BACKEND=comfy)' });

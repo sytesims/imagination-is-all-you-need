@@ -17,6 +17,7 @@ import { ComfyNative, type CancelOutcome } from './comfy/native.js';
 import { policyRefusalCharge } from './shared/policyBilling.js';
 import { afterSettle } from './routing/state.js';
 import { runWithVideoFit } from './videoFit.js';
+import './services/placesBuiltin.js'; // the built-in places when nothing booted (tests): the boot recovery below asks them what can be picked up
 import { pickUpOnBoot, startPickUp, collectable, remoteCancellable } from './routing/reattach.js';
 
 /**

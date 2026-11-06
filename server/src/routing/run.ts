@@ -12,8 +12,6 @@
  */
 import { routeRequest } from './routeRequest.js';
 import { fallbackOffers } from '../env.js';
-import { cloudLive, runCloudWorkflow } from './cloudRun.js';
-import { routerLive, runRouter } from './routerRun.js';
 import fs from 'node:fs/promises'; import path from 'node:path';
 import type { Job } from '../jobs.js';
 import type { ToolDef } from '../tools/types.js';
@@ -21,21 +19,22 @@ import { config, DATA_DIR } from '../config.js';
 import { env } from '../env.js';
 import { teamMode } from '../billingMode.js';
 import { charge, refundAttempt, creditsBackNote } from '../ledger.js';
-import { mockRun, imageCount, imageLabels } from '../tools/shared.js';
-import { runWithProvider } from '../providers.js';
+import { imageCount } from '../tools/shared.js';
+import { runOwn } from '../providers.js';
 import { stillBusyMessage, busyReason } from '../busyRetry.js';
 import { findRoute } from './routes.js';
-import { keyValue, liveBackend } from './keys.js';
+import { keyValue } from './keys.js';
 import { autoOrder, option, routeForRunOn, localOnlyModel, localSetupGate, demoKeyless, placeRank, builtInLocal } from './select.js';
 import { routesFor } from './routes.js';
 import { getPrefs } from './prefs.js';
 import { runOnOfRoute, RUN_ON_LABELS } from '../shared/modelIds.js';
-import { directRun, afterSettle } from './state.js';
-import { places, type PlaceRunner } from '../services/places.js';
+import { afterSettle } from './state.js';
+import '../services/placesBuiltin.js'; // the built-in places when nothing booted (scripts, tests)
+import { places, errorClassOf, type PlaceRunner, type PlaceCost, type RemoteRef } from '../services/places.js';
 import { withDownloadRetry, httpError } from '../hostedPoll.js';
-import { persistJob, type RemoteHandle } from '../jobs.js';
+import { persistJob } from '../jobs.js';
 import { canPickUp, cannotPickUp, cancelRemote } from './reattach.js';
-import { directRun as runDirect, DirectError, type DirectOutput } from '../providers/direct.js';
+import type { DirectOutput } from '../providers/direct.js';
 import type { RouteAttempt, RouteDef, RouteOption } from './types.js';
 import { ledgerUsd } from '../shared/priceText.js';
 import { PRE_DISPATCH, failureRuleOf, billedToOf } from '../billing.js';
@@ -58,14 +57,13 @@ export function failedAttemptNotCharged(job: Job, r: Pick<RouteDef, 'kind' | 'ro
   if (!(o.price > 0)) return true;
   if (!o.reached) return true;
   if ((job as any).chargeNote === 'not_charged' || PRE_DISPATCH.has(String(job.reasonCode ?? ''))) return true;
-  if (failureRuleOf(billedToOf(r.kind, r.routeId)) === 'not-charged' || places.get(r.kind)?.failedNotCharged?.(job, r)) return true;
+  if (failureRuleOf(billedToOf(r.kind, r.routeId)) === 'not-charged' || places.get(r.kind)?.failedNotCharged?.(job, r, errorClassOf(job))) return true;
   return teamMode();
 }
-/** A real request would be sent: a place plugin's own check (fal, Replicate: services/places.ts), or a lab API route with its key on a live backend. */
-const live = (r: RouteDef) => { const p = places.get(r.kind); return p ? p.live(r) : !!r.direct && !!keyValue(r) && liveBackend(); };
 /** A place kind whose plugin is off in this profile (its routes are hidden; this only catches an old job or a stale pin). */
 export const placeOffError = (r: Pick<RouteDef, 'kind' | 'envKey'>) => `${placeName(r)} isn’t set up in this app`;
-const stages = (label: string): [string, string][] => [['submitted', `Submitted to ${label}`], ['rendering', `${label} rendering`], ['downloading', 'Downloading result']];
+/** place-sample is off in this profile: no sample runs in place of a real one. */
+export const SAMPLES_OFF = 'Samples aren’t set up in this app, and this place can’t run it for real here. Nothing was sent';
 
 /** Save a finished hosted result (audit 2026-11-01 #10): a few tries with back-off (hostedPoll.ts withDownloadRetry). refresh = ask the provider
  *  for the result again (a fresh signed link) before the next try. The last failure is a DownloadError: the job keeps job.remote, so
@@ -84,61 +82,55 @@ async function download(url0: string, job: Job, i: number, auth?: string | ((url
   }, { canRefresh: !!refresh });
 }
 /** A direct lab output (URL, base64 or hex bytes) → a file in the data dir, right away (lab URLs expire in 10 min–24 h). */
-async function saveOutput(o: DirectOutput, job: Job, i: number, where?: string) {
+async function saveOutput(o: Pick<DirectOutput, 'url' | 'b64' | 'hex' | 'mime'>, job: Job, i: number, where?: string) {
   if (o.url) return download(o.url, job, i, undefined, where);
   const ext: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'video/mp4': 'mp4', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/flac': 'flac', 'audio/ogg': 'ogg' };
   const name = `${job.id}-out${i}.${ext[o.mime ?? ''] ?? 'bin'}`; await fs.writeFile(path.join(DATA_DIR, name), Buffer.from(o.b64 ?? o.hex ?? '', o.b64 ? 'base64' : 'hex')); return `/files/${name}`;
 }
-/** One attempt on one route. Resolves when the job is done; throws (or leaves status failed/blocked) on failure. */
+/** One attempt on one route, on its place (services/places.ts, plugins-builtin/place-*.ts). Resolves when the job is done; throws (or leaves
+ *  status failed/blocked) on failure. A live place runs it for real: a queue place (fal, Replicate) one request at a time through runner.run
+ *  below, every other place the whole attempt itself (runner.attempt). A place that isn't live gets a sample from place-sample. */
 async function execute(job: Job, tool: ToolDef, r: RouteDef, attempt: RouteAttempt) {
   job.status = 'running'; job.error = null; job.errorType = null; job.progress = 0; job.outputs = []; job.resultUrl = null;
   if (places.off(r.kind)) throw job.remote?.resuming ? cannotPickUp(placeOffError(r)) : new Error(placeOffError(r)); // its place plugin is off in this profile: never a sample or a request
-  if (job.remote?.resuming && !live(r) && !cloudLive(r) && !routerLive(r) && !(r.cloudRun && keyValue(r))) throw cannotPickUp('its key is no longer set'); // never a sample in place of a paid result
-  if (job.routing?.demo && config.backend !== 'mock') return (await import('./sampleRun.js')).runSample(job, tool); // free samples (select.ts freeSamples): never ComfyUI or a provider
+  const runner = places.runnerOf(r); // undefined: a 'direct' route without a lab connection (its tool's own code runs it, below)
+  if (job.remote?.resuming && !(runner?.live(r) && runner.resume)) throw cannotPickUp('its key is no longer set'); // never a sample in place of a paid result
+  const sample = places.get('sample');
+  if (job.routing?.demo && config.backend !== 'mock') { if (!sample?.freeSample) throw new Error(SAMPLES_OFF); return sample.freeSample(job, tool); } // free samples (select.ts freeSamples): never ComfyUI or a provider
   if (forcedFail(job, r.routeId)) { await new Promise((ok) => setTimeout(ok, 200)); if (forcedSent(job, r.routeId)) { attempt.requestId = `sim-${job.id}-${attempt.n}`; (job.requestIds ??= []).push(attempt.requestId); } throw new Error(`${plainRoute(r)}: provider error (simulated)`); }
-  if (live(r)) {
+  if (runner?.live(r)) {
     // prompt grammar: every body below is built by routing/routeRequest.ts (refInputFor first: each model's own reference syntax); the job keeps what was typed
-    const key = keyValue(r)!; const count = imageCount(job.input);
+    const key = runner.key(r); const count = imageCount(job.input);
     const shots: { label: string }[] | null = Array.isArray(job.input.shots) && job.input.shots.length ? job.input.shots : null; // Shots: one request per angle (labels)
     const labelAt = (k: number, n: number) => shots?.[k]?.label ?? (n > 1 ? `Image ${k + 1}` : String(job.input.outputLabel ?? 'Result'));
     const outs: { label: string; url: string }[] = [];
     // job.remote (audit 2026-11-01 #5, #10): every submitted request is remembered at once, so a restart / Retry download polls it again;
     // resumeAt(k) = that request when this run is such a pick-up (runRouted reuses the attempt; nothing is submitted for it)
     const resumeH = job.remote?.resuming && job.remote.routeId === r.routeId && job.remote.attempt === attempt.n ? job.remote : null;
-    if (job.remote?.resuming && (!resumeH || !canPickUp(resumeH))) throw cannotPickUp('no stored request for it'); // never a new submit in its place
+    if (job.remote?.resuming && runner.run && (!resumeH || !canPickUp(resumeH))) throw cannotPickUp('no stored request for it'); // never a new submit in its place
     const resumeAt = (k: number) => (resumeH && resumeH.output === k ? resumeH : null);
-    const remember = (h: Omit<RemoteHandle, 'routeId' | 'attempt' | 'output' | 'outputs' | 'at'>, k: number, n: number) => { job.remote = { ...h, routeId: r.routeId, attempt: attempt.n, output: k, outputs: n, at: Date.now() }; try { persistJob(job); } catch { /* the 400 ms flush has it */ } }; // written at once: a restart right after the submit still finds it
+    const remember = (h: RemoteRef, k: number, n: number) => { job.remote = { ...h, routeId: r.routeId, attempt: attempt.n, output: k, outputs: n, at: Date.now() }; try { persistJob(job); } catch { /* the 400 ms flush has it */ } }; // written at once: a restart right after the submit still finds it
+    /** Our own request id, stored on the attempt (and written to disk) before anything is sent. */
+    const requestId = (k?: number) => { const id = `${job.id}-a${attempt.n}${k == null ? '' : `-o${k}`}`; attempt.clientRequestId = id; try { persistJob(job); } catch { /* the 400 ms flush has it */ } return id; };
     const canceled = () => (job.status as string) === 'canceled';
-    if (r.direct) { // official lab APIs (providers/direct.ts): BFL, MiniMax, LTX. One request per output image, one per video / audio job; outputs saved right away (lab URLs expire)
-      const d = r.direct; const n = (d.perOutput ?? r.output === 'image') ? count : 1;
-      try {
-        for (let k = 0; k < n; k++) {
-          const rs = resumeAt(k); // a restart / Retry download: poll the request from before, nothing is built or sent again
-          const { body: req, input: subIn } = rs ? { body: { method: 'GET', url: '' } as any, input: job.input } : await routeRequest(job, r, k); const sub = { ...job, input: subIn }; job.stage = 'submitted'; // routing/routeRequest.ts: the rewritten input, the lab's body
-          const res = await runDirect(d, req, key, { timeoutMs: TIMEOUT_MS, job: sub, resume: rs?.pollUrl ? { id: rs.id, pollUrl: rs.pollUrl } : null, isCanceled: canceled,
-            onSubmit: (id, pollUrl) => { attempt.requestId = id; (job.requestIds ??= []).push(id); if (pollUrl) remember({ kind: 'direct', id, pollUrl, model: d.provider }, k, n); },
-            onStatus: (s) => { job.stage = /^(pending|queued|waiting)$/i.test(s) ? 'submitted' : 'rendering'; },
-            onCost: (c) => { const prev = k > 0 && job.actualCost?.source === c.source ? job.actualCost : null; // several outputs: add them up
-              job.actualCost = { usd: Math.round(((prev?.usd ?? 0) + c.usd) * 1e4) / 1e4, ...(c.units != null ? { units: (prev?.units ?? 0) + c.units } : {}), ...(c.unitLabel ? { unitLabel: c.unitLabel } : {}), source: c.source }; } });
-          job.stage = 'downloading'; outs.push({ label: labelAt(k, n), url: await saveOutput(res.outputs[0], job, k, placeName(r)) });
-        }
-      } catch (e) { if (e instanceof DirectError) { job.reasonCode = e.reasonCode as any; job.errorType = e.reasonCode === 'content_blocked' ? 'nsfw' : e.reasonCode === 'provider_credits' ? 'credits' : e.reasonCode === 'input_invalid' ? 'invalid_input' : e.temporary ? 'temporary' : 'provider_outage'; } throw e; }
-      job.outputs = outs; job.resultUrl = outs[0].url; job.status = 'done'; job.stage = 'done'; job.progress = 100; job.eta = 0;
-      if (tool.id === 'h3-video' && tool.routedPost) await tool.routedPost(job, { live: true }); // our final encode (bitrate / audio off) on direct video runs too
-      return;
+    if (runner.attempt) { // your ComfyUI, Comfy Cloud, Comfy Router, the labs' own APIs: the place runs the whole attempt
+      return runner.attempt(job, tool, r, attempt, { timeoutMs: TIMEOUT_MS, key, requestId, isCanceled: canceled, resuming: resumeH, resumeAt, remember, label: labelAt, count, where: placeName(r),
+        save: (o, k, where) => saveOutput(o, job, k, where) });
     }
-    const place = places.get(r.kind) as PlaceRunner; // live() is true, and r.direct was handled above: a place plugin runs it (fal, Replicate)
+    const place = runner as PlaceRunner & Required<Pick<PlaceRunner, 'run'>>; // a queue place (fal, Replicate) sends one request at a time
     /** The runner's hooks: the request id is noted at once, and remembered as job.remote (k of n) so a restart can poll it again. */
     const hooks = (k: number, n: number, queuePos: boolean) => ({ timeoutMs: TIMEOUT_MS, isCanceled: canceled, onBusy: (ms: number) => { job.queueReason = busyReason(place.label, ms); },
-      onSubmit: (ref: Parameters<typeof remember>[0]) => { attempt.requestId = ref.id; (job.requestIds ??= []).push(ref.id); job.queueReason = null; remember(ref, k, n); },
+      onSubmit: (ref: RemoteRef) => { attempt.requestId = ref.id; (job.requestIds ??= []).push(ref.id); job.queueReason = null; remember(ref, k, n); },
       onStatus: (stage: 'submitted' | 'rendering', pos?: number | null) => { job.stage = stage; if (queuePos && pos != null) job.queuePos = pos; } });
+    /** A cost the place reported (information only: the charge stays the quote). */
+    const noteCost = (c?: PlaceCost) => { if (c) attempt.reportedCost = { usd: Math.round(((attempt.reportedCost?.usd ?? 0) + c.usd) * 1e4) / 1e4, source: c.source }; };
     if (r.request) { // video routes (MiniMax H3): one request per job; output video.url (fal) or the prediction's output URL (Replicate)
       // eachImage routes (fal image edits, tools/imageFalModels.ts): one request per output image (Create Image n / Shots angles), each billed, so the run makes exactly what the quote priced
       const n = r.eachImage ? count : 1;
       for (let k = 0; k < n; k++) {
         const rs = resumeAt(k); const body = rs ? {} : (await routeRequest(job, r, k)).body; job.stage = 'submitted'; // routing/routeRequest.ts (a resumed request is only polled)
         const falUrl = (o: any): string | undefined => r.output === '3d' ? o.model_glb?.url ?? o.model_urls?.glb?.url : o.video?.url ?? o.image?.url ?? (typeof o.images?.[0] === 'string' ? o.images[0] : o.images?.[0]?.url); // 3D routes (fal TRELLIS.2, Hunyuan 3D): model_glb.url // video routes: video.url; image upscale routes: image.url (Topaz, SeedVR2) or images[0] (Crystal: objects, or plain URLs in its example)
-        const res = await place.run({ route: r, body, key, resume: rs, pick: falUrl }, hooks(k, n, false)); // services/places.ts: the fal / Replicate plugin sends and polls
+        const res = await place.run({ route: r, body, key: key!, requestId: requestId(k), resume: rs, pick: falUrl }, hooks(k, n, false)); noteCost(res.cost); // services/places.ts: the fal / Replicate plugin sends and polls
         if (!res.url) throw new Error(`${r.kind} returned no ${r.output === 'image' ? 'image' : r.output === '3d' ? '3D model' : 'video'}`);
         job.stage = 'downloading'; outs.push({ label: r.eachImage ? labelAt(k, n) : 'Result', url: await download(res.url, job, k, res.auth, placeName(r), res.refresh) });
       }
@@ -148,25 +140,17 @@ async function execute(job: Job, tool: ToolDef, r: RouteDef, attempt: RouteAttem
     for (let i = 0; i < count; i++) { // price = per image × n (priceOf count): one request per image, so every route bills exactly n images
     job.stage = 'submitted';
     const rs = resumeAt(i); const reqBody = async () => (rs ? {} : (await routeRequest(job, r, i, ex)).body); // a resumed request is only polled
-    const res = await place.run({ route: r, body: await reqBody(), key, resume: rs }, hooks(i, count, true)); // fal: images[0].url; Replicate: the first output URL
-    job.stage = 'downloading'; if (!res.url) throw new Error(r.kind === 'fal' ? 'fal returned no images' : 'Replicate returned no output');
+    const res = await place.run({ route: r, body: await reqBody(), key: key!, requestId: requestId(i), resume: rs }, hooks(i, count, true)); noteCost(res.cost); // fal: images[0].url; Replicate: the first output URL
+    job.stage = 'downloading'; if (!res.url) throw new Error(place.noOutput ?? `${place.label} returned no output`);
     outs.push({ label: labelAt(i, count), url: await download(res.url, job, i, res.auth, place.label, res.refresh) });
     }
     job.outputs = outs;
     if (tool.routedPost) await tool.routedPost(job, { live: true, falKey: keyValue({ envKey: 'OPENHIGGSFIELD_FAL_KEY', envAliases: ['FAL_KEY'] }) });
     job.resultUrl = job.outputs[0].url; job.status = 'done'; job.stage = 'done'; job.progress = 100; job.eta = 0; return;
   }
-  const mockPlace = places.get(r.kind); // fal / Replicate without a key, or on the mock backend: a sample run with the place's own stage names
-  if (mockPlace && tool.routedPost) { // mock cloud run, then the same post-process (colour match is real; upscale = labelled resize)
-    const n = Math.min(4, Math.max(1, Number(job.input.n) || 1)); await mockRun(job, stages(mockPlace.label), n > 1 ? Array.from({ length: n }, (_, k) => `Image ${k + 1}`) : ['Result'], 3000);
-    if ((job.status as string) === 'done') await tool.routedPost(job, { live: false }); return; }
-  if (mockPlace) return mockRun(job, stages(mockPlace.label), Array.isArray(job.input.shots) && job.input.shots.length ? imageLabels(job.input) : [String(job.input.outputLabel ?? 'Result')], 3000); // Shots: one sample per angle
-  if (r.cloudRun && keyValue(r)) return r.cloudRun(job, r, attempt); // 3D (2026-10-23): a Comfy partner-node graph on Comfy Cloud (Tripo), real whenever the Comfy key is set
-  if (cloudLive(r)) return runCloudWorkflow(job, r, attempt); // BH9 (f): real Comfy Cloud v2 run (cloud-h3-wf only)
-  if (routerLive(r)) return runRouter(job, r, attempt, TIMEOUT_MS); // Comfy Router (routing/routerRun.ts): hosted models on the Comfy Developer Platform
-  directRun.add(job.id);
-  try { await runWithProvider(job, tool); } finally { directRun.delete(job.id); }
-  if (tool.id === 'h3-video' && tool.routedPost && (job.status as string) === 'done') await tool.routedPost(job, { live: false }); // our final encode (bitrate / audio off) on local + router runs too
+  if (!runner) return runOwn(job, tool); // a 'direct' route without a lab connection (fal-hosted apps, Luma Reframe): its tool's own code, as before
+  if (!sample?.sample) throw new Error(SAMPLES_OFF); // samples are off in this profile: nothing runs in place of the real place
+  return sample.sample(job, tool, r, runner); // not live (mock backend, no key): a sample with the place's own stage names, or the model's own sample
 }
 const failedNow = (job: Job) => job.status === 'failed' || job.status === 'blocked';
 export function alternativesFor(job: Job, tool: ToolDef): RouteOption[] {
@@ -288,7 +272,7 @@ export function continueCheck(job: Job, tool: ToolDef, routeId: string): { ok: t
   if (job.status !== 'needs_decision' || !job.routing) return { error: 'Only jobs waiting for a decision (status needs_decision) can fall back.', status: 409 };
   const alt = (job.alternatives ?? []).find((o) => o.routeId === routeId);
   if (!alt) return { error: `route ${routeId} is not one of the alternatives: ${(job.alternatives ?? []).map((o) => o.routeId).join(', ')}`, status: 400 };
-  const r = findRoute(routeId)!; const o = option(tool, r, job.input); if (r.comingSoon || o.reasonCode === 'not_wired' || (!o.available && !(config.backend === 'mock' && r.kind !== 'fal' && r.kind !== 'replicate'))) return { error: `route ${routeId} is not available: ${o.reason}`, status: 409 };
+  const r = findRoute(routeId)!; const o = option(tool, r, job.input); if (r.comingSoon || o.reasonCode === 'not_wired' || (!o.available && !(config.backend === 'mock' && !places.off(r.kind) && !places.get(r.kind)?.keyedOnMock))) return { error: `route ${routeId} is not available: ${o.reason}`, status: 409 };
   return { ok: true, credits: job.routing.prices[routeId] ?? alt.credits ?? 0 };
 }
 /** POST /api/jobs/:id/fallback: continue a needs_decision job on the chosen route (charged as a new attempt). The caller ran guardNextRoute. */

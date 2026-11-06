@@ -8,13 +8,15 @@ import { testPort } from './_ports.js';
 import { parseProfile, readProfile } from '../src/kernel/profile.js';
 const ok = (m: string) => console.log('ok ' + m);
 const ROOT = path.resolve(import.meta.dirname, '..');
+const ALL_PLACES = ['place-comfy-local', 'place-comfy-cloud', 'place-comfy-router', 'place-fal', 'place-replicate', 'place-direct', 'place-sample'];
+const without = (id: string) => ALL_PLACES.filter((x) => x !== id);
 const QWEN = 'comfy-qwen-image', FAL_QWEN = 'fal:fal-ai/qwen-image', REP_QWEN = 'replicate:qwen/qwen-image';
 
 // ---- profiles ----
 { const p = parseProfile('# c\nname: x\nplugins:\n  - place-fal   # fal\n  # - place-replicate\n  - legacy\n', 'x.yml');
   assert.deepEqual(p, { name: 'x', plugins: ['place-fal', 'legacy'], file: 'x.yml' });
   assert.throws(() => parseProfile('plugins:\n  - Bad_Id\n'), /bad plugin id/); assert.throws(() => parseProfile('colour: red\n'), /unknown key/);
-  assert.deepEqual(readProfile('desktop').plugins, ['place-fal', 'place-replicate', 'legacy']); ok('profiles: desktop lists place-fal, place-replicate, legacy; a commented line is off; bad lines refused'); }
+  assert.deepEqual(readProfile('desktop').plugins, [...ALL_PLACES, 'legacy']); ok('profiles: desktop lists every place plugin, then legacy; a commented line is off; bad lines refused'); }
 
 // ---- in process: ctx.places through Cordis (no server: boot without the legacy plugin) ----
 { process.env.OPENHIGGSFIELD_FAL_KEY = 'fake-not-a-real-key';
@@ -25,7 +27,7 @@ const QWEN = 'comfy-qwen-image', FAL_QWEN = 'fal:fal-ai/qwen-image', REP_QWEN = 
   assert.ok(routesFor(QWEN).some((r) => r.routeId === FAL_QWEN), 'before boot (scripts, tests): the built-in places are on');
   await assert.rejects(boot({ name: 't', plugins: ['place-fal', 'nope', 'legacy'], file: 't.yml' }, { legacy: false }), /unknown plugin "nope"/);
   await assert.rejects(boot({ name: 't', plugins: ['place-fal'], file: 't.yml' }, { legacy: false }), /needs the "legacy" plugin/);
-  const ctx = await boot({ name: 't', plugins: ['place-replicate', 'legacy'], file: 't.yml' }, { legacy: false });
+  const ctx = await boot({ name: 't', plugins: [...without('place-fal'), 'legacy'], file: 't.yml' }, { legacy: false });
   assert.equal(places.managed, true); assert.equal(places.get('fal'), undefined); assert.equal(places.off('fal'), true); assert.equal(places.off('replicate'), false); assert.equal(places.off('local'), false);
   assert.ok(!routesFor(QWEN).some((r) => r.kind === 'fal') && routesFor(QWEN).some((r) => r.routeId === REP_QWEN), 'fal off: fal routes hidden, Replicate stays');
   const o = option(tool, findRoute(FAL_QWEN)!, {}); assert.equal(o.available, false); assert.equal(o.reasonCode, 'not_wired'); assert.equal(o.reason, 'fal isn’t set up in this app'); assert.equal(o.wired, false);
@@ -38,7 +40,7 @@ const QWEN = 'comfy-qwen-image', FAL_QWEN = 'fal:fal-ai/qwen-image', REP_QWEN = 
 
 // ---- e2e: two mock servers, desktop profile vs no place-fal ----
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'place-plugins-')); const nofal = path.join(dir, 'nofal.yml');
-fs.writeFileSync(nofal, 'name: nofal\nplugins:\n  - place-replicate\n  - legacy\n');
+fs.writeFileSync(nofal, `name: nofal\nplugins:\n${without('place-fal').map((x) => `  - ${x}\n`).join('')}  - legacy\n`);
 const FAKE = { OPENHIGGSFIELD_FAL_KEY: 'fake-fal-not-real', OPENHIGGSFIELD_REPLICATE_API_TOKEN: 'fake-rep-not-real', FAL_KEY: '', REPLICATE_API_TOKEN: '', COMFY_API_KEY: '', OPENHIGGSFIELD_MOCK_KEYS: '', OPENHIGGSFIELD_ROUTING_LIVE: '' };
 const servers: ChildProcess[] = [];
 const boot = (port: number, extra: Record<string, string>) => { const p = spawn(process.execPath, ['--import', 'tsx', 'src/index.ts'], { cwd: ROOT, detached: true, stdio: 'ignore',
