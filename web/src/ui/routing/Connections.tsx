@@ -97,7 +97,7 @@ export function Connections() {
     <span id="providers" className="conn-anchor" aria-hidden />
     <h2 id="conn-h">Connections</h2>
     <p className="conn-lede">Choose where your models run and who bills you. You always see the price first.</p>
-    {d && <p className="prov-sum" data-testid="prov-summary">{connected.length ? <><b>{connected.length} connected</b>: {connected.map(p => NAME[p.id] ?? p.name).join(', ')}.</> : <><b>Nothing connected yet.</b> {sample ? 'For now every run is a free sample.' : 'Until you add a key or set up your computer, you’ll get free samples.'}</>}</p>}
+    {d && <p className="prov-sum" data-testid="prov-summary">{connected.length ? <><b>{connected.length} connected</b>: {connected.map(p => NAME[p.id] ?? p.name).join(', ')}.</> : <><b>Nothing connected yet.</b> {sample ? 'For now every run is a free sample.' : 'Until you add a key or set up your computer, Generate makes free samples from our examples.'}</>}</p>}
     {d && sample && (connected.length > 0 || useLocal) && <SampleModeNote />}
     <TechDetails summary="Details" className="conn-details" testId="conn-limits-details"><p className="helper conn-limits" data-testid="conn-limits"><b>Queue:</b> {concurrencyLine(lim)} The same on every connection.</p></TechDetails>
     {err && !d && <InlineError what="connections" error={/^HTTP 5/.test(err) ? Object.assign(new Error(err), { status: 500 }) : new Error(err)} onRetry={() => setTick(n => n + 1)} />}

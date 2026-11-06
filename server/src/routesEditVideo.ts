@@ -35,9 +35,9 @@ function routeQuote(o: any, envKey: string | null | undefined, demo: boolean) {
  *  preview (mock backend); else what unlocks it ("Needs a fal key." / Use local ComfyUI), never a placeholder row's note. */
 function menuState(models: any[][]) {
   const all = models.flat(); if (all.some((o) => o.available)) return { available: true, needsKey: false, reason: null, reasonDetail: null };
-  if (all.some((o) => o.demo)) { const owners = [...new Set(all.filter((o) => o.demo).map((o) => keyOwner(o.envKey)))]; return { available: true, needsKey: true, demo: true, reason: null, reasonDetail: `Makes sample output here. Real runs need a ${owners.join(' or ')} key in Settings.` }; }
+  if (all.some((o) => o.demo)) { const owners = [...new Set(all.filter((o) => o.demo).map((o) => keyOwner(o.envKey)))]; return { available: true, needsKey: true, demo: true, reason: null, reasonDetail: `Makes sample output here. Real runs need ${aKey(owners.join(' or '))} in Settings.` }; }
   const km = all.filter((o) => keyMissing(o) && o.credits != null); const owners = [...new Set(km.map((o) => keyOwner(o.envKey)))];
-  if (owners.length) { const o = owners.length > 1 ? `${owners.slice(0, -1).join(', ')} or ${owners[owners.length - 1]}` : owners[0]; return { available: false, needsKey: true, keyOwners: owners, reason: `Needs a ${o} key.`, reasonDetail: `Available once a ${o} key is added in Settings.` }; }
+  if (owners.length) { const o = owners.length > 1 ? `${owners.slice(0, -1).join(', ')} or ${owners[owners.length - 1]}` : owners[0]; return { available: false, needsKey: true, keyOwners: owners, reason: `Needs ${aKey(o)}.`, reasonDetail: `Available once ${aKey(o)} is added in Settings.` }; }
   if (all.some((o) => o.reasonCode === 'local_off')) return { available: false, needsKey: false, reason: reasonSentence(LOCAL_OFF_REASON), reasonDetail: LOCAL_OFF_DETAIL, reasonCode: 'local_off' };
   const first = all.find((o) => o.reason); return { available: false, needsKey: false, reason: first?.reason ? reasonSentence(first.reason) : 'Not ready yet. Pick another model.', reasonDetail: null };
 }

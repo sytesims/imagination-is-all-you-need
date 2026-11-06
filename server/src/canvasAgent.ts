@@ -42,6 +42,7 @@ import { DEMO_STARTERS, isChip, demoPlan, demoCardAt, demoPlanSize, demoFrameOf,
 import { SHORT_STEPS, shortFilmPlan, shortLayout, beatOfNote, beatNote, keyFramePrompt, clipPrompt, narrationOf, musicPrompt, SHORT_MUSIC, shortFilmVideoOn, stitchBody, type ShortPlan, type ShortBeat } from './canvasDemo.js';
 import { tagDemoCard, demoProviderOf } from './shared/demoMedia.js';
 import { config } from './config.js';
+import { freeSamples } from './routing/select.js';
 import { LOCAL_FREE } from './shared/modelIds.js';
 import { toolDefaults, toolModes } from './routing/defaults.js';
 import { canvasDefaultModel } from './shared/cloudDefaults.js';
@@ -114,7 +115,7 @@ export interface Proposal {
   /** The cards Go starts: every item without a problem. A row that can't run here (a model not on this server, a missing input) is skipped, not a
    *  blocker for the rest; the total counts only these. `reason` is set (and Go is off) only when NONE can run, or the batch is over budget. */
   runCardIds: string[]; skipped: { cardId: string; title: string; problem: string }[]; /** cards Go tried that the server refused (they stay drafts) */ failedIds?: string[];
-  status: 'pending' | 'running' | 'approved' | 'cancelled' | 'failed'; createdAt: number; decidedAt: number | null; jobIds: string[]; error: string | null;
+  status: 'pending' | 'running' | 'approved' | 'cancelled' | 'failed' | /** nothing in it can run here: the cards stay drafts, nothing to approve (never shown as Cancelled) */ 'drafts'; createdAt: number; decidedAt: number | null; jobIds: string[]; error: string | null;
 }
 export interface FeedEntry {
   seq: number; id: string; at: number; type: 'message' | 'activity' | 'decision' | 'proposal'; text: string;
@@ -580,7 +581,7 @@ async function proposeRun(boardId: string, op: { card_ids: string[]; note?: stri
     ? `This is $${overBy!.toFixed(2)} over the $${(budgetViewOut!.remainingUsd ?? 0).toFixed(2)} left in the agent budget. Nothing will run.`
     : !runs.length ? (skipped.length === 1 ? skipped[0].problem : `None of these cards can run here. ${skipped[0].problem}`) : null;
   const proposal: Proposal = { id: uid('prop'), boardId, cardIds: op.card_ids, note: op.note?.trim() || null, items, totalUsd, totalCredits,
-    budget: budgetViewOut, overBudget: over, overByUsd: overBy, reason, runCardIds: runs.map((i) => i.cardId), skipped, status: 'pending', createdAt: now(), decidedAt: null, jobIds: [], error: null };
+    budget: budgetViewOut, overBudget: over, overByUsd: overBy, reason, runCardIds: runs.map((i) => i.cardId), skipped, status: !runs.length && !over ? 'drafts' : 'pending', createdAt: now(), decidedAt: null, jobIds: [], error: null };
   rememberProposal(proposal);
   addActivity(boardId, `Proposed ${runs.length} run${runs.length === 1 ? '' : 's'} · $${totalUsd.toFixed(2)}${skipped.length ? ` · ${skipped.length} skipped` : ''}`, { proposalId: proposal.id, meta: { tool: 'propose_run', by } });
   return { ok: true, result: { proposal } };
@@ -774,7 +775,7 @@ async function liveNodes(boardId: string): Promise<any[] | null> { const r = awa
 
 async function runShortFilm(run: DemoRun, plan: ShortPlan) {
   /* the chip on the sample server: its clip cards play the real clips, so they run even while video runs are off */
-  const { boardId } = run; const demo = plan.demo ?? null; const videoOn = shortFilmVideoOn() || (!!demo && config.backend === 'mock');
+  const { boardId } = run; const demo = plan.demo ?? null; const sampleDemo = !!demo && (config.backend === 'mock' || freeSamples()); /* the sample server, or a fresh install's free samples: the chip's cards play the real runs */ const videoOn = shortFilmVideoOn() || sampleDemo;
   /* a card that shows a real run: tagged (board + prompt), and named with the model that made it */
   const tag = (prompt: string, key: string) => { tagDemoCard(boardId, prompt, `short:${key}`); const m = demoProviderOf(`short:${key}`); return m ? { model: m } : {}; };
   const say = (text: string, meta: Record<string, unknown> = {}) => addMessage(boardId, 'agent', text, { meta: { by: 'demo', runId: run.id, ...meta } });
@@ -809,7 +810,7 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
    *  badges them, and says which one it would pick per shot. It never picks for you. */
   const reviewed = new Map<string, number>();
   const reviewCards = async (ids: string[], aspect?: string | null) => {
-    if (demo && config.backend === 'mock') return; /* the chip's cards are real runs: no made-up sample verdicts on them */
+    if (sampleDemo) return; /* the chip's cards are real runs: no made-up sample verdicts on them */
     const nodes = await liveNodes(boardId); if (!nodes || !alive()) return; const cards: any[] = []; const lines: string[] = []; const mode = reviewMode();
     for (const [k, id] of ids.entries()) {
       const n = nodes.find((x) => x.id === id); const urls: string[] = (n?.results ?? []).filter((r: any) => (r.kind ?? 'image') === 'image').map((r: any) => String(r.url));
@@ -920,7 +921,7 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
     const okKeys = g2.started.filter((_, i) => s2[i] === 'done');
     if (!okKeys.length) { say('None of the key frames finished, so there’s nothing to film yet. Retry them on their cards, then ask me again.', { error: true }); return; }
     await reviewCards(okKeys);
-    const pickAns = await waitConfirm(`Your key frames are in. Pick a version on each shot: click a thumbnail in its strip (Recreate makes another one${demo && config.backend === 'mock' ? '' : ', and I\'ll look at it too'}). The ringed one is what gets filmed. Press Looks good when every shot has the one you want.`, 'Looks good', () => reviewCards(okKeys));
+    const pickAns = await waitConfirm(`Your key frames are in. Pick a version on each shot: click a thumbnail in its strip (Recreate makes another one${sampleDemo ? '' : ', and I\'ll look at it too'}). The ringed one is what gets filmed. Press Looks good when every shot has the one you want.`, 'Looks good', () => reviewCards(okKeys));
     if (!pickAns) return;
     say('Got your picks.', { stepsDone: ++steps });
 
@@ -1241,7 +1242,7 @@ export function registerCanvasAgent(app: FastifyInstance) {
     const b = getBoard(req.params.id); if (!b) return notFound(reply);
     const parsed = decisionBody.safeParse(req.body); if (!parsed.success) return bad(reply, zodText(parsed.error), 'invalid_decision');
     const p = proposalsById.get(req.params.pid); if (!p || p.boardId !== b.id) return reply.code(404).send({ error: 'No proposal with that id.', errorType: 'not_found', code: 'not_found' });
-    if (p.status !== 'pending') return bad(reply, p.status === 'cancelled' ? 'This proposal was cancelled.' : p.status === 'approved' ? 'This proposal already ran.' : 'This proposal is already in progress.', 'proposal_not_pending', 409);
+    if (p.status !== 'pending') return bad(reply, p.status === 'cancelled' ? 'This proposal was cancelled.' : p.status === 'drafts' ? 'Nothing in this proposal can run here yet, so there is nothing to start.' : p.status === 'approved' ? 'This proposal already ran.' : 'This proposal is already in progress.', 'proposal_not_pending', 409);
     if (parsed.data.decision === 'cancel') {
       p.status = 'cancelled'; p.decidedAt = now(); addDecision(b.id, 'cancel', p.id); updateProposal(p);
       return { ok: true, proposal: p };

@@ -27,11 +27,12 @@ function setup(cloud: boolean, local: boolean) {
 for (const [cloud, local, kind] of [[true, false, 'cloud'], [false, true, 'local'], [true, true, 'both'], [false, false, 'none']] as const) {
   setup(cloud, local);
   assert.equal(S.setupKind(), kind);
-  assert.equal(S.needsConnection(), kind === 'none');
+  assert.equal(S.freeSamples(), kind === 'none', `${kind}: free samples only when nothing is set up`);
+  assert.equal(S.needsConnection(), false, 'nothing set up makes free samples now, never the connect sheet');
   const a = S.resolveRoute(video, 'comfy-h3', { types: ['t2v'], duration: 5, resolution: '480p' });
   const b = S.resolveRoute(video, 'comfy-h3', { types: ['t2v'], duration: 5, resolution: '480p' });
   if (!('error' in a) && !('error' in b)) { assert.deepEqual(a.routing, b.routing, `${kind}: quote and submit share the route order and prices`); assert.equal(a.first.routeId, b.first.routeId); assert.equal(a.first.credits, b.first.credits); } else assert.equal('error' in a, 'error' in b);
-  if (kind === 'none') assert.ok('error' in a);
+  if (kind === 'none') { assert.ok(!('error' in a), 'nothing set up: a free sample'); assert.ok(a.routing.demo, 'labelled sample'); assert.equal(a.routing.prices[a.first.routeId], 0, 'free'); }
   else { assert.ok(!('error' in a), `${kind}: H3 has a real route`); assert.equal(a.first.kind, kind === 'local' ? 'local' : 'comfy-cloud'); assert.equal(a.routing.demo, undefined); }
 }
 setup(false, false);

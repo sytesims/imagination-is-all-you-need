@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { requestRequote } from './quote';
 import { runPrice } from './billing';
-import { LOCAL_LABEL, NEEDS_COMFYUI_TEXT, COMFY_DEPLOY_DETAIL, placeOf as sharedPlaceOf, PLACE_LABELS, RUN_ON_LABELS, type Place } from '../../../server/src/shared/modelIds';
+import { aKey, LOCAL_LABEL, NEEDS_COMFYUI_TEXT, COMFY_DEPLOY_DETAIL, placeOf as sharedPlaceOf, PLACE_LABELS, RUN_ON_LABELS, type Place } from '../../../server/src/shared/modelIds';
 
 export type RunOnStatus = 'ready' | 'sample' | 'needs-key' | 'off' | 'not-installed' | 'coming-soon' | 'unavailable';
 /** The one action a place that isn't ready needs (server: routing/modelRegistry.ts rowAction / routing/select.ts placeAction). */
@@ -281,7 +281,7 @@ export const STATUS_WORD: Record<string, string> = { ready: 'Ready', sample: 'Sa
 export const statusDot = (s: string) => (s === 'ready' ? 'ok' : s === 'sample' || s === 'needs-key' ? 'demo' : 'off');
 /** "Needs Comfy Cloud or a fal key" for a model's needs-key tooltip. */
 export function needsWhat(m: ToolModel): string {
-  const ks = m.runsOn.filter(r => r.status === 'needs-key').map(r => (r.id === 'comfy-cloud' ? 'a Comfy key' : `a ${r.label} key`));
+  const ks = m.runsOn.filter(r => r.status === 'needs-key').map(r => (r.id === 'comfy-cloud' ? 'a Comfy key' : aKey(r.label)));
   return ks.length ? `Needs ${ks.length > 1 ? `${ks.slice(0, -1).join(', ')} or ${ks.at(-1)}` : ks[0]}` : '';
 }
 /** One-line state of a model for the menu (status chip + tooltip). Retiring is shown as its own pill, the state stays. */

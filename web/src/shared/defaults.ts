@@ -1,3 +1,4 @@
+import { aKey } from '../../../server/src/shared/modelIds';
 /** B27 cloud-first defaults (GET /api/tools): the tool's (or the mode's / swap type's) default, quality order and fallback note,
  *  plus each model's run status. Everything is the server's; the client only orders, marks and greys. */
 export type Fallback = { note?: string | null; from?: string; to?: string; fromName?: string; toName?: string; reasonCode?: string | null } | null;
@@ -31,7 +32,7 @@ const sentence = (t: unknown): string | null => { const s = typeof t === 'string
 /** runnable:false = greyed with the server's reason; a demo preview can still be picked (it runs as a demo), anything else can't. needsKey = add-a-key cue. */
 export function modelStatus(p: any): ModelStatus {
   if (!p || p.runnable !== false) return { dim: false, note: null, keyCue: null };
-  const note = sentence(p.reason); const keyCue = p.needsKey === true && p.keyOwner ? `Add a ${p.keyOwner} key` : null;
+  const note = sentence(p.reason); const keyCue = p.needsKey === true && p.keyOwner ? `Add ${aKey(p.keyOwner)}` : null;
   // a model that only needs a key or ComfyUI set up, or is heavy for this computer (it still runs when picked, with a warning), stays pickable: the composer then offers Add key instead of hiding the model
   return { dim: true, off: p.demoPreview === true || p.needsKey === true || p.reasonCode === 'too_heavy' || p.reasonCode === 'local_unreachable' || p.reasonCode === 'local_only_unreachable' ? undefined : note ?? 'Not available here.', note, keyCue };
 }

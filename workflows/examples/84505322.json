@@ -1,0 +1,1009 @@
+{
+ "v": 1,
+ "jobId": "84505322",
+ "toolId": "two-person-swap",
+ "provider": "cloud-h3-two-swap",
+ "route": "comfy-cloud:cloud-h3-two-swap",
+ "target": "comfy-cloud",
+ "passes": [
+  {
+   "index": 0,
+   "label": "Both swapped",
+   "workflow": "cloud/h3-two-person-swap-api.json",
+   "graph": {
+    "1": {
+     "inputs": {
+      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+     },
+     "class_type": "UNETLoader",
+     "_meta": {
+      "title": "H3 Ref2VA base (INT8)"
+     }
+    },
+    "2": {
+     "inputs": {
+      "lora_name": "akatz-ai__MiniMax-H3-Character-Swap-LoRA__h3_character_swap_v1.5.safetensors",
+      "strength_model": 1,
+      "model": [
+       "3",
+       0
+      ]
+     },
+     "class_type": "LoraLoaderModelOnly",
+     "_meta": {
+      "title": "Character Swap LoRA v1.5 (imported)"
+     }
+    },
+    "3": {
+     "inputs": {
+      "lora_name": "lightx2v__Minimax-h3-Turbo__minimax_h3_fl2v_turbo_8step_v1.0_768p_comfyui_bf16.safetensors",
+      "strength_model": 1,
+      "model": [
+       "8",
+       0
+      ]
+     },
+     "class_type": "LoraLoaderModelOnly",
+     "_meta": {
+      "title": "Turbo 8-step LoRA (768p build when imported)"
+     }
+    },
+    "4": {
+     "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+     },
+     "class_type": "CLIPLoader",
+     "_meta": {
+      "title": "Text encoder (NVFP4, as Openjutsu)"
+     }
+    },
+    "5": {
+     "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+     },
+     "class_type": "VAELoader",
+     "_meta": {
+      "title": "Video VAE"
+     }
+    },
+    "6": {
+     "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+     },
+     "class_type": "VAELoader",
+     "_meta": {
+      "title": "Audio VAE"
+     }
+    },
+    "7": {
+     "inputs": {
+      "model": [
+       "1",
+       0
+      ],
+      "shift_video": 12,
+      "shift_audio": 3
+     },
+     "class_type": "MiniMaxH3SigmaShift",
+     "_meta": {
+      "title": "H3 sampling shift 12 / 3"
+     }
+    },
+    "8": {
+     "inputs": {
+      "model": [
+       "7",
+       0
+      ],
+      "attention": "comfy kitchen attention"
+     },
+     "class_type": "ModelAttentionBackend",
+     "_meta": {
+      "title": "Attention: comfy kitchen (Openjutsu)"
+     }
+    },
+    "10": {
+     "inputs": {
+      "file": "84505322-video0-range-0-1000.mp4.84505322-twoswap24.mp4"
+     },
+     "class_type": "LoadVideo",
+     "_meta": {
+      "title": "Source performance (24 fps)"
+     }
+    },
+    "11": {
+     "inputs": {
+      "video": [
+       "10",
+       0
+      ]
+     },
+     "class_type": "GetVideoComponents",
+     "_meta": {
+      "title": "Source frames + audio"
+     }
+    },
+    "21": {
+     "inputs": {
+      "noise_seed": 875972
+     },
+     "class_type": "RandomNoise",
+     "_meta": {
+      "title": "Seed"
+     }
+    },
+    "22": {
+     "inputs": {
+      "sampler_name": "er_sde"
+     },
+     "class_type": "KSamplerSelect",
+     "_meta": {
+      "title": "Sampler"
+     }
+    },
+    "23": {
+     "inputs": {
+      "scheduler": "normal",
+      "steps": 8,
+      "denoise": 1,
+      "model": [
+       "2",
+       0
+      ]
+     },
+     "class_type": "BasicScheduler",
+     "_meta": {
+      "title": "8 steps"
+     }
+    },
+    "40": {
+     "inputs": {
+      "ckpt_name": "sam3.1_multiplex_fp16.safetensors"
+     },
+     "class_type": "CheckpointLoaderSimple",
+     "_meta": {
+      "title": "SAM 3.1"
+     }
+    },
+    "41": {
+     "inputs": {
+      "clip": [
+       "40",
+       1
+      ],
+      "text": "person"
+     },
+     "class_type": "CLIPTextEncode",
+     "_meta": {
+      "title": "Who to swap (SAM text)"
+     }
+    },
+    "42": {
+     "inputs": {
+      "image": [
+       "11",
+       0
+      ],
+      "batch_index": 0,
+      "length": 1
+     },
+     "class_type": "ImageFromBatch",
+     "_meta": {
+      "title": "First frame"
+     }
+    },
+    "63": {
+     "inputs": {
+      "pixels": [
+       "11",
+       0
+      ],
+      "vae": [
+       "5",
+       0
+      ]
+     },
+     "class_type": "VAEEncode",
+     "_meta": {
+      "title": "encode source clip"
+     }
+    },
+    "143": {
+     "class_type": "SAM3_Detect",
+     "inputs": {
+      "model": [
+       "40",
+       0
+      ],
+      "image": [
+       "42",
+       0
+      ],
+      "threshold": 0.35,
+      "refine_iterations": 2,
+      "individual_masks": false,
+      "positive_coords": [
+       "144",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Person 1: SAM 3.1 find on frame 0"
+     }
+    },
+    "144": {
+     "class_type": "PrimitiveString",
+     "inputs": {
+      "value": "[{\"x\":322,\"y\":560}]"
+     },
+     "_meta": {
+      "title": "Person 1: click point (pixels)"
+     }
+    },
+    "147": {
+     "class_type": "SAM3_VideoTrack",
+     "inputs": {
+      "images": [
+       "11",
+       0
+      ],
+      "model": [
+       "40",
+       0
+      ],
+      "initial_mask": [
+       "143",
+       0
+      ],
+      "conditioning": [
+       "41",
+       0
+      ],
+      "detection_threshold": 0.5,
+      "max_objects": 1,
+      "detect_interval": 1
+     },
+     "_meta": {
+      "title": "Person 1: SAM 3.1 track"
+     }
+    },
+    "148": {
+     "class_type": "SAM3_TrackToMask",
+     "inputs": {
+      "track_data": [
+       "147",
+       0
+      ],
+      "object_indices": ""
+     },
+     "_meta": {
+      "title": "Person 1: track to mask"
+     }
+    },
+    "149": {
+     "class_type": "MaskToImage",
+     "inputs": {
+      "mask": [
+       "148",
+       0
+      ]
+     }
+    },
+    "150": {
+     "class_type": "ImageScale",
+     "inputs": {
+      "image": [
+       "149",
+       0
+      ],
+      "upscale_method": "area",
+      "width": 54,
+      "height": 72,
+      "crop": "disabled"
+     },
+     "_meta": {
+      "title": "Person 1: pool to H3 latent grid"
+     }
+    },
+    "151": {
+     "class_type": "ImageToMask",
+     "inputs": {
+      "image": [
+       "150",
+       0
+      ],
+      "channel": "red"
+     }
+    },
+    "152": {
+     "class_type": "ThresholdMask",
+     "inputs": {
+      "mask": [
+       "151",
+       0
+      ],
+      "value": 0.01
+     },
+     "_meta": {
+      "title": "Person 1: mask (raw)"
+     }
+    },
+    "153": {
+     "class_type": "GrowMask",
+     "inputs": {
+      "mask": [
+       "152",
+       0
+      ],
+      "expand": 5,
+      "tapered_corners": false
+     },
+     "_meta": {
+      "title": "Person 1: mask (grown)"
+     }
+    },
+    "154": {
+     "class_type": "MaskComposite",
+     "inputs": {
+      "destination": [
+       "153",
+       0
+      ],
+      "source": [
+       "252",
+       0
+      ],
+      "x": 0,
+      "y": 0,
+      "operation": "subtract"
+     },
+     "_meta": {
+      "title": "Person 1: minus person 2"
+     }
+    },
+    "155": {
+     "class_type": "MaskComposite",
+     "inputs": {
+      "destination": [
+       "154",
+       0
+      ],
+      "source": [
+       "152",
+       0
+      ],
+      "x": 0,
+      "y": 0,
+      "operation": "add"
+     },
+     "_meta": {
+      "title": "Person 1: edit mask"
+     }
+    },
+    "243": {
+     "class_type": "SAM3_Detect",
+     "inputs": {
+      "model": [
+       "40",
+       0
+      ],
+      "image": [
+       "42",
+       0
+      ],
+      "threshold": 0.35,
+      "refine_iterations": 2,
+      "individual_masks": false,
+      "positive_coords": [
+       "244",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Person 2: SAM 3.1 find on frame 0"
+     }
+    },
+    "244": {
+     "class_type": "PrimitiveString",
+     "inputs": {
+      "value": "[{\"x\":631,\"y\":581}]"
+     },
+     "_meta": {
+      "title": "Person 2: click point (pixels)"
+     }
+    },
+    "247": {
+     "class_type": "SAM3_VideoTrack",
+     "inputs": {
+      "images": [
+       "11",
+       0
+      ],
+      "model": [
+       "40",
+       0
+      ],
+      "initial_mask": [
+       "243",
+       0
+      ],
+      "conditioning": [
+       "41",
+       0
+      ],
+      "detection_threshold": 0.5,
+      "max_objects": 1,
+      "detect_interval": 1
+     },
+     "_meta": {
+      "title": "Person 2: SAM 3.1 track"
+     }
+    },
+    "248": {
+     "class_type": "SAM3_TrackToMask",
+     "inputs": {
+      "track_data": [
+       "247",
+       0
+      ],
+      "object_indices": ""
+     },
+     "_meta": {
+      "title": "Person 2: track to mask"
+     }
+    },
+    "249": {
+     "class_type": "MaskToImage",
+     "inputs": {
+      "mask": [
+       "248",
+       0
+      ]
+     }
+    },
+    "250": {
+     "class_type": "ImageScale",
+     "inputs": {
+      "image": [
+       "249",
+       0
+      ],
+      "upscale_method": "area",
+      "width": 54,
+      "height": 72,
+      "crop": "disabled"
+     },
+     "_meta": {
+      "title": "Person 2: pool to H3 latent grid"
+     }
+    },
+    "251": {
+     "class_type": "ImageToMask",
+     "inputs": {
+      "image": [
+       "250",
+       0
+      ],
+      "channel": "red"
+     }
+    },
+    "252": {
+     "class_type": "ThresholdMask",
+     "inputs": {
+      "mask": [
+       "251",
+       0
+      ],
+      "value": 0.01
+     },
+     "_meta": {
+      "title": "Person 2: mask (raw)"
+     }
+    },
+    "253": {
+     "class_type": "GrowMask",
+     "inputs": {
+      "mask": [
+       "252",
+       0
+      ],
+      "expand": 5,
+      "tapered_corners": false
+     },
+     "_meta": {
+      "title": "Person 2: mask (grown)"
+     }
+    },
+    "254": {
+     "class_type": "MaskComposite",
+     "inputs": {
+      "destination": [
+       "253",
+       0
+      ],
+      "source": [
+       "152",
+       0
+      ],
+      "x": 0,
+      "y": 0,
+      "operation": "subtract"
+     },
+     "_meta": {
+      "title": "Person 2: minus person 1"
+     }
+    },
+    "255": {
+     "class_type": "MaskComposite",
+     "inputs": {
+      "destination": [
+       "254",
+       0
+      ],
+      "source": [
+       "252",
+       0
+      ],
+      "x": 0,
+      "y": 0,
+      "operation": "add"
+     },
+     "_meta": {
+      "title": "Person 2: edit mask"
+     }
+    },
+    "312": {
+     "class_type": "LoadImage",
+     "inputs": {
+      "image": "84505322-personA1.png"
+     },
+     "_meta": {
+      "title": "Pass 1 (person 1): photo"
+     }
+    },
+    "313": {
+     "class_type": "PrimitiveStringMultiline",
+     "inputs": {
+      "value": "Replace the man on the left, dark red tie in <Video 1> with the character in <Picture 1>. Keep the character's face, hair, clothing and style from <Picture 1>. Follow the source pose, gaze, expression, movement and timing. Keep the camera, scene and everyone else unchanged."
+     },
+     "_meta": {
+      "title": "Pass 1 (person 1): prompt"
+     }
+    },
+    "319": {
+     "class_type": "MiniMaxH3AddGuide",
+     "inputs": {
+      "positive": [
+       "320",
+       0
+      ],
+      "latent": [
+       "366",
+       0
+      ],
+      "frame_idx": 0,
+      "audio_vae": [
+       "6",
+       0
+      ],
+      "audio": [
+       "11",
+       1
+      ]
+     },
+     "_meta": {
+      "title": "Pass 1 (person 1): audio guide"
+     }
+    },
+    "320": {
+     "inputs": {
+      "prompt": [
+       "313",
+       0
+      ],
+      "width": 864,
+      "height": 1152,
+      "length": 243,
+      "ref_image_size": "match",
+      "clip": [
+       "4",
+       0
+      ],
+      "vae": [
+       "5",
+       0
+      ],
+      "audio_vae": [
+       "6",
+       0
+      ],
+      "ref_images.ref_image_0": [
+       "312",
+       0
+      ],
+      "ref_videos.ref_video_0": [
+       "11",
+       0
+      ],
+      "ref_audios.ref_audio_0": [
+       "11",
+       1
+      ]
+     },
+     "class_type": "MiniMaxH3ReferenceToVideo",
+     "_meta": {
+      "title": "Pass 1 (person 1): H3 Ref2VA conditioning"
+     }
+    },
+    "324": {
+     "class_type": "BasicGuider",
+     "inputs": {
+      "model": [
+       "2",
+       0
+      ],
+      "conditioning": [
+       "319",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Pass 1 (person 1): guider"
+     }
+    },
+    "325": {
+     "class_type": "SamplerCustomAdvanced",
+     "inputs": {
+      "noise": [
+       "21",
+       0
+      ],
+      "guider": [
+       "324",
+       0
+      ],
+      "sampler": [
+       "22",
+       0
+      ],
+      "sigmas": [
+       "23",
+       0
+      ],
+      "latent_image": [
+       "366",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Pass 1 (person 1): sample"
+     }
+    },
+    "326": {
+     "class_type": "VAEDecode",
+     "inputs": {
+      "samples": [
+       "325",
+       0
+      ],
+      "vae": [
+       "5",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Pass 1 (person 1): decode"
+     }
+    },
+    "364": {
+     "class_type": "SetLatentNoiseMask",
+     "inputs": {
+      "samples": [
+       "63",
+       0
+      ],
+      "mask": [
+       "155",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Pass 1 (person 1): source latent + edit mask"
+     }
+    },
+    "365": {
+     "class_type": "LTXVSeparateAVLatent",
+     "inputs": {
+      "av_latent": [
+       "320",
+       1
+      ]
+     },
+     "_meta": {
+      "title": "Pass 1 (person 1): audio latent"
+     }
+    },
+    "366": {
+     "class_type": "LTXVConcatAVLatent",
+     "inputs": {
+      "video_latent": [
+       "364",
+       0
+      ],
+      "audio_latent": [
+       "365",
+       1
+      ]
+     },
+     "_meta": {
+      "title": "Pass 1 (person 1): A/V latent"
+     }
+    },
+    "412": {
+     "class_type": "LoadImage",
+     "inputs": {
+      "image": "84505322-personB2.png"
+     },
+     "_meta": {
+      "title": "Pass 2 (person 2): photo"
+     }
+    },
+    "413": {
+     "class_type": "PrimitiveStringMultiline",
+     "inputs": {
+      "value": "Replace the man on the right, blue tie in <Video 1> with the character in <Picture 1>. Keep the character's face, hair, clothing and style from <Picture 1>. Follow the source pose, gaze, expression, movement and timing. Keep the camera, scene and everyone else unchanged."
+     },
+     "_meta": {
+      "title": "Pass 2 (person 2): prompt"
+     }
+    },
+    "419": {
+     "class_type": "MiniMaxH3AddGuide",
+     "inputs": {
+      "positive": [
+       "420",
+       0
+      ],
+      "latent": [
+       "466",
+       0
+      ],
+      "frame_idx": 0,
+      "audio_vae": [
+       "6",
+       0
+      ],
+      "audio": [
+       "11",
+       1
+      ]
+     },
+     "_meta": {
+      "title": "Pass 2 (person 2): audio guide"
+     }
+    },
+    "420": {
+     "inputs": {
+      "prompt": [
+       "413",
+       0
+      ],
+      "width": 864,
+      "height": 1152,
+      "length": 243,
+      "ref_image_size": "match",
+      "clip": [
+       "4",
+       0
+      ],
+      "vae": [
+       "5",
+       0
+      ],
+      "audio_vae": [
+       "6",
+       0
+      ],
+      "ref_images.ref_image_0": [
+       "412",
+       0
+      ],
+      "ref_videos.ref_video_0": [
+       "326",
+       0
+      ],
+      "ref_audios.ref_audio_0": [
+       "11",
+       1
+      ]
+     },
+     "class_type": "MiniMaxH3ReferenceToVideo",
+     "_meta": {
+      "title": "Pass 2 (person 2): H3 Ref2VA conditioning"
+     }
+    },
+    "421": {
+     "class_type": "RandomNoise",
+     "inputs": {
+      "noise_seed": 875973
+     },
+     "_meta": {
+      "title": "Pass 2 seed"
+     }
+    },
+    "424": {
+     "class_type": "BasicGuider",
+     "inputs": {
+      "model": [
+       "2",
+       0
+      ],
+      "conditioning": [
+       "419",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Pass 2 (person 2): guider"
+     }
+    },
+    "425": {
+     "class_type": "SamplerCustomAdvanced",
+     "inputs": {
+      "noise": [
+       "421",
+       0
+      ],
+      "guider": [
+       "424",
+       0
+      ],
+      "sampler": [
+       "22",
+       0
+      ],
+      "sigmas": [
+       "23",
+       0
+      ],
+      "latent_image": [
+       "466",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Pass 2 (person 2): sample"
+     }
+    },
+    "426": {
+     "class_type": "VAEDecode",
+     "inputs": {
+      "samples": [
+       "425",
+       0
+      ],
+      "vae": [
+       "5",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Pass 2 (person 2): decode"
+     }
+    },
+    "427": {
+     "class_type": "VAEDecodeAudio",
+     "inputs": {
+      "samples": [
+       "425",
+       0
+      ],
+      "vae": [
+       "6",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Pass 2: decode sound"
+     }
+    },
+    "428": {
+     "class_type": "CreateVideo",
+     "inputs": {
+      "fps": 24,
+      "bit_depth": 8,
+      "images": [
+       "426",
+       0
+      ],
+      "audio": [
+       "427",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Video 24 fps"
+     }
+    },
+    "430": {
+     "class_type": "SaveVideo",
+     "inputs": {
+      "filename_prefix": "openhiggsfield/two-person-swap-cloud",
+      "format": "auto",
+      "format.codec": "auto",
+      "video": [
+       "428",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Save"
+     }
+    },
+    "463": {
+     "class_type": "VAEEncode",
+     "inputs": {
+      "pixels": [
+       "326",
+       0
+      ],
+      "vae": [
+       "5",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Pass 2 (person 2): encode pass 1 result"
+     }
+    },
+    "464": {
+     "class_type": "SetLatentNoiseMask",
+     "inputs": {
+      "samples": [
+       "463",
+       0
+      ],
+      "mask": [
+       "255",
+       0
+      ]
+     },
+     "_meta": {
+      "title": "Pass 2 (person 2): source latent + edit mask"
+     }
+    },
+    "465": {
+     "class_type": "LTXVSeparateAVLatent",
+     "inputs": {
+      "av_latent": [
+       "420",
+       1
+      ]
+     },
+     "_meta": {
+      "title": "Pass 2 (person 2): audio latent"
+     }
+    },
+    "466": {
+     "class_type": "LTXVConcatAVLatent",
+     "inputs": {
+      "video_latent": [
+       "464",
+       0
+      ],
+      "audio_latent": [
+       "465",
+       1
+      ]
+     },
+     "_meta": {
+      "title": "Pass 2 (person 2): A/V latent"
+     }
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,51 @@
+{
+ "v": 1,
+ "jobId": "530ab5eb",
+ "toolId": "h3-video",
+ "provider": "router-ltx-25-pro",
+ "route": "comfy-cloud:cloud-ltx25-pro-api",
+ "target": "comfy-cloud",
+ "passes": [
+  {
+   "index": 0,
+   "label": "Result",
+   "workflow": "api_ltx2_5_i2v",
+   "graph": {
+    "2": {
+     "class_type": "SaveVideo",
+     "inputs": {
+      "video": [
+       "6",
+       0
+      ],
+      "filename_prefix": "video/openhiggsfield-ltx25-pro",
+      "format": "auto",
+      "format.codec": "auto"
+     }
+    },
+    "4": {
+     "class_type": "LoadImage",
+     "inputs": {
+      "image": "530ab5eb-ltxapi-start.png"
+     }
+    },
+    "6": {
+     "class_type": "LtxApi25ImageToVideo",
+     "inputs": {
+      "image": [
+       "4",
+       0
+      ],
+      "model": "LTX-2.5 (Pro)",
+      "model.duration": "6",
+      "model.resolution": "1920x1080",
+      "model.fps": "24",
+      "model.generate_audio": true,
+      "prompt": "animate the image. The whale glides slowly overhead, its tail sweeping once; rainbow light ripples across the dunes and over the rider; the camera tilts up slowly. Sound: low whale song, soft desert wind.",
+      "seed": 116459
+     }
+    }
+   }
+  }
+ ]
+}

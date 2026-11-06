@@ -27,6 +27,7 @@ import { getProvider } from './providers.js';
 import { jobModelFields } from './routing/modelRegistry.js';
 import { PLACE_LABELS, RUN_ON_LABELS, type RunOn } from './shared/modelIds.js';
 import { isApiNode } from './apiNodes.js';
+import { FEATURED } from './shared/featured.js';
 import { VECTOR_LOCAL, VTRACER_SETTINGS, vectorStyleOf, vectorStyleLabel } from './shared/imageVector.js';
 
 export const GRAPHS_DIR = path.join(DATA_DIR, 'workflow-graphs');
@@ -46,6 +47,14 @@ export function recordSubmittedPass(job: Pick<Job, 'id' | 'toolId' | 'provider' 
   } catch (e) { console.warn(`[openhiggsfield] could not store the submitted graph for ${job.id}: ${(e as Error).message}`); }
 }
 export const storedGraphs = (jobId: string): Stored | null => { try { return JSON.parse(readFileSync(graphFile(jobId), 'utf8')); } catch { return null; } };
+/** The app's own example results (shared/featured.ts, seeded as jobs by featuredSeed.ts) ship the graph their run really sent, in
+ *  workflows/examples/<run id>.json (Comfy Cloud asset references replaced by the plain file names), so View workflow works on a fresh install
+ *  where no run of ours was ever submitted. Found through the example's catalogue key and its run id. */
+export function exampleGraphs(job: Pick<Job, 'id'> & { featuredExample?: string }): Stored | null {
+  const key = job.featuredExample; if (typeof key !== 'string') return null;
+  const runId = FEATURED.find((f) => f.key === key)?.jobId; if (!runId || !/^[\w-]{1,40}$/.test(runId)) return null;
+  try { return JSON.parse(readFileSync(path.join(WORKFLOWS_DIR, 'examples', `${runId}.json`), 'utf8')); } catch { return null; }
+}
 
 export type ExportSource = 'submitted' | 'rebuilt' | 'equivalent' | 'partner';
 export interface MediaNote { pass: number; node: string; field: string; file: string; what: string; /** ffmpeg command that makes this file from your upload (prepared inputs only) */ how?: string }
@@ -147,7 +156,12 @@ export async function buildWorkflowExport(job: Job): Promise<WorkflowExport & { 
   if (job.provider === VECTOR_LOCAL && !/^comfy-cloud:/.test(route)) { const st = vectorStyleOf(job.input?.style); const v = VTRACER_SETTINGS[st];
     return { ...base, reason: `VTracer ran on your computer from the app’s own code, so there is no ComfyUI workflow to open. Style ${vectorStyleLabel(st)}: colour precision ${v.colorPrecision}, gradient step ${v.layerDifference}, filter speckle ${v.filterSpeckle}, corner threshold ${v.cornerThreshold}°, segment length ${v.lengthThreshold}, splice threshold ${v.spliceThreshold}° (VTracer’s own names).`, headline: 'No ComfyUI workflow: VTracer on your computer', graphs: [] }; }
   // 1. What the runner sent.
-  const st = storedGraphs(job.id);
+  const own = storedGraphs(job.id); const st = own ?? exampleGraphs(job as any);
+  if (st?.passes.length && (st.route ?? '') === route && !own) { // one of our example runs: the graph it really sent, shipped with the app
+    const where = st.target === 'local' ? 'our computer' : 'Comfy Cloud';
+    return fin('submitted', true, `The exact workflow this example ran on ${where}, with its settings.`, st.passes,
+      { notes: ['This is one of our own example runs. Its input pictures and clips are not included: put your own into the Load nodes before you run it.'] });
+  }
   if (st?.passes.length && (st.route ?? '') === route) {
     const where = st.target === 'local' ? 'your ComfyUI' : 'Comfy Cloud';
     return fin('submitted', true, `The exact workflow ${where} ran, with your settings.`, st.passes,
@@ -209,6 +223,7 @@ export async function buildWorkflowExport(job: Job): Promise<WorkflowExport & { 
     return { ...base, reason: `The workflow couldn’t be rebuilt for this result: ${(e as Error).message}`, headline: 'No workflow for this one', graphs: [] };
   }
   if (kind === 'comfy-router') return { ...base, reason: ROUTER_REASON, headline: 'Not a ComfyUI workflow', graphs: [] };
+  if ((job as any).featuredExample && (!kind || kind === 'local')) return { ...base, reason: 'This example ran in ComfyUI on our computer, but its workflow file wasn’t kept, so there is nothing to open for this one. Recreate makes the same kind of result and keeps its workflow.', headline: 'Workflow not kept for this example', graphs: [] };
   return { ...base, reason: `This ran on ${ranOnLabel ?? 'a hosted API'}, not a ComfyUI workflow.`, headline: 'Not a ComfyUI workflow', graphs: [] };
 }
 

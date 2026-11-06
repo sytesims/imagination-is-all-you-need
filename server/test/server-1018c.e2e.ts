@@ -18,7 +18,7 @@ try {
   const img = path.join(D, 'key.jpg'), clip = path.join(D, 'clip.mp4');
   execFileSync('ffmpeg', ['-y', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=0x335577:s=1280x720', '-frames:v', '1', img]);
   execFileSync('ffmpeg', ['-y', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc=s=1280x720:d=5', '-f', 'lavfi', '-i', 'sine=d=5', '-shortest', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', clip]);
-  const M = boot(testPort(8987)), N = boot(testPort(8988), { OPENHIGGSFIELD_DEMO_AUTO: '0', COMFY_API_KEY: 'dummy-not-a-real-key' }), R = boot(testPort(8989), { OPENHIGGSFIELD_BACKEND: 'comfy', OPENHIGGSFIELD_COMFY_URL: 'http://127.0.0.1:59999' });
+  const M = boot(testPort(8987)), N = boot(testPort(8988), { OPENHIGGSFIELD_DEMO_AUTO: '0', COMFY_API_KEY: 'dummy-not-a-real-key' }), R = boot(testPort(8989), { OPENHIGGSFIELD_BACKEND: 'comfy', OPENHIGGSFIELD_COMFY_URL: 'http://127.0.0.1:59999', OPENHIGGSFIELD_FREE_SAMPLES: '0' /* the real backend's own routing, without the fresh-install free samples (free-samples.e2e.ts) */ });
   await ready(M); await ready(N); await ready(R);
   // (1) app posters = the tool's /api/posters entry
   const apps = (await get(M, '/api/apps')).body.items as any[]; const posters = new Map(((await get(M, '/api/posters')).body.items as any[]).map((x) => [x.toolId, x]));

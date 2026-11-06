@@ -7,7 +7,7 @@ import { unpricedReason } from './quote';
 import { presetHref } from '../../../server/src/shared/presetLink';
 import { resetImagePresets } from './imagePresets';
 import { READY_WORKFLOW_TOOLS } from './workflowLinks';
-import { LOCAL_FREE } from '../../../server/src/shared/modelIds';
+import { aKey, LOCAL_FREE } from '../../../server/src/shared/modelIds';
 
 export type Paid = { credits: number | null; usd: number | null; runOn: string | null } | null;
 /** `jobId`: the run that made it (absent for a repo picture with no recorded run); `paid`: what that run cost */
@@ -53,7 +53,7 @@ export function quoteText(q: Quote | null | undefined, own: boolean | null): { p
   if (!q) return { price: null, reason: 'Price unknown', sample: false };
   const why = unpricedReason(q); if (why) return { price: null, reason: why.replace(/\.$/, ''), sample: false };
   if (q.runnable === false) return { price: null, reason: String(q.unavailableReason ?? q.error ?? q.message ?? 'Can’t run here yet').replace(/\.$/, ''), sample: false };
-  if (q.needsKey === true) return { price: null, reason: q.keyOwner ? `Needs a ${q.keyOwner} key` : 'Needs a key', sample: false };
+  if (q.needsKey === true) return { price: null, reason: q.keyOwner ? `Needs ${aKey(q.keyOwner)}` : 'Needs a key', sample: false };
   if (q.demo === true) return { price: 'Sample · free', reason: null, sample: true };
   return { price: runPrice({ own, credits: typeof q.credits === 'number' ? q.credits : null, runOn: q.local ? 'local' : placeOfQuote(q) }), reason: null, sample: false };
 }

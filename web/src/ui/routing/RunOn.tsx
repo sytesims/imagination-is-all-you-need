@@ -36,6 +36,7 @@ export function runOnText(m: ToolModel | undefined, pick: string, q?: any): { ma
   const qAction: PlaceAction | null = qHere && q.runnable === false && q.setup && q.setup.runOn === place ? { kind: q.setup.action, text: q.setup.actionText, missingBytes: q.setup.missingBytes ?? null, downloadId: q.setup.downloadId ?? null } : null;
   let st: string = row?.status ?? 'ready';
   if (qHere) st = q.demo ? 'sample' : q.runnable === false && (q.reasonCode === 'input_blocked' || q.blockedCode === 'input_blocked') ? st /* the place is fine; the job needs something (who to swap): the bar says what */ : q.runnable === false ? (q.needsKey ? 'needs-key' : q.reasonCode === 'weights_missing' || q.reasonCode === 'nodes_missing' ? 'not-installed' : st === 'ready' ? 'unavailable' : st) : 'ready';
+  if (qHere && q.freeSample) return { main: 'Sample', sub: '', dot: 'demo', tip: `${q.sampleNote ?? 'A sample from our examples.'} Nothing is sent anywhere and nothing is charged.`, place, saved, action: null }; // free samples (nothing set up): never named as a place it isn't
   const action = st === 'ready' ? null : qAction ?? row?.action ?? null;
   const ch = qHere ? routeChoiceOf(m, q.routeId) : null; // the place has several ways to run it: name the one this run uses ("Comfy Cloud · open workflow")
   const name = ch?.name ?? (place ? runOnLabel(place) : 'Not set up');

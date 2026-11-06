@@ -94,6 +94,7 @@ async function saveOutput(o: DirectOutput, job: Job, i: number, where?: string) 
 async function execute(job: Job, tool: ToolDef, r: RouteDef, attempt: RouteAttempt) {
   job.status = 'running'; job.error = null; job.errorType = null; job.progress = 0; job.outputs = []; job.resultUrl = null;
   if (job.remote?.resuming && !live(r) && !cloudLive(r) && !routerLive(r) && !(r.cloudRun && keyValue(r))) throw cannotPickUp('its key is no longer set'); // never a sample in place of a paid result
+  if (job.routing?.demo && config.backend !== 'mock') return (await import('./sampleRun.js')).runSample(job, tool); // free samples (select.ts freeSamples): never ComfyUI or a provider
   if (forcedFail(job, r.routeId)) { await new Promise((ok) => setTimeout(ok, 200)); if (forcedSent(job, r.routeId)) { attempt.requestId = `sim-${job.id}-${attempt.n}`; (job.requestIds ??= []).push(attempt.requestId); } throw new Error(`${plainRoute(r)}: provider error (simulated)`); }
   if (live(r)) {
     // prompt grammar: every body below is built by routing/routeRequest.ts (refInputFor first: each model's own reference syntax); the job keeps what was typed

@@ -144,7 +144,7 @@ export function modelStatus(tool: ToolDef, modelId: string, mode: string | null 
   return fail('not_runnable', reasonSentence(String(err.error ?? 'Not available here')).replace(/\s*Nothing was charged\.?/, '').replace(/\.$/, ''));
 }
 const WHY: Record<string, (s: ModelStatus) => string> = {
-  key_missing: (s) => `needs a ${s.keyOwner ?? 'provider'} key`,
+  key_missing: (s) => `needs ${aKey(s.keyOwner ?? 'provider')}`,
   not_wired: () => "isn’t ready in this app yet",
   local_off: () => 'runs only on your computer, and running on your computer is off',
   local_unreachable: () => "runs only on your computer, and ComfyUI isn’t running there",
@@ -226,7 +226,7 @@ function recommendedDefaults(tool: ToolDef, opts: DefaultsOpts = {}): ToolDefaul
   const nextKey = models.find((m) => m.keyOwner && m.needsKey && m.wired) ?? models.find((m) => m.keyOwner && m.needsKey);
   // nothing runs: name why the model in use can't either (Restyle on a computer without a graphics card: its local default is too heavy), same words as WHY
   const ownWhy = (m: ModelStatus) => { const w = m.reasonCode ? WHY[m.reasonCode]?.(m) : null; return w ? ` ${m.name} ${w}.` : ''; };
-  const tailOf = (m: ModelStatus) => m.runnable ? '' : m.demo ? ' It makes sample output here until its key is added.' : m.needsKey ? ` Add a ${m.keyOwner ?? 'provider'} key in Settings → Connections to run it.` : `${ownWhy(m)}${nextKey ? ` Nothing can run yet. Add ${aKey(String(nextKey.keyOwner))} in Settings → Connections to start.` : ' Nothing can run yet.'}`;
+  const tailOf = (m: ModelStatus) => m.runnable ? '' : m.demo ? ' It makes sample output here until its key is added.' : m.needsKey ? ` Add ${aKey(m.keyOwner ?? 'provider')} in Settings → Connections to run it.` : `${ownWhy(m)}${nextKey ? ` Nothing can run yet. Add ${aKey(String(nextKey.keyOwner))} in Settings → Connections to start.` : ' Nothing can run yet.'}`;
   const nothingRuns = !def.runnable && !def.demo && !def.needsKey;
   // Bug 7: the user's saved pick can't run (key missing, local off ...): say so under its own code, then name what is used instead
   const blockedPin = pinnedDef ? undefined : models.find((m) => m.pinned && !(m.runnable || m.demo) && m.id !== def.id);

@@ -13,6 +13,7 @@ import * as lib from './library.js';
 import { getProvider } from './providers.js';
 import { budgetBlockFor, budgetOfRequest, AGENT_HEADER } from './agentBudget.js';
 import { adaptForModel, COMPARE_MAX, COMPARE_MIN, type CompareChange, type CompareParams } from './shared/compareAdapt.js';
+import { aKey } from './shared/modelIds.js';
 
 const ACTIVE = new Set(['queued', 'running', 'needs_decision']);
 const BULK_MAX = 500;
@@ -63,7 +64,7 @@ export function registerFeed(app: FastifyInstance, pub: (j: any) => any) {
       Object.assign(row, { routeId: q.routeId ?? q.route ?? null, runOn: q.runOn ?? null, local: q.local === true, demo: q.demo === true, billedTo: q.cost?.billedTo ?? null, estUsd: q.demo ? 0 : Number(q.cost?.estUsd ?? 0) || 0, credits: typeof q.credits === 'number' ? q.credits : null });
       if (q.priceAvailable === false || (q.credits == null && !q.setupOptions)) { rows.push({ ...row, unpriced: true, excluded: null, ok: false }); continue; }
       if (q.runnable === false && (q.agentBudgetBlock || q.blockedCode === 'agent_budget')) { rows.push({ ...row, ok: true }); continue; } // over a cap on its own: the combined check below names it
-      if (q.runnable === false || q.credits == null) { const why = q.needsKey ? `Needs a ${q.keyOwner ?? q.cost?.billedToName ?? 'provider'} key` : Array.isArray(q.setupOptions) && q.setupOptions.length ? 'Needs setup first: pick it in the bar to set it up' : String(q.reason ?? q.error ?? 'Can’t run here right now');
+      if (q.runnable === false || q.credits == null) { const why = q.needsKey ? `Needs ${aKey(q.keyOwner ?? q.cost?.billedToName ?? 'provider')}` : Array.isArray(q.setupOptions) && q.setupOptions.length ? 'Needs setup first: pick it in the bar to set it up' : String(q.reason ?? q.error ?? 'Can’t run here right now');
         rows.push({ ...row, excluded: { code: q.needsKey ? 'needs_key' : Array.isArray(q.setupOptions) && q.setupOptions.length ? 'needs_setup' : 'not_runnable', reason: why } }); continue; }
       rows.push({ ...row, ok: true });
     }

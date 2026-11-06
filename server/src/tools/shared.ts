@@ -346,7 +346,7 @@ export async function renderMockOutput(job: Job, i: number, out: string) {
 }
 
 /** What a mock job writes, as a media kind: picture (PNG), clip (MP4) or sound (M4A); null for 3D, alpha clips and anything else. */
-const outMediaKind = (job: Job): 'image' | 'video' | 'audio' | null => { const e = outExt(job); return e === 'png' ? 'image' : e === 'm4a' ? 'audio' : e === 'mp4' ? 'video' : null; };
+export const outMediaKind = (job: Job): 'image' | 'video' | 'audio' | null => { const e = outExt(job); return e === 'png' ? 'image' : e === 'm4a' ? 'audio' : e === 'mp4' ? 'video' : null; };
 /** A real file as this job's output, as is (never cropped, looped or toned): a picture as PNG, an MP4 clip copied (other clips to H.264 + AAC), a sound as AAC. */
 async function writeRealMedia(kind: 'image' | 'video' | 'audio', src: string, out: string) {
   if (kind === 'video' && /\.mp4$/i.test(src)) { await copyFile(src, out); return; }
@@ -387,7 +387,8 @@ export const setMockDelayMs = (ms: number | null) => { mockDelayOverride = ms ==
 export async function mockRun(job: Job, stages: [string, string][], labels: string[] = ['Result'], ms = 8000): Promise<void> {
   { const d = mockDelayMs(); if (d != null) ms = Math.max(1, d); }
   job.simulated = true; // sample output: nothing reaches a provider, so the spend log counts it as $0 (billing.ts countedUsd)
-  const replay = await reserveReplayFiles(job, labels.length); // OPENHIGGSFIELD_MOCK_REPLAY_DIR: real files instead of drawn samples (mock only)
+  const picked: string[] = Array.isArray(job.input.sampleFiles) ? job.input.sampleFiles.filter((u: unknown): u is string => typeof u === 'string' && /^\/(showcase|examples)\/[\w./-]+$/.test(u) && !u.includes('..')).map((u: string) => path.resolve(WEB_PUBLIC_DIR, u.slice(1))) : [];
+  const replay = picked.length ? picked /* free samples (routing/sampleRun.ts): the shipped examples that fit the prompt */ : await reserveReplayFiles(job, labels.length); // OPENHIGGSFIELD_MOCK_REPLAY_DIR: real files instead of drawn samples (mock only)
   // HW-SHAPES B4: first-use downloading_model / loading_model on a local route (only when asked or simulated; a normal run skips this)
   if (String(job.route ?? '').startsWith('local:')) { job.status = 'running'; job.queuePos = 0; const S = await import('../hardware/stages.js'); if (S.needsPrePhase(job, true)) {
     try { await S.prePhase(job, true, Math.ceil(ms / 1000)); } catch (e) { if (job.status === 'running') { job.status = 'failed'; job.errorType = 'temporary'; job.error = e instanceof Error ? e.message : String(e); } return; }

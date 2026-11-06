@@ -7,6 +7,7 @@
 import { sameShape, ratioOf } from './imageCaps.js';
 import { LOCAL_LABEL } from './modelIds.js';
 import { needOf, type Need } from './settingsFit.js';
+import { aKey } from './modelIds.js';
 
 export type PreflightStage = 'inputs' | 'model' | 'setup' | 'money';
 export type PreflightFixKind = 'choose-photo' | 'fit-photo' | 'crop-photo' | 'use-first' | 'pick-model' | 'paint-mask' | 'focus-prompt' | 'open-group'
@@ -100,7 +101,7 @@ export function preflightProblems(s: PreflightState): PreflightProblem[] {
     const o = Array.isArray(q.setupOptions) && q.setupOptions.length ? (q.setupOptions.find((x: any) => x.runOn === q.runOn) ?? q.setupOptions[0]) : q.setup?.action ? q.setup : null;
     const runOn = String(o?.runOn ?? ''); const where = String(o?.runOnLabel ?? runOn ?? '');
     if (o?.action === 'download') add({ code: 'needs_download', stage: 'setup', message: `${model} isn’t downloaded yet`, fix: { kind: 'download', label: o.missingBytes ? `Download ${gb(Number(o.missingBytes))}` : 'Download', args: { runOn, ...(o.missingBytes ? { bytes: Number(o.missingBytes) } : {}) } } });
-    else if (o?.action === 'add_key') add({ code: 'needs_key', stage: 'setup', message: `Needs a ${where || 'provider'} key${s.freeLocal ? FREE_LOCAL_TAIL : ''}`, fix: { kind: 'add-key', label: 'Add key', args: { runOn } } });
+    else if (o?.action === 'add_key') add({ code: 'needs_key', stage: 'setup', message: `Needs ${aKey(where || 'provider')}${s.freeLocal ? FREE_LOCAL_TAIL : ''}`, fix: { kind: 'add-key', label: 'Add key', args: { runOn } } });
     else if (o?.action === 'turn_on') add({ code: 'needs_gpu', stage: 'setup', message: `${LOCAL_LABEL} is off`, fix: { kind: 'turn-on', label: 'Turn on', args: { runOn } } });
     // the local place before ComfyUI answers (Your computer picked, routing/select.ts set_up_gpu): the free way, never "add a key"
     else if (o?.action === 'set_up_gpu' && runOn === 'local') add({ code: 'needs_comfyui', stage: 'setup', message: `Set up ComfyUI to run ${model} free`, fix: { kind: 'set-up', label: 'Set up ComfyUI', args: { runOn: 'local' } } });

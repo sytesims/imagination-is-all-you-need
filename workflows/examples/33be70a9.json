@@ -1,0 +1,51 @@
+{
+ "v": 1,
+ "jobId": "33be70a9",
+ "toolId": "h3-video",
+ "provider": "router-ltx-25-pro",
+ "route": "comfy-cloud:cloud-ltx25-pro-api",
+ "target": "comfy-cloud",
+ "passes": [
+  {
+   "index": 0,
+   "label": "Result",
+   "workflow": "api_ltx2_5_i2v",
+   "graph": {
+    "2": {
+     "class_type": "SaveVideo",
+     "inputs": {
+      "video": [
+       "6",
+       0
+      ],
+      "filename_prefix": "video/openhiggsfield-ltx25-pro",
+      "format": "auto",
+      "format.codec": "auto"
+     }
+    },
+    "4": {
+     "class_type": "LoadImage",
+     "inputs": {
+      "image": "33be70a9-ltxapi-start.png"
+     }
+    },
+    "6": {
+     "class_type": "LtxApi25ImageToVideo",
+     "inputs": {
+      "image": [
+       "4",
+       0
+      ],
+      "model": "LTX-2.5 (Pro)",
+      "model.duration": "10",
+      "model.resolution": "1920x1080",
+      "model.fps": "24",
+      "model.generate_audio": true,
+      "prompt": "animate the image. The whale zooms past the rider, its tail sweeping beautifully and the sand storm brewing near the rider; rainbow light ripples across the dunes and over the rider. Sound: slow beautiful matched with the whales speed",
+      "seed": 116459
+     }
+    }
+   }
+  }
+ ]
+}
