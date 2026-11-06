@@ -14,6 +14,7 @@
     "licenses": "tsx scripts/gen-licenses.ts",
     "docs:workflows": "tsx scripts/gen-workflow-docs.ts",
     "start:tsx": "tsx src/index.ts",
+    "dump-config": "tsx --env-file-if-exists=../.env.local src/index.ts --dump-config",
     "start:app": "node scripts/dev.mjs --no-watch",
     "test": "node ../scripts/test-all.mjs"
   },

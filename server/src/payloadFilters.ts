@@ -25,8 +25,11 @@ const pick = (o: any, keys: string[]) => {
   return out;
 };
 
-export function registerPayloadFilters(app: FastifyInstance) {
-  app.addHook('preSerialization', async (req: FastifyRequest, _reply: FastifyReply, payload: any) => {
+/** app: a Fastify server, or a hook adder (legacy.ts: ctx.http's 'final' stage). */
+type HookAdder = (name: 'preSerialization' | 'onSend', fn: (req: FastifyRequest, reply: FastifyReply, payload: any) => Promise<unknown>) => unknown;
+const adder = (app: FastifyInstance | HookAdder): HookAdder => (typeof app === 'function' ? app : (name, fn) => app.addHook(name as any, fn as any));
+export function registerPayloadFilters(app: FastifyInstance | HookAdder) {
+  adder(app)('preSerialization', async (req: FastifyRequest, _reply: FastifyReply, payload: any) => {
     const p = req.url.split('?')[0];
     if (p !== '/api/tools' && p !== '/api/models') return payload;
     const q = (req.query ?? {}) as Record<string, unknown>;
@@ -57,8 +60,8 @@ export function pickEncoding(accept: string | undefined): 'br' | 'gzip' | null {
   return accepts(accept, 'br') ? 'br' : accepts(accept, 'gzip') ? 'gzip' : null;
 }
 
-export function registerCompression(app: FastifyInstance) {
-  app.addHook('onSend', async (req, reply, payload: any) => {
+export function registerCompression(app: FastifyInstance | HookAdder) {
+  adder(app)('onSend', async (req, reply, payload: any) => {
     if (req.method === 'HEAD' || reply.statusCode < 200 || reply.statusCode === 204 || reply.statusCode === 304 || reply.getHeader('content-encoding')) return payload;
     const type = String(reply.getHeader('content-type') ?? '');
     if (!TEXTY.test(type)) return payload;

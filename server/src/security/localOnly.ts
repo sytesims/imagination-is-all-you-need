@@ -79,8 +79,10 @@ const HOST_MSG = 'This app answers only on this computer (localhost). To open it
 const ORIGIN_MSG = 'Another website tried to use this app. Only the app itself (localhost) may call it. To allow a site you trust, add it to OPENHIGGSFIELD_ALLOWED_ORIGINS.';
 
 /** Register first (before CORS, static files and the ?clean=1 responder). */
-export function registerLocalOnly(app: FastifyInstance) {
-  app.addHook('onRequest', async (req, reply) => {
+/** app: a Fastify server, or a hook adder (ctx.http.hook in the 'security' stage: the kernel runs that stage before every other hook). */
+export function registerLocalOnly(app: FastifyInstance | ((name: 'onRequest', fn: (req: any, reply: any) => Promise<unknown>) => unknown)) {
+  const add = typeof app === 'function' ? app : (name: 'onRequest', fn: (req: any, reply: any) => Promise<unknown>) => app.addHook(name, fn);
+  add('onRequest', async (req, reply) => {
     const host = req.headers.host;
     if (!hostAllowed(host)) { req.log.warn({ host }, 'refused: Host not allowed'); return deny(reply, 403, HOST_MSG, 'host_not_allowed'); }
     const origin = req.headers.origin; const site = String(req.headers['sec-fetch-site'] ?? '').toLowerCase();

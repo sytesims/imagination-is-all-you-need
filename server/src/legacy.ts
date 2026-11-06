@@ -24,12 +24,13 @@ import { durationsFor } from './tools/h3/videoCaps.js';
 import { durToolOf, appQuoteParams } from './tools/apps.js';
 import { jobPoster } from './interimTiles.js';
 import { layersPosterUrl, writeLayerPoster } from './layerPoster.js';
-import Fastify, { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { currentHttp } from './kernel/http.js';
+import { bootSettings } from './kernel/settings.js';
 import { etaFor } from './timing.js';
 import { clipTrimLimits, trimToolId } from './clipTrim.js';
 import { setToolsBuilder, registerToolsInvalidation, registerResponseCache, toolsBody, toolsList } from './toolsCache.js';
 import multipart from '@fastify/multipart';
-import { listenHost } from './shared/listenHost.js';
 import { registerUploadSecurity, mediaResponseHeaders, uploadKind, validateUpload, acceptKind } from './uploadSecurity.js';
 import fstatic from '@fastify/static';
 import cors from '@fastify/cors';
@@ -104,8 +105,9 @@ import { SWATCH_MAX } from './shared/swatchBatch.js';
 import { MAX_UPLOAD_MB } from './shared/mediaAccept.js'; /* one number for the server and the web's pickers */
 
 mkdirSync(DATA_DIR, { recursive: true });
-const app = Fastify({ logger: { level: 'info' } });
-registerLocalOnly(app); // security/localOnly.ts: first: Host / Origin checks for every route, /files/ serves media only
+/** The server (kernel/http.ts, ctx.http): made by the kernel, exported so the legacy plugin closes it when it is disposed. */
+const http = currentHttp(); export const app = http.app;
+registerLocalOnly((name, fn) => http.hook(name, fn, { stage: 'security', owner: 'local-only' })); // security/localOnly.ts: the security stage runs before every other hook, whatever loads first: Host / Origin checks for every route, /files/ serves media only
 I.registerIdempotency(app); registerJsonErrors(app); // every 5xx carries a JSON body (DP #17) // job-creating endpoints: Idempotency-Key / clientJobId, 24 h, replay = original response, mismatch → 409
 await app.register(cors, { origin: corsOrigin, exposedHeaders: [I.REPLAY_HEADER] }); // allowed origins only (security/localOnly.ts); browsers may read Idempotent-Replayed (DP client)
 const ROUTES: { method: string; url: string }[] = [];
@@ -1243,8 +1245,9 @@ app.setNotFoundHandler((req, reply) => { const p = req.url.split('?')[0];
 app.get('/api/licenses', async () => { const r: any = buildLicenseReport(); const { creditOfLicenseRow } = await import('./attribution.js'); return { ...r, rows: r.rows.map((x: any) => ({ ...x, ...creditOfLicenseRow(x) })) }; });
 app.addHook('preSerialization', async (req, _reply, payload) => (/^\/api\/(tools|models)(\/|\?|$)/.test(req.url) ? stripLicenseLinks(payload) : payload));
 // Performance (task 11): ?toolId= / ?fields= on /api/tools and /api/models, then brotli/gzip. Registered last so both see the final payload.
-{ const pf = await import('./payloadFilters.js'); pf.registerPayloadFilters(app); pf.registerCompression(app); }
-/** Network exposure requires an explicit HOST opt-in in development and production. */
-export const LISTEN_HOST = listenHost(process.env);
+{ const pf = await import('./payloadFilters.js'); const final = (name: any, fn: any) => http.hook(name, fn, { stage: 'final', owner: 'legacy' }); pf.registerPayloadFilters(final); pf.registerCompression(final); } // the final stage: after every other hook
+/** Network exposure requires an explicit HOST opt-in in development and production (kernel settings: HOST, read once at boot). */
+export const LISTEN_HOST = bootSettings().host;
 process.env.HOST = LISTEN_HOST; // the "runs on this computer" checks (saving keys, ComfyUI address) read process.env.HOST: keep it the address we really listen on
-await app.listen({ port: Number(process.env.PORT) || 8787, host: LISTEN_HOST });
+if (process.env.OPENHIGGSFIELD_DUMP_ROUTES === '1') await http.ready(); // --dump-config: every route registered, nothing listens
+else await http.listen({ port: bootSettings().port, host: LISTEN_HOST });
