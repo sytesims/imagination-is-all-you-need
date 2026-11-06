@@ -177,8 +177,9 @@ export function registerBatch1(app: FastifyInstance) {
       const u = upscaleQuery(t2, qq); const prov = qq.model || qq.provider || defaultProviderFor(t2) || toolProviders(t2)[0]?.id; if (u?.error) return reply.code(400).send({ error: u.error, errorType: 'validation', issues: [{ code: 'unsupported', field: 'scale', message: u.error }], valid: false });
       const p = priceOf({ toolId: t2.id, rates: t2.gpuSecPerSec, quality: u?.resolution || qq.quality || qq.resolution || '1080p', durationSec: u?.duration ?? (Number(qq.seconds ?? qq.duration) || null), provider: prov, ...(u ? { megapixels: outputMegapixels(u), mode: priceMode(u) } : {}) });
       return { valid: true, toolId: t2.id, model: prov, credits: p.credits, basis: p.basis, breakdown: p.breakdown, ...(u ? { outputSize: u.outputSize, scale: u.scale, mode: priceMode(u), seconds: u.duration } : {}) }; }
-    const q = req.query; const t = getTool('create-image')!; const model = q.model || defaultProviderFor(t) || toolProviders(t)[0]?.id;
-    if (!t.providers.includes(model)) { // any other /api/models entry (video, audio, upscale…): quote it on the first tool that offers it, via that tool's /price (same routed price = charge)
+    const q = req.query; const t = getTool('create-image'); if (!t && (q as any).toolId === 'create-image') return reply.code(404).send({ error: 'unknown tool' }); // studio-image off
+    const model = q.model || (t ? defaultProviderFor(t) || toolProviders(t)[0]?.id : '');
+    if (!t || !t.providers.includes(model)) { // any other /api/models entry (video, audio, upscale…): quote it on the first tool that offers it, via that tool's /price (same routed price = charge)
       const { listTools } = await import('./tools/registry.js'); const owner = [getTool('h3-video'), ...listTools()].find((x) => x?.providers.includes(model)); // the video models' own tool first (same as the quote preHandler's toolForModel), not an app that also lists them (Camera Moves: MiniMax H3)
       if (!owner) return reply.code(404).send({ error: `unknown model ${model}: not offered by any tool (see GET /api/models)`, errorType: 'not_found', code: 'unknown_model', valid: false });
       const qs = new URLSearchParams(Object.entries(req.query as Record<string, string>).filter(([k, v]) => k !== 'model' && v != null) as [string, string][]); qs.set('provider', model);
