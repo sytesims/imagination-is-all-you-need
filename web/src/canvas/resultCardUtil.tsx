@@ -1,5 +1,6 @@
 /** The result node's shape util and the helpers that place one (the view is ResultCardShape.tsx; no component here, so it hot-reloads cleanly). */
-import { BaseBoxShapeUtil, HTMLContainer, T, createShapeId, type Editor, type TLShape, type TLShapeId, type TLShapePartial, type VecLike } from 'tldraw';
+import { BaseBoxShapeUtil, HTMLContainer, T, type TLShape, type TLShapePartial } from 'tldraw';
+import type { BoardApi, NodeId, Point } from './boardApi';
 import { resultCardSize, type ResultKind, type ResultMedia } from '../shared/resultMedia';
 import { RESULT_TYPE, NODE_DEFS } from './nodeTypes';
 import { keepNodeControls } from './nodeFrameModel';
@@ -44,27 +45,26 @@ export function probeSize(kind: ResultKind, url: string, timeout = 2500): Promis
 }
 
 /** Place a result node centred on `at` (page coordinates; default the viewport centre), select it, and return its id. */
-export async function addResultCard(editor: Editor, jobId: string, m: ResultMedia, at?: VecLike, o: { /** `at` is only where to start looking: the nearest free place to it */ free?: boolean } = {}) {
+export async function addResultCard(board: BoardApi, jobId: string, m: ResultMedia, at?: Point, o: { /** `at` is only where to start looking: the nearest free place to it */ free?: boolean } = {}) {
   const nat = await probeSize(m.kind, m.kind === '3d' ? m.poster : m.kind === 'video' ? m.poster : m.url);
   const size = resultCardSize(m.kind, nat?.w, nat?.h); const h = size.h + 104;
-  const c = at && !o.free ? at : freeSpot(editor, size.w, h, at); /* a click in Assets: the middle of the view, or the nearest free place, never on top of a card */
-  const id = createShapeId();
-  editor.markHistoryStoppingPoint('add result card');
-  editor.createShape<ResultCardShape>({ id, type: RESULT_TYPE, x: c.x - size.w / 2, y: c.y - h / 2,
+  const c = at && !o.free ? at : freeSpot(board, size.w, h, at); /* a click in Assets: the middle of the view, or the nearest free place, never on top of a card */
+  board.mark('add result card');
+  const id = board.addNode({ type: RESULT_TYPE, x: c.x - size.w / 2, y: c.y - h / 2,
     props: { w: size.w, h, kind: m.kind, jobId, url: m.url, poster: m.poster, title: m.title.slice(0, 300), model: m.caption.model, place: m.caption.place, price: m.caption.price, time: m.caption.time } });
-  editor.select(id); if (!at || o.free) reveal(editor, id);
+  board.select([id]); if (!at || o.free) reveal(board, id);
   return id;
 }
 
 /** Pull one of a card's results out onto the board as its own Result card: right of the card, under any already pulled out of it,
  *  linked to it (lineage). A version from the strip and a layer of Image to layers both come out this way. Returns the new card. */
-export async function pullOutResult(editor: Editor, cardId: TLShapeId, m: { jobId: string; kind: ResultKind; url: string; poster: string; title: string; model?: string }, o: { select?: boolean; /** where its centre goes (else right of the card, under the ones already out) */ at?: VecLike } = {}): Promise<TLShapeId> {
+export async function pullOutResult(board: BoardApi, cardId: NodeId, m: { jobId: string; kind: ResultKind; url: string; poster: string; title: string; model?: string }, o: { select?: boolean; /** where its centre goes (else right of the card, under the ones already out) */ at?: Point } = {}): Promise<NodeId> {
   let j: JobState | null = liveJobs.get()[m.jobId] ?? null; if (!j) j = await getJob(m.jobId).catch(() => null);
   const cap = j ? jobCaption(j, null) : { model: m.model ?? '', place: '', price: '', time: '' };
-  const b = editor.getShapePageBounds(cardId); const prev = editor.getCurrentPageShapes().filter(x => x.type === RESULT_TYPE && ((x.props as any).parents ?? []).includes(cardId)).map(x => editor.getShapePageBounds(x.id)!).filter(Boolean);
+  const b = board.boundsOf(cardId); const prev = board.nodes().filter(x => x.type === RESULT_TYPE && ((x.props as any).parents ?? []).includes(cardId)).map(x => board.boundsOf(x.id)!).filter(Boolean);
   const at = o.at ?? (b ? { x: b.maxX + 96 + 180, y: (prev.length ? Math.max(...prev.map(r => r.maxY)) + 32 : b.minY) + 180 } : undefined);
-  const id = await addResultCard(editor, m.jobId, { kind: m.kind, url: m.url, poster: m.poster, title: m.title, caption: cap as any }, at);
-  editor.run(() => { editor.updateShape({ id, type: RESULT_TYPE, props: { parents: [cardId] } } as any); linkShapes(editor, cardId, id); });
-  if (o.select === false) editor.select(cardId); else reveal(editor, id);
+  const id = await addResultCard(board, m.jobId, { kind: m.kind, url: m.url, poster: m.poster, title: m.title, caption: cap as any }, at);
+  board.batch(() => { board.patchNode(id, { props: { parents: [cardId] } }); linkShapes(board, cardId, id); });
+  if (o.select === false) board.select([cardId]); else reveal(board, id);
   return id;
 }

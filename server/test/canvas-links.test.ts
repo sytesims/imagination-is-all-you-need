@@ -1,6 +1,6 @@
 // How connections look (web/src/canvas/links.ts): neighbours get a notch and no wire, the magnetic snap (distance, compatibility, where
 // it lands), pulling a snapped pair apart unlinks it, threads route around cards, Tidy turns chains into rows, and the reduced-motion
-// look. Tidy's single Undo is checked with a stub editor (tidyBoard). Run: cd server && npx tsx test/canvas-links.test.ts
+// look. Tidy's single Undo is checked with a stub board (tidyBoard). Run: cd server && npx tsx test/canvas-links.test.ts
 import assert from 'node:assert/strict';
 import { isNeighbour, notchAt, snapTarget, pulledApart, routeThread, threadPath, tidyLayout, linkLook, SNAP_PX, SNAP_GAP, UNLINK_PX, type LBox } from '../../web/src/canvas/links.ts';
 import { tidyBoard } from '../../web/src/canvas/tidy.ts';
@@ -51,7 +51,7 @@ assert.ok(by.k2.y > by.k1.y && by.lone.y > by.k2.y, 'rows stack downward; a card
 for (let i = 0; i < moved.length; i++) for (let j = i + 1; j < moved.length; j++) { const p = moved[i], q = moved[j]; assert.ok(!(p.x < q.x + q.w && p.x + p.w > q.x && p.y < q.y + q.h && p.y + p.h > q.y), `${p.id} and ${q.id} overlap`); }
 assert.deepEqual(tidyLayout(cards, links), pos, 'the same board tidies the same way');
 const marks: string[] = []; const updates: any[] = [];
-const ed: any = { markHistoryStoppingPoint: (n: string) => { marks.push(n); return 'm'; }, run: (f: () => void) => f(), updateShapes: (u: any[]) => updates.push(...u) };
+const ed: any = { mark: (n: string) => { marks.push(n); return 'm'; }, batch: (f: () => void) => f(), patchNodes: (u: any[]) => updates.push(...u) };
 const n = tidyBoard(ed, cards.map((c) => ({ ...c, type: 'ohf-gen' })), links); assert.equal(n, Object.keys(pos).filter((id) => pos[id].x !== cards.find((c) => c.id === id)!.x || pos[id].y !== cards.find((c) => c.id === id)!.y).length);
 assert.deepEqual(marks, ['tidy'], 'one history mark: one Undo puts the board back'); assert.ok(updates.every((u) => pos[u.id] && u.x === pos[u.id].x && u.y === pos[u.id].y));
 ok('Tidy: chains become rows of neighbours, branches below, nothing overlaps, deterministic, one Undo');

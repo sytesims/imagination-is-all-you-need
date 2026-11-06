@@ -5,7 +5,7 @@
  *  - haze:  soft drifting colour clouds over a faint dot grid;
  *  - night: a calm dot grid with a gentle vignette (the default: the cleanest board and best contrast, user 2026-10-27).
  */
-import { atom } from 'tldraw';
+import { atom } from './boardApi';
 
 export type BoardLook = 'space' | 'haze' | 'night';
 export const BOARD_LOOKS: { id: BoardLook; label: string; hint: string }[] = [

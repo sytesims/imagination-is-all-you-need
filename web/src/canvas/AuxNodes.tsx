@@ -11,7 +11,7 @@ import { pictureName } from '../../../server/src/shared/canvasPictures';
  *    the second press (within six seconds) runs them. Nothing is submitted on the first press.
  */
 import { useEffect, useRef, useState } from 'react';
-import { HTMLContainer, useEditor, useValue, type TLShapeId } from 'tldraw';
+import { useBoardApi, useValue, type NodeId } from './boardApi';
 import { useToast } from '../shared/Toast';
 import { uploadMedia } from '../shared/batch1';
 import { mediaPoster } from './fileDrop';
@@ -33,14 +33,14 @@ const KIND_ICON = { prompt: Ic.PromptIcon, upload: Ic.UploadIcon, note: Ic.NoteI
 
 export function AuxView({ shape }: { shape: AuxNodeShape }) {
   const kind = nodeDefOf(shape.type)?.kind ?? 'note'; const p = shape.props as AuxNodeProps; const Icon = KIND_ICON[kind as keyof typeof KIND_ICON] ?? Ic.PromptIcon;
-  return <HTMLContainer style={{ pointerEvents: kind === 'group' ? 'none' : 'all' }} onPointerDown={keepNodeControls} onPointerUp={keepNodeControls}>
+  return <>
     {kind === 'prompt' ? <PromptView shape={shape} p={p} Icon={Icon} /> : kind === 'upload' ? <UploadView shape={shape} p={p} Icon={Icon} /> : kind === 'note' ? <NoteView shape={shape} p={p} Icon={Icon} /> : kind === 'compare' ? <CompareView shape={shape} p={p} Icon={Icon} /> : kind === 'ad' ? <AdView shape={shape as any} Icon={Icon} /> : <GroupView shape={shape} p={p} Icon={Icon} />}
-  </HTMLContainer>;
+  </>;
 }
 
 function TextNode({ shape, p, Icon, note = false }: { shape: AuxNodeShape; p: AuxNodeProps; Icon: (q: { size?: number }) => JSX.Element; note?: boolean }) {
-  const editor = useEditor();
-  const set = (text: string) => editor.run(() => editor.updateShape({ id: shape.id, type: shape.type, props: { text } } as any), { history: 'ignore' });
+  const board = useBoardApi();
+  const set = (text: string) => board.batch(() => board.patchNode(shape.id, { props: { text } } as any), { history: 'ignore' });
   const words = p.text.trim() ? p.text.trim().split(/\s+/).length : 0;
   return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title={note ? 'Note' : 'Prompt'} status={<span className="nf-status">{note ? 'Note' : 'Text'}</span>}
     footer={<><span className="nf-model"><b>{words ? `${words} word${words === 1 ? '' : 's'}` : note ? 'A note for you' : 'Text input'}</b></span><span className="nf-price" {...tip(note ? 'A note is for you. Drag its output onto a generate card and its text becomes that card’s prompt' : 'Drag the output onto a generate card to feed its prompt')}>{note ? 'Can feed a prompt' : 'Prompt'}</span></>}>
@@ -54,8 +54,8 @@ const PromptView = (o: { shape: AuxNodeShape; p: AuxNodeProps; Icon: any }) => <
 const NoteView = (o: { shape: AuxNodeShape; p: AuxNodeProps; Icon: any }) => <TextNode {...o} note />;
 
 function UploadView({ shape, p, Icon }: { shape: AuxNodeShape; p: AuxNodeProps; Icon: any }) {
-  const editor = useEditor(); const toast = useToast(); const file = useRef<HTMLInputElement>(null); const [over, setOver] = useState(false); const [busy, setBusy] = useState(false);
-  const patch = (props: Partial<AuxNodeProps>) => editor.run(() => editor.updateShape({ id: shape.id, type: shape.type, props } as any), { history: 'ignore' });
+  const board = useBoardApi(); const toast = useToast(); const file = useRef<HTMLInputElement>(null); const [over, setOver] = useState(false); const [busy, setBusy] = useState(false);
+  const patch = (props: Partial<AuxNodeProps>) => board.batch(() => board.patchNode(shape.id, { props } as any), { history: 'ignore' });
   const take = async (f: File | undefined) => { if (!f || busy) return; const mediaKind = kindOfFile(f);
     if (!mediaKind) { toast(wrongTypeText(f.name, ['image', 'video', 'audio']), 'warn'); return; } setBusy(true);
     try { const [m] = await uploadMedia([f]); if (!m?.url) throw new Error('Upload failed'); const kind = (m as any).type || mediaKind; const poster = mediaPoster(kind, m.url);
@@ -80,8 +80,8 @@ function UploadView({ shape, p, Icon }: { shape: AuxNodeShape; p: AuxNodeProps; 
 }
 
 function CompareView({ shape, p, Icon }: { shape: AuxNodeShape; p: AuxNodeProps; Icon: any }) {
-  const editor = useEditor();
-  const inputs = useValue('compare inputs', () => cardInputs(editor, shape).filter(i => i.kind === 'image' || i.kind === 'video'), [editor, shape.id, p.w, p.h]);
+  const board = useBoardApi();
+  const inputs = useValue('compare inputs', () => cardInputs(board, shape).filter(i => i.kind === 'image' || i.kind === 'video'), [board, shape.id, p.w, p.h]);
   const a = inputs[0], b = inputs[1]; const video = inputs.some(i => i.kind === 'video');
   return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title="Compare" farName="Compare" status={<span className="nf-status">{inputs.length}/2</span>}
     footer={<><span className="ax-ins">{a && <span className="ax-chip">{a.poster ? <img src={a.poster} alt="" /> : <ImageIcon size={12} />}<span>Before</span></span>}{b && <span className="ax-chip">{b.poster ? <img src={b.poster} alt="" /> : <ImageIcon size={12} />}<span>After</span></span>}</span><span className="nf-price">{inputs.length === 2 ? 'Ready' : 'Needs 2'}</span></>}>
@@ -94,12 +94,12 @@ function CompareView({ shape, p, Icon }: { shape: AuxNodeShape; p: AuxNodeProps;
 }
 
 function GroupView({ shape, p, Icon }: { shape: AuxNodeShape; p: AuxNodeProps; Icon: any }) {
-  const editor = useEditor(); const toast = useToast(); const [confirm, setConfirm] = useState<RunAllConfirm | null>(null); const [busy, setBusy] = useState(false);
+  const board = useBoardApi(); const toast = useToast(); const [confirm, setConfirm] = useState<RunAllConfirm | null>(null); const [busy, setBusy] = useState(false);
   const members = useValue('group members', () => {
-    const b = editor.getShapePageBounds(shape.id); if (!b) return [] as string[];
-    return groupGenIds(b, editor.getCurrentPageShapes().map(s => ({ id: s.id, type: s.type, bounds: editor.getShapePageBounds(s.id) })));
-  }, [editor, shape.id, p.w, p.h]);
-  const runnable = useValue('group runnable', () => members.filter(id => { const s = editor.getShape(id as TLShapeId); const st = (s?.props as any)?.status; return st === 'draft' || st === 'failed'; }), [editor, members.join(',')]);
+    const b = board.boundsOf(shape.id); if (!b) return [] as string[];
+    return groupGenIds(b, board.nodes().map(s => ({ id: s.id, type: s.type, bounds: board.boundsOf(s.id) })));
+  }, [board, shape.id, p.w, p.h]);
+  const runnable = useValue('group runnable', () => members.filter(id => { const s = board.getNode(id as NodeId); const st = (s?.props as any)?.status; return st === 'draft' || st === 'failed'; }), [board, members.join(',')]);
   const key = runnable.join(',');
   useEffect(() => { setConfirm(null); }, [key]);
   useEffect(() => { if (!confirm) return; const t = setTimeout(() => setConfirm(null), 10000); return () => clearTimeout(t); }, [confirm]);
@@ -107,13 +107,13 @@ function GroupView({ shape, p, Icon }: { shape: AuxNodeShape; p: AuxNodeProps; I
     if (busy) return;
     if (confirm) { const ids = runAllCommit(confirm); if (!ids) { setConfirm(null); return; } setConfirm(null); setBusy(true); let n = 0;
       /* graph order (2026-10-28): a node fed by another node in the group starts when that one is done, with its input */
-      try { const r = await submitInOrder(editor, ids, { stop: () => true, onLater: (_id, x) => { if (x.error) toast(x.error, 'error'); } }); n = r.jobIds.length;
+      try { const r = await submitInOrder(board, ids, { stop: () => true, onLater: (_id, x) => { if (x.error) toast(x.error, 'error'); } }); n = r.jobIds.length;
         if (r.failed.length) toast(r.failed[0].error || 'That node could not start.', 'error');
         setBusy(false); if (n || r.later.length) toast(`${n} run${n === 1 ? '' : 's'} started${r.later.length ? `, ${r.later.length} more when the ones before them finish` : ''}`); }
       catch (e) { setBusy(false); toast((e as Error).message || 'That node could not start.', 'error'); }
       return; }
     if (!runnable.length) return;
-    setBusy(true); try { const quotes = await Promise.all(runnable.map(id => quoteNode(editor, id as TLShapeId).catch(() => null))); setConfirm(runAllConfirm(runnable, quotes)); }
+    setBusy(true); try { const quotes = await Promise.all(runnable.map(id => quoteNode(board, id as NodeId).catch(() => null))); setConfirm(runAllConfirm(runnable, quotes)); }
     catch (e) { toast((e as Error).message || 'Could not price these nodes.', 'error'); } finally { setBusy(false); }
   };
   const label = busy ? (confirm ? 'Starting…' : 'Pricing…') : confirm ? `Run ${confirm.count} · ${runAllPriceLabel(confirm.total)}` : 'Run all';

@@ -25,14 +25,16 @@ import { FollowAgent } from './FollowAgent';
 import { bindHand } from './agentHand';
 import { NextStepMenu } from './NextStepMenu';
 import { CameraMotion } from './CameraMotion';
-import { CanvasOverlays, linkArrowVisibility } from './LinkLayer';
+import { CanvasOverlays } from './LinkLayer';
+import { boardOf, linkArrowVisibility, registerLinkCleanup } from './boardApiTldraw';
+import type { BoardApi } from './boardApi';
 import { BoardBackground } from './BoardBackground';
 import { GenCardShapeUtil } from './genCardUtil';
 import { variationOf } from './variation';
 import { PromptNodeUtil, UploadNodeUtil, NoteNodeUtil, CompareNodeUtil, GroupNodeUtil, AdNodeUtil } from './auxShapes';
 import { lastFlowNow, setBoardCtx, exposeForDev, createNode, createCard } from './agentApi';
 import { reattachRunning } from './genRun';
-import { GEN_TYPE, registerLinkCleanup } from './graph';
+import { GEN_TYPE } from './graph';
 import { UPLOAD_TYPE, NODE_DEFS } from './nodeTypes';
 import { cardState } from './cardState';
 import { catalogNow } from './catalog';
@@ -78,11 +80,12 @@ function registerLinkPreviews(editor: Editor) {
  *  card write as the slot's Add chip; on empty board, or the ones left over from several, they become Upload nodes near the drop. An Upload
  *  node takes a file dropped on it itself. Never a raw tldraw image. */
 function registerFileDrops(editor: Editor, toast: ReturnType<typeof useToast>) {
+  const board = boardOf(editor);
   editor.registerExternalContentHandler('files', async ({ files, point }) => {
     const at = point ?? editor.getViewportPageBounds().center;
     const hit = editor.getShapeAtPoint(at, { hitInside: true, filter: s => s.type === GEN_TYPE || s.type === UPLOAD_TYPE });
     if (hit?.type === UPLOAD_TYPE) return;
-    const st = hit ? cardState(editor, hit, catalogNow()) : null; const slots = st?.spec?.slots ?? [];
+    const st = hit ? cardState(board, hit, catalogNow()) : null; const slots = st?.spec?.slots ?? [];
     const plan = planFileDrop(files, slots, Object.fromEntries(slots.map(x => [x.name, st!.bySlot[x.name]?.length ?? 0])));
     /* one file on a card that can't take it: say why, like the picker; files no node takes (a PDF) always say why */
     const loose = hit && files.length === 1 ? [] : plan.rest.filter(r => r.kind);
@@ -92,11 +95,11 @@ function registerFileDrops(editor: Editor, toast: ReturnType<typeof useToast>) {
       catch (e) { toast((e as Error).message || 'Upload failed', 'error'); return null; } };
     const [fillUrls, looseUrls] = await Promise.all([Promise.all(plan.fills.map(f => up(f.file))), Promise.all(loose.map(r => up(r.file)))]);
     const filled = plan.fills.flatMap((f, i) => (fillUrls[i] ? [{ input: uploadedInput(f.kind, fillUrls[i]!, files[f.file].name), slot: f.slot }] : []));
-    if (hit && filled.length && editor.getShape(hit.id)) { editor.markHistoryStoppingPoint('drop files'); addCardInputs(editor, hit.id, filled); }
-    const { defaultW: w, defaultH: h } = NODE_DEFS.upload; const made: TLShapeId[] = [];
+    if (hit && filled.length && editor.getShape(hit.id)) { editor.markHistoryStoppingPoint('drop files'); addCardInputs(board, hit.id, filled); }
+    const { defaultW: w, defaultH: h } = NODE_DEFS.upload; const made: string[] = [];
     loose.forEach((r, i) => { const url = looseUrls[i]; if (!url) return; const card = hit && editor.getShapePageBounds(hit.id); const near = card ? { x: at.x, y: card.maxY + h / 2 + 40 } : at;
-      made.push(createAuxNode(editor, 'upload', { at: freeSpot(editor, w, h, near), select: false, media: { url, poster: mediaPoster(r.kind!, url), mediaKind: r.kind!, label: pictureName(files[r.file].name, 'Upload') } })); /* named after its file, so your agent can tell them apart */ });
-    if (made.length) editor.select(...made);
+      made.push(createAuxNode(board, 'upload', { at: freeSpot(board, w, h, near), select: false, media: { url, poster: mediaPoster(r.kind!, url), mediaKind: r.kind!, label: pictureName(files[r.file].name, 'Upload') } })); /* named after its file, so your agent can tell them apart */ });
+    if (made.length) board.select(made);
   });
 }
 /* One page per board (2026-10-28): the page menu is hidden, so the context menu's "Move to page → New page" sent a card somewhere no one
@@ -110,15 +113,15 @@ const OVERRIDES: TLUiOverrides = {
   tools(editor, tools) { return { ...tools, note: { ...tools.note, kbd: undefined } }; },
   actions(editor, actions) {
     const dup = actions['duplicate']; const geo = actions['select-geo-tool'];
-    const make = (kind: any) => () => { createNode(editor, kind); };
+    const board = boardOf(editor); const make = (kind: any) => () => { createNode(board, kind); };
     return { ...actions,
       ...(geo ? { 'select-geo-tool': { ...geo, kbd: undefined } } : {}),
-      'ohf-new-gen-card': { id: 'ohf-new-gen-card', label: 'New generate card' as any, kbd: 'g', readonlyOk: false, onSelect: () => { createCard(editor, { flow: lastFlowNow() }); } },
+      'ohf-new-gen-card': { id: 'ohf-new-gen-card', label: 'New generate card' as any, kbd: 'g', readonlyOk: false, onSelect: () => { createCard(board, { flow: lastFlowNow() }); } },
       'ohf-new-note': { id: 'ohf-new-note', label: 'New note node' as any, kbd: 'n', readonlyOk: false, onSelect: make('note') },
       'ohf-new-upload': { id: 'ohf-new-upload', label: 'New upload node' as any, kbd: 'u', readonlyOk: false, onSelect: make('upload') },
       'ohf-new-compare': { id: 'ohf-new-compare', label: 'New compare node' as any, kbd: 'c', readonlyOk: false, onSelect: make('compare') },
       'ohf-new-group': { id: 'ohf-new-group', label: 'Group selection' as any, kbd: 'shift+g', readonlyOk: false, onSelect: make('group') },
-      ...(dup ? { duplicate: { ...dup, onSelect: (src: any) => { const only = editor.getOnlySelectedShape(); if (only?.type === GEN_TYPE) { editor.markHistoryStoppingPoint('variation'); variationOf(editor, only.id); return; } return dup.onSelect(src); } } } : {}) };
+      ...(dup ? { duplicate: { ...dup, onSelect: (src: any) => { const only = editor.getOnlySelectedShape(); if (only?.type === GEN_TYPE) { editor.markHistoryStoppingPoint('variation'); variationOf(board, only.id); return; } return dup.onSelect(src); } } } : {}) };
   },
 };
 /** Enter with one generate card selected (focus on the board, not in a field) runs it, like its Generate button. */
@@ -142,8 +145,8 @@ const camKey = (id: string) => `ohf-canvas-camera:${id}`;
 const readCam = (id: string) => { try { const v = JSON.parse(localStorage.getItem(camKey(id)) ?? 'null'); return v && isFinite(v.x) && isFinite(v.y) && v.z > 0 ? v as { x: number; y: number; z: number } : null; } catch { return null; } };
 const writeCam = (id: string, c: { x: number; y: number; z: number }) => { try { localStorage.setItem(camKey(id), JSON.stringify({ x: c.x, y: c.y, z: c.z })); } catch { /* private window */ } };
 
-export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, onProject, onEditor }: {
-  board: BoardDoc; /** MOCKUP: the card panel needs the editor */ onEditor?: (e: Editor | null) => void; onProject: (id: string | null) => void; onSaveState: (s: SaveState) => void; onSaved: (r: { rev: number; updatedAt: number; shapes: number }) => void; drawerOpen: boolean; setDrawerOpen: (v: boolean) => void;
+export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, onProject, onBoard }: {
+  board: BoardDoc; /** the card panel beside the board reads it through this */ onBoard?: (b: BoardApi | null) => void; onProject: (id: string | null) => void; onSaveState: (s: SaveState) => void; onSaved: (r: { rev: number; updatedAt: number; shapes: number }) => void; drawerOpen: boolean; setDrawerOpen: (v: boolean) => void;
 }) {
   const toast = useToast(); const [view3d, setView3d] = useState<any | null>(null);
   const snapshot = useMemo(() => (board.snapshot ? { document: board.snapshot } as any : undefined), [board.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -160,17 +163,17 @@ export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, 
       if (cards.length) editor.updateShapes(cards.map(c => ({ id: c.id, type: RESULT_TYPE, props: { poster } }))); }).catch(() => undefined); }, 1200); };
 
   const onMount = (editor: Editor) => {
-    ed.current = editor; onEditor?.(editor); const id = board.id; let rev = board.rev; let dirty = false, saving = false, stopped = false; let timer = 0, camTimer = 0;
+    ed.current = editor; const api = boardOf(editor); onBoard?.(api); const id = board.id; let rev = board.rev; let dirty = false, saving = false, stopped = false; let timer = 0, camTimer = 0;
     /* first visit: the pen starts orange and text in Inter; a saved camera comes back, else the board fits its content */
     editor.user.updateUserPreferences({ colorScheme: 'dark' });
     if ((import.meta as any).env?.DEV) (window as any).__ohfCanvas = editor; /* dev only: lets checks drive the board */
     const cam = readCam(id); if (cam) editor.setCamera(cam); else if (editor.getCurrentPageShapeIds().size) editor.zoomToFit();
-    reattachRunning(editor); /* step 2: running cards follow their job again */
+    reattachRunning(api); /* step 2: running cards follow their job again */
     /* cards saved at the old 330 px height grow to the new card (title, picture, model row, prompt): once, not an undo step */
     const short = editor.getCurrentPageShapes().filter(s => s.type === GEN_TYPE && (s.props as any).h <= 330 && (s.props as any).h >= 300);
     if (short.length) editor.run(() => editor.updateShapes(short.map(s => ({ id: s.id, type: GEN_TYPE, props: { h: CARD_H } }) as any)), { history: 'ignore' });
     registerLinkPreviews(editor); registerFileDrops(editor, toast); const unLinks = registerLinkCleanup(editor);
-    setBoardCtx({ boardId: id, projectId: board.projectId ?? null, editor }); exposeForDev(editor);
+    setBoardCtx({ boardId: id, projectId: board.projectId ?? null, board: api }); exposeForDev(api);
     editor.run(() => { editor.setStyleForNextShapes(DefaultColorStyle, 'orange'); editor.setStyleForNextShapes(DefaultFontStyle, 'sans'); });
     const save = async () => {
       if (!dirty || saving || stopped) return; dirty = false; saving = true; onSaveState('saving');
@@ -186,7 +189,7 @@ export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, 
     const onHide = () => { if (document.visibilityState === 'hidden') { writeCam(id, editor.getCamera()); void save(); } };
     const onExit = () => { writeCam(id, editor.getCamera()); if (dirty && !stopped && saveBoardOnExit(id, getSnapshot(editor.store).document, rev)) dirty = false; };
     document.addEventListener('visibilitychange', onHide); addEventListener('pagehide', onExit);
-    const unHand = bindHand(editor); /* the agent's cursor, outline and laser never outlive the board */
+    const unHand = bindHand(api); /* the agent's cursor, outline and laser never outlive the board */
     return () => { unHand(); unLinks(); unDoc(); unCam(); clearTimeout(timer); clearTimeout(camTimer); document.removeEventListener('visibilitychange', onHide); removeEventListener('pagehide', onExit);
       writeCam(id, editor.getCamera()); if (dirty && !stopped) { const snap = getSnapshot(editor.store).document; void saveBoard(id, snap, rev).then(onSaved).catch(() => saveBoardOnExit(id, snap, rev)); } };
   };

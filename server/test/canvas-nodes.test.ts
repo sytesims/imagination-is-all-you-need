@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { NODE_DEFS, NODE_KINDS, NODE_TYPES, GEN_TYPE, RESULT_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, GROUP_TYPE, AD_TYPE, nodeDefOf, adCardFit, adCardHeight } from '../../web/src/canvas/nodeTypes.ts';
 import { canConnectTo, pickPortTarget, groupGenIds, runAllConfirm, runAllCommit, runAllTotal, runAllPriceLabel } from '../../web/src/canvas/nodeLogic.ts';
 import { linkShapes, inputOfShape, withInputs } from '../../web/src/canvas/graph.ts';
+import { boardOf } from '../../web/src/canvas/boardApiTldraw.ts';
 import { addVersions, MAX_VERSIONS } from '../../web/src/canvas/cardModel.ts';
 import { runOrder, settleProposal, type ProposalCard } from '../../web/src/canvas/nodeLogic.ts';
 import { outKindOf, genIns, canFeed, legalTargets, pickTypedTarget, takesLine, type PortInfo } from '../../web/src/canvas/nodeLogic.ts';
@@ -45,7 +46,7 @@ assert.equal(pickPortTarget(cands, 'shape:a', PROMPT_TYPE), null, 'a prompt drag
 assert.deepEqual(pickPortTarget([{ id: 'shape:x', type: GEN_TYPE }], 'shape:x', GEN_TYPE), null, 'never connects to itself');
 ok('port linking: media / text rules, self and full inputs refused, topmost valid target');
 
-// ---- the actual arrow linkShapes writes (stub editor, no browser) ----
+// ---- the actual tldraw arrow linkShapes writes through the board seam (BoardApi over a stub tldraw editor, no browser) ----
 const shapes: Record<string, any> = { 'shape:a': { maxX: 100, midY: 50 }, 'shape:b': { minX: 300, midY: 80 } };
 const created: any[] = [], bindings: any[] = [];
 const editor = {
@@ -53,7 +54,7 @@ const editor = {
   createShape: (s: any) => { created.push(s); return s; },
   createBindings: (b: any[]) => { bindings.push(...b); },
 } as any;
-const arrowId = linkShapes(editor, 'shape:a' as any, 'shape:b' as any);
+const arrowId = linkShapes(boardOf(editor), 'shape:a', 'shape:b');
 assert.ok(arrowId && arrowId.startsWith('shape:'));
 assert.equal(created.length, 1); assert.equal(created[0].type, 'arrow');
 assert.equal(created[0].props.kind, 'arc', 'curved'); assert.ok(created[0].props.bend > 0);
@@ -63,14 +64,18 @@ assert.equal(bindings.length, 2); assert.equal(bindings[0].props.terminal, 'star
 assert.equal(bindings[1].props.terminal, 'end'); assert.equal(bindings[1].toId, 'shape:b');
 assert.equal(bindings[0].fromId, arrowId); assert.equal(bindings[1].fromId, arrowId);
 ok('linkShapes: thin grey arc, one arrowhead, both ends bound (start → end)');
+// ---- history through the seam (R1): a job's result is written with history 'ignore', so an Undo never removes it ----
+{ const runs: any[] = []; const b = boardOf({ run: (fn: () => void, o?: any) => { runs.push(o); fn(); } } as any);
+  b.batch(() => undefined, { history: 'ignore' }); b.batch(() => undefined);
+  assert.deepEqual(runs, [{ history: 'ignore' }, undefined], "'ignore' reaches the engine untouched; a plain batch records (one undo step)");
+  ok('history: ignore stays ignore through BoardApi'); }
 
 // ---- what the camera frames for an agent's card (2026-10-28): the card and the nodes wired into it, so a source clip stays in view ----
 { const sh: Record<string, any> = { 'shape:src': { id: 'shape:src', index: 'a1' }, 'shape:ext': { id: 'shape:ext', index: 'a2' }, 'shape:arr': { id: 'shape:arr', index: 'a3' }, 'shape:lone': { id: 'shape:lone', index: 'a4' } };
-  const ed = { getShape: (id: string) => sh[id] ?? null,
-    getBindingsToShape: (id: string) => (id === 'shape:ext' ? [{ fromId: 'shape:arr', props: { terminal: 'end' } }] : []),
-    getBindingsFromShape: (id: string) => (id === 'shape:arr' ? [{ toId: 'shape:src', props: { terminal: 'start' } }, { toId: 'shape:ext', props: { terminal: 'end' } }] : []) } as any;
-  assert.deepEqual(withInputs(ed, ['shape:ext']), ['shape:ext', 'shape:src'], 'an Extend card brings its source clip');
-  assert.deepEqual(withInputs(ed, ['shape:lone', 'shape:gone']), ['shape:lone'], 'no inputs: just the card; a missing id is skipped');
+  const board = { getNode: (id: string) => sh[id] ?? null,
+    linksInto: (id: string) => (id === 'shape:ext' ? [{ id: 'shape:arr', from: 'shape:src', to: 'shape:ext', meta: {} }] : []) } as any;
+  assert.deepEqual(withInputs(board, ['shape:ext']), ['shape:ext', 'shape:src'], 'an Extend card brings its source clip');
+  assert.deepEqual(withInputs(board, ['shape:lone', 'shape:gone']), ['shape:lone'], 'no inputs: just the card; a missing id is skipped');
   ok('camera area: a card plus the nodes wired into it'); }
 
 // ---- typed ports (2026-10-27): what a node puts out, what it takes, legal targets, the hint on an illegal drop ----
