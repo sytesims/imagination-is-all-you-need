@@ -94,11 +94,9 @@ jobs:
       # python3-pil + python3-numpy: the server's colour match (server/src/tools/soul/colour_transfer.py; soul.test checks it).
       # python3, tar, bash and git are already on the runner.
       - name: Install system tools
+        timeout-minutes: 15
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends ffmpeg lsof iproute2 python3-pil python3-numpy
-          ffmpeg -version | head -1
-          python3 -c "import PIL, numpy; print('Pillow', PIL.__version__, 'NumPy', numpy.__version__)"
+          bash scripts/ci/install-tools.sh --test-tools
           df -h . /tmp | tail -n +2
 
       - name: Install dependencies
