@@ -49,6 +49,7 @@ import { canvasDefaultModel } from './shared/cloudDefaults.js';
 import { validateBatch, batchLine, BATCH_MAX, type BatchItem } from './shared/canvasBatch.js';
 import { recommend } from './shared/takeReview.js';
 import { uploadNodeSummary, pictureLines, MAX_DOCK_PICTURES } from './shared/canvasPictures.js';
+import { boardDocOf, FRAME_TYPE, STICKY_TYPE, UPLOAD_NODE_TYPE } from './shared/boardDoc.js';
 import { reviewVersions, reviewMode } from './canvasReview.js';
 
 const MAX_FEED = 240;
@@ -449,37 +450,30 @@ export function priceOfQuote(q: any): PriceView | null {
   return { usd: usd == null ? null : r4(usd), credits: typeof q.credits === 'number' ? q.credits : null,
     label: demo ? 'Sample' : local ? 'Free' : usd != null ? `≈ $${usd.toFixed(2)}` : null, demo, local, runnable: q.runnable !== false };
 }
-/** Plain text of a tldraw rich text value (tiptap JSON). */
-export function richTextPlain(rt: any): string { if (!rt || typeof rt !== 'object') return ''; if (typeof rt.text === 'string') return rt.text; return (Array.isArray(rt.content) ? rt.content.map(richTextPlain).join(rt.type === 'doc' ? '\n' : '') : '').trim(); }
-/** The saved board as the same node list the live page returns (used when no page is open). */
-export function summarizeSnapshot(snapshot: any): BoardNode[] {
-  const store = (snapshot as any)?.store ?? (snapshot as any)?.document?.store ?? {};
-  if (!store || typeof store !== 'object') return [];
-  const records = Object.values(store) as any[];
-  const shapes = records.filter((r) => r?.typeName === 'shape');
-  const bindings = records.filter((r) => r?.typeName === 'binding' && r?.type === 'arrow');
-  const start = new Map<string, string>(); const end = new Map<string, string>();
-  for (const b of bindings) { const t = b?.props?.terminal; if (t === 'start' && b.fromId && b.toId) start.set(b.fromId, b.toId); else if (t === 'end' && b.fromId && b.toId) end.set(b.fromId, b.toId); }
-  const inputsOf = (id: string) => [...end.entries()].filter(([, to]) => to === id).map(([arrow]) => start.get(arrow)).filter((x): x is string => !!x);
+/** The saved board (either format: a version-1 tldraw snapshot is read through boardDocOf) as the same node list the live page returns
+ *  (used when no page is open). Nodes in draw order; links are a card's inputs. */
+export function summarizeSnapshot(snapshot: unknown): BoardNode[] {
+  const doc = boardDocOf(snapshot);
+  const inputsOf = (id: string) => doc.links.filter((l) => l.to === id).map((l) => l.from);
   const nodes: BoardNode[] = [];
-  for (const s of shapes.sort((a, b) => String(a.index ?? '').localeCompare(String(b.index ?? '')))) {
-    const p = s.props ?? {};
+  for (const s of doc.nodes) {
+    const p: any = s.props ?? {}; const meta: any = s.meta ?? {};
     if (s.type === 'ohf-gen') {
       nodes.push({ id: s.id, type: 'card', kind: p.medium ?? null, workflow: p.flow ?? null, model: p.model || p.provider || null, prompt: p.prompt ?? '',
-        name: typeof s.meta?.name === 'string' ? s.meta.name : null, title: String(s.meta?.name || p.prompt || p.flow || 'Card').slice(0, 100), status: p.status ?? null, inputs: inputsOf(s.id), missing: null,
+        name: typeof meta.name === 'string' ? meta.name : null, title: String(meta.name || p.prompt || p.flow || 'Card').slice(0, 100), status: p.status ?? null, inputs: inputsOf(s.id), missing: null,
         results: (p.takes ?? []).filter((t: any) => t?.url).map((t: any) => ({ url: t.url, kind: t.kind ?? null, poster: t.poster ?? null })),
         price: priceOfQuote(p.quote), jobId: p.jobId || null });
     } else if (s.type === 'ohf-result') {
       nodes.push({ id: s.id, type: 'result', kind: p.kind ?? null, title: p.title ?? null, model: p.model ?? null, results: p.url ? [{ url: p.url, kind: p.kind ?? null, poster: p.poster ?? null }] : [], jobId: p.jobId || null });
-    } else if (s.type === 'ohf-upload') {
+    } else if (s.type === UPLOAD_NODE_TYPE && (meta.from === 'image' || meta.from === 'video')) {
+      /* a picture or clip from an old (tldraw) board: listed as before the move */
+      nodes.push({ id: s.id, type: meta.from === 'image' ? 'picture' : 'clip', kind: meta.from, title: p.label || meta.from, results: [{ url: p.url, kind: meta.from }] });
+    } else if (s.type === UPLOAD_NODE_TYPE) {
       const n = uploadNodeSummary(s); if (n) nodes.push(n); /* a dropped picture, clip or sound, by its name (2026-11-03: they were missing) */
-    } else if (s.type === 'image' || s.type === 'video') {
-      const asset = p.assetId ? store[p.assetId] : null; const url = asset?.props?.src; if (!url) continue;
-      nodes.push({ id: s.id, type: s.type === 'image' ? 'picture' : 'clip', kind: s.type, title: asset?.props?.name ?? s.type, results: [{ url, kind: s.type }] });
-    } else if (s.type === 'note' || s.type === 'text') {
-      const t = richTextPlain(p.richText); if (t) nodes.push({ id: s.id, type: 'note', kind: s.type, title: t.slice(0, 600), by: s.meta?.by === 'agent' ? 'agent' : 'you', frame: String(s.parentId ?? '').startsWith('shape:') ? s.parentId : null });
-    } else if (s.type === 'frame') {
-      nodes.push({ id: s.id, type: 'frame', kind: 'frame', title: String(p.name || 'Frame'), children: shapes.filter((c) => c.parentId === s.id).map((c) => c.id) });
+    } else if (s.type === STICKY_TYPE) {
+      const t = String(p.text ?? '').trim(); if (t) nodes.push({ id: s.id, type: 'note', kind: meta.from === 'text' ? 'text' : 'note', title: t.slice(0, 600), by: meta.by === 'agent' ? 'agent' : 'you', frame: s.parentId ?? null });
+    } else if (s.type === FRAME_TYPE) {
+      nodes.push({ id: s.id, type: 'frame', kind: 'frame', title: String(p.name || 'Frame'), children: doc.nodes.filter((c) => c.parentId === s.id).map((c) => c.id) });
     }
   }
   return nodes;
