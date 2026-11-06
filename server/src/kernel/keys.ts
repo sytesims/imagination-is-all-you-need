@@ -29,8 +29,8 @@ export const keyConfigured = (envKey: string | null | undefined, aliases: string
 
 /** How code reads a route's key: ctx.keys inside a plugin (its declared keys only), ANY_KEY where routing code runs without booting
  *  (scripts and tests: services/places.ts BUILT_IN). */
-export interface KeyReader { configured(r: KeyRef): boolean; value(r: KeyRef): string | undefined }
-export const ANY_KEY: KeyReader = { configured: (r) => keyConfigured(r.envKey, r.envAliases), value: keyValue };
+export interface KeyReader { configured(r: KeyRef): boolean; value(r: KeyRef): string | undefined; get(name: string): string | undefined }
+export const ANY_KEY: KeyReader = { configured: (r) => keyConfigured(r.envKey, r.envAliases), value: keyValue, get: readKey };
 
 export class KeyNotDeclared extends Error {
   constructor(plugin: string, names: string[]) { super(`ctx.keys: plugin "${plugin}" did not declare ${names.join(', ')} (add it to the plugin's keys)`); this.name = 'KeyNotDeclared'; }

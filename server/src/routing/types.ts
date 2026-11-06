@@ -107,6 +107,10 @@ export interface RouteAttempt {
   charged: number; refunded: number; requestId?: string | null;
   /** D4: this failed attempt surely cost nothing (routing/run.ts failedAttemptNotCharged): never reached the provider, refused before running, or free by the provider's rule. */
   notCharged?: boolean;
+  /** Our own id for the request, made and written to disk before anything is sent (services/places.ts AttemptKit.requestId; live runs only). */
+  clientRequestId?: string;
+  /** What the place said this attempt cost (PlaceOutput.cost). Information only: what is charged is still the quote. */
+  reportedCost?: { usd: number; source: 'provider' | 'estimate' };
 }
 export interface JobRouting {
   modelId: string;

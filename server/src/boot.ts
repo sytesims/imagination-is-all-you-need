@@ -11,8 +11,13 @@ import { PlacesService } from './services/places.js';
 
 /** Built-in plugins by profile id. */
 export const BUILTIN_PLUGINS: Record<string, () => Promise<{ default: PluginDef<any> }>> = {
+  'place-comfy-local': () => import('./plugins-builtin/place-comfy-local.js'),
+  'place-comfy-cloud': () => import('./plugins-builtin/place-comfy-cloud.js'),
+  'place-comfy-router': () => import('./plugins-builtin/place-comfy-router.js'),
   'place-fal': () => import('./plugins-builtin/place-fal.js'),
   'place-replicate': () => import('./plugins-builtin/place-replicate.js'),
+  'place-direct': () => import('./plugins-builtin/place-direct.js'),
+  'place-sample': () => import('./plugins-builtin/place-sample.js'),
   legacy: () => import('./plugins-builtin/legacy.js'),
 };
 

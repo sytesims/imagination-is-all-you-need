@@ -10,18 +10,14 @@
  */
 import type { Job } from '../jobs.js';
 import { persistJob } from '../jobs.js';
-import { ComfyCloudV2 } from '../comfy/cloudV2.js';
-import { ComfyRouter } from '../comfyRouter.js';
-import { keyValue } from './keys.js';
+import { places } from '../services/places.js';
 import { COMFY_ENV } from './routes.js';
 import { CLOUD_RUNNER_ROUTES } from './runnable.js';
-import { env } from '../env.js';
 
 export type RemoteCancel = (cloudJobId: string) => Promise<boolean>;
 let testCancel: RemoteCancel | null = null;
 /** Tests: replace the Comfy Cloud transport (no network). */
 export const setOrphanCancel = (f: RemoteCancel | null) => { testCancel = f; };
-const cloudBase = () => env('COMFY_CLOUD_URL')?.trim() || 'https://cloud.comfy.org';
 /** The Comfy Cloud route this job's last attempt ran on, if any. */
 export function cloudRouteOf(j: Job): string | null {
   const last = j.routeAttempts?.[j.routeAttempts.length - 1]?.routeId ?? `comfy-cloud:${j.provider}`;
@@ -38,17 +34,21 @@ export async function cancelOrphan(j: Job, why = 'The server restarted while thi
     console.log(`[openhiggsfield] orphan ${j.id}: ${h.kind} request ${ok === true ? 'cancelled' : ok === null ? 'has no cancel call' : 'cancel not confirmed'}`); return ok === true; }
   const rr = (j as any).routerRequest as { id: string; cancelUrl?: string } | undefined;
   if (rr?.cancelUrl && a?.routeId?.startsWith('comfy-router:')) { // Comfy Router queued request: ask Router to cancel it (best effort; a completed run may still be billed)
-    const key = keyValue({ envKey: COMFY_ENV, envAliases: [] }); if (!key && !testCancel) return false;
-    let ok = false; try { ok = testCancel ? await testCancel(rr.id) : await new ComfyRouter(key!).cancel({ requestId: rr.id, cancelUrl: rr.cancelUrl, statusUrl: '', responseUrl: '', estimate: null }); } catch { ok = false; }
+    const place = places.get('comfy-router'); const ref = { routeId: a.routeId, envKey: COMFY_ENV, envAliases: [] }; // its place's cancel call, with its own key
+    const rh = { kind: 'router' as const, id: rr.id, cancelUrl: rr.cancelUrl, statusUrl: '', responseUrl: '', routeId: a.routeId, attempt: a.n, output: 0, outputs: 1, at: Date.now() };
+    let ok = false;
+    if (testCancel) { try { ok = await testCancel(rr.id); } catch { ok = false; } }
+    else { if (!place?.cancel) return false; let res: boolean | null = false; try { res = await place.cancel(rh, ref, (...x: Parameters<typeof fetch>) => fetch(...x)); } catch { res = false; } if (res === null) return false; ok = res; } // null: no Comfy key
     if (a) (a as any).remoteCanceled = ok; (j as any).orphanCanceled = { routerRequestId: rr.id, ok, at: Date.now() }; try { persistJob(j); } catch { /* best effort */ } return ok;
   }
   const id = j.cloudJobId ?? a?.requestId; const route = cloudRouteOf(j); if (!id || !route) return false;
   // H3 runner Step 1: a job on the user's own Comfy deployment is cancelled THERE (its own base URL + token), never on shared Comfy Cloud
-  const dep = route.startsWith('comfy-deploy:') ? (await import('../comfy/deploy.js')).deployTarget() : null; const key = keyValue({ envKey: COMFY_ENV, envAliases: [] });
-  const target = route.startsWith('comfy-deploy:') ? (dep ? { base: dep.base, token: dep.token } : null) : key ? { base: cloudBase(), token: key } : null;
-  const cancel: RemoteCancel | null = testCancel ?? (target ? (cid) => new ComfyCloudV2(target.base, target.token, `${j.id}-orphan`).cancel(cid) : null);
-  if (!cancel) return false;
-  let ok = false; try { ok = await cancel(id); } catch { ok = false; }
+  // (place-comfy-cloud: its cancel call picks the target with its own keys; null = nothing set to cancel it with)
+  const place = places.get('comfy-cloud'); const ref = { routeId: route, envKey: COMFY_ENV, envAliases: [] };
+  const ch = { kind: 'cloud' as const, id, routeId: route, attempt: a?.n ?? 1, output: 0, outputs: 1, at: Date.now() };
+  let ok = false;
+  if (testCancel) { try { ok = await testCancel(id); } catch { ok = false; } }
+  else { if (!place?.cancel) return false; let res: boolean | null = false; try { res = await place.cancel(ch, ref, (...x: Parameters<typeof fetch>) => fetch(...x)); } catch { res = false; } if (res === null) return false; ok = res; } // null: no key or deployment set to cancel it with
   if (a) (a as any).remoteCanceled = ok;
   (j as any).orphanCanceled = { cloudJobId: id, ok, at: Date.now() };
   try { persistJob(j); } catch { /* best effort */ }

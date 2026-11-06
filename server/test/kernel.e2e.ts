@@ -16,7 +16,7 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kernel-'));
 
 // Env for this process, set before anything reads it (the settings snapshot is taken on first read).
 const profileFile = path.join(dir, 'k.yml');
-fs.writeFileSync(profileFile, 'name: k\nplugins:\n  - place-fal\n  - place-replicate\n  - legacy\nconfig:\n  kernel:\n    resultTtlDays: 0\n  t-plug:\n    pollMs: 100\n    label: from-profile\n    fast: true\n');
+fs.writeFileSync(profileFile, 'name: k\nplugins:\n  - place-comfy-local\n  - place-comfy-cloud\n  - place-comfy-router\n  - place-fal\n  - place-replicate\n  - place-direct\n  - place-sample\n  - legacy\nconfig:\n  kernel:\n    resultTtlDays: 0\n  t-plug:\n    pollMs: 100\n    label: from-profile\n    fast: true\n');
 Object.assign(process.env, { OPENHIGGSFIELD_PROFILE: profileFile, OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_DATA_DIR: path.join(dir, 'data'), OPENHIGGSFIELD_ENV_FILE: path.join(dir, 'none.env'),
   OPENHIGGSFIELD_FILMING_FILE: path.join(dir, 'no-filming.json'), OPENHIGGSFIELD_COMFY_DETECT_URLS: 'http://127.0.0.1:9', OPENHIGGSFIELD_DEMO_AUTO: '0',
   OPENHIGGSFIELD_T_PLUG_POLL_MS: '250', OPENHIGGSFIELD_FAL_KEY: 'fake-fal-kernel-test', PORT: String(testPort(9481)) });
@@ -114,7 +114,7 @@ Object.assign(process.env, { OPENHIGGSFIELD_PROFILE: profileFile, OPENHIGGSFIELD
   const out = execFileSync(process.execPath, ['--import', 'tsx', 'src/index.ts', '--dump-config'], { cwd: ROOT, env: { ...process.env, ...FAKE, OPENHIGGSFIELD_DATA_DIR: data, OPENHIGGSFIELD_PROFILE: '' }, maxBuffer: 64 << 20 }).toString();
   for (const v of Object.values(FAKE)) assert.ok(!out.includes(v), 'no key value in the dump');
   const d = JSON.parse(out); assert.equal(d.profile.name, 'desktop'); assert.equal(d.settings.dataDir, data); assert.ok(!fs.existsSync(data), 'the data folder is never opened');
-  assert.deepEqual(d.plugins.filter((p: any) => !/kernel service/.test(p.id)).map((p: any) => [p.id, p.state]), [['place-fal', 'active'], ['place-replicate', 'active'], ['legacy', 'active']]);
+  assert.deepEqual(d.plugins.filter((p: any) => !/kernel service/.test(p.id)).map((p: any) => [p.id, p.state]), [...['place-comfy-local', 'place-comfy-cloud', 'place-comfy-router', 'place-fal', 'place-replicate', 'place-direct', 'place-sample'].map((id) => [id, 'active']), ['legacy', 'active']]);
   assert.ok(d.routes.legacy.includes('GET /api/health') && d.routes.legacy.length > 400, 'routes per plugin');
   assert.deepEqual(d.hooks.find((x: any) => x.owner === 'local-only'), { name: 'onRequest', stage: 'security', owner: 'local-only' });
   assert.equal(d.keys.find((k: any) => k.name === 'COMFY_API_KEY').set, true);

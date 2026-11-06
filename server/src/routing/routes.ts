@@ -22,7 +22,6 @@ import { H3_CAMERA_MOVES, H3_EXTEND_OVERLAP_FRAMES } from '../tools/h3/catalog.j
 import { routerBase, ROUTER_NO_FALLBACK } from '../comfyRouter.js';
 import { capsFor, GEMINI_ASPECTS_10 } from '../shared/imageCaps.js';
 import { REPLICATE_FLUX2_ASPECTS } from '../shared/hostedAspects.js';
-import { keyValue } from './keys.js';
 import { bflSpec, b64 } from '../providers/directSpecs.js';
 import { LAYOUT_BOXES_LOCAL_ONLY, withFlux3BoxRows } from '../shared/layoutBoxes.js';
 import { DIRECT_ROUTES, NATIVE_DIRECT } from './directRoutes.js';
@@ -205,7 +204,7 @@ export const routerPlace = (modelId: string, caps: Record<string, unknown>, over
   const r: RouteDef = { routeId, kind: 'comfy-router', modelId, endpoint: `POST ${routerBase()}/v2/models/${rm.id}${rm.queue ? '/requests' : ''}${ROUTER_NO_FALLBACK}`, priceRef: routeId,
     sourceUrl: rm.doc, checkedAt: '2026-10-25', typicalLatencySec: 15, latencyEstimated: true, latencySource: 'estimated', envKey: COMFY_ENV, label: PARTNER_LABEL, output: rm.out === 'image' ? 'image' : rm.out === 'video' ? 'video' : undefined,
     ...over, caps: { routerModel: rm.id, maxRefs: rm.maxRefs, ...caps } };
-  r.unavailableFor = (i) => (keyValue(r) ? rm.block?.(i) ?? null : null); return r; };
+  r.unavailableFor = (i) => (places.keyOf(r) ? rm.block?.(i) ?? null : null); return r; };
 EXTRA_ROUTES['direct-gemini-nb2-lite'] = [...(EXTRA_ROUTES['direct-gemini-nb2-lite'] ?? []), routerPlace('direct-gemini-nb2-lite', { resolutions: ['1K'], aspects: [...GEMINI_ASPECTS_10] })];
 // H3 Camera Motion on Comfy Router (2026-10-26): prompt-directed (the move in words, no camera LoRA), billed as MiniMax H3 on Router (4–15 s; a shorter
 // move is made as 4 s and the job says so, 2026-10-28).
@@ -348,7 +347,7 @@ export function allRoutesFor(modelId: string, tool?: { id: string; app?: any } |
   if (rm) { // Comfy Router (routing/routerModels.ts): the Router model id, and what this route can take. With a Comfy key set, a job it can't take is refused up front (nothing charged).
     native.endpoint = `POST ${routerBase()}/v2/models/${rm.id}${rm.queue ? '/requests' : ''}${ROUTER_NO_FALLBACK}`; native.sourceUrl = rm.doc;
     native.caps = { ...(native.caps ?? {}), routerModel: rm.id, ...(rm.idFor ? { routerEditModel: rm.idFor({ types: ['edit'], refPaths: ['photo.png'] }) } /* FIBO 2.0: edits call bria/fibo */ : {}), ...(rm.out === 'image' ? { maxRefs: Math.min(rm.maxRefs, capsFor(modelId)?.supports.maxRefs ?? rm.maxRefs) } : {}) };
-    const prev = native.unavailableFor; native.unavailableFor = (i) => prev?.(i) ?? (keyValue(native) ? rm.block?.(i) ?? null : null); } // keyless samples stay as before
+    const prev = native.unavailableFor; native.unavailableFor = (i) => prev?.(i) ?? (places.keyOf(native) ? rm.block?.(i) ?? null : null); } // keyless samples stay as before
   if (modelId === 'router-ltx-25-pro' && rm) native.modes = ['t2v']; // 2026-10-27: the Router schema is text only; image jobs of this card run on its Comfy Cloud partner-node twin (TWINS), with or without a key
   // Tool-scoped extra routes (RouteDef.tools) are listed on their tools only; one that replacesNative stands in for the native route there.
   const extra = (EXTRA_ROUTES[modelId] ?? []).filter((r) => !r.tools || !tk.length || r.tools.some((t) => tk.includes(t)));
@@ -364,7 +363,7 @@ export const findRoute = (routeId: string): RouteDef | undefined => {
   const [kind, ...rest] = routeId.split(':'); const id = rest.join(':');
   if (kind === 'comfy-deploy') return Object.values(EXTRA_ROUTES).flat().find((r) => r.routeId === routeId) ?? DEPLOY_ROUTES[routeId]; // H3 runner Step 1: your Comfy deployment
   const extra = Object.values(EXTRA_ROUTES).flat().find((r) => r.routeId === routeId); if (extra || kind === 'fal' || kind === 'replicate') return extra;
-  const p = getProvider(id); return p ? routesFor(p.id).find((r) => r.routeId === routeId) : undefined;
+  const p = getProvider(id); return p ? allRoutesFor(p.id).find((r) => r.routeId === routeId) : undefined; // found even when its place is off (its quote then says so)
 };
 export const allExtraRoutes = () => Object.values(EXTRA_ROUTES).flat();
 /** HW-SHAPES: the charswap note is generated from the manifest sizes + the VRAM formula (hardware/requirements.ts), loaded lazily (no import cycle). */

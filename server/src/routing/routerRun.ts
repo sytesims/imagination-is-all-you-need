@@ -13,7 +13,7 @@ import type { RouteAttempt, RouteDef } from './types.js';
 import { DATA_DIR } from '../config.js';
 import { probe } from '../media.js';
 import { runFfmpeg } from '../ffmpeg.js';
-import { keyValue } from './keys.js';
+import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
 import { ComfyRouter, RouterError, ROUTER_MESSAGES, routerBase, providerSaid, estimateHigh, sanitizeProviderText, type RouterEstimate } from '../comfyRouter.js';
 import { policyRefusalCharge, refusalReason } from '../shared/policyBilling.js';
 import { markRouteOff, clearRouteOff } from './routeOff.js';
@@ -37,7 +37,7 @@ export async function layerToCanvas(file: string, box: number[], W: number, H: n
   if (code !== 0) { await fs.rm(tmp, { force: true }); return false; } await fs.rename(tmp, file); return true;
 }
 /** A keyed Router route runs for real on any backend (never a charged mock render). */
-export const routerLive = (r: Pick<RouteDef, 'routeId' | 'envKey' | 'envAliases' | 'routerOff'>) => ROUTER_RUNNER_ROUTES.has(r.routeId) && !r.routerOff && !!keyValue(r);
+export const routerLive = (r: Pick<RouteDef, 'routeId' | 'envKey' | 'envAliases' | 'routerOff'>, keys: KeyReader = ANY_KEY) => ROUTER_RUNNER_ROUTES.has(r.routeId) && !r.routerOff && !!keys.value(r);
 /** Tests: inject fetch / sleep (no network, no waiting). */
 let testFetch: typeof fetch | null = null; let testSleep: ((ms: number) => Promise<void>) | null = null;
 export const setRouterFetch = (f: typeof fetch | null, sleep: ((ms: number) => Promise<void>) | null = null) => { testFetch = f; testSleep = sleep; setStorageFetch(f, sleep); };
@@ -78,10 +78,10 @@ async function save(job: Job, k: number, o: RouterOut | { bytes: Buffer; mime: s
   const name = `${job.id}-out${k}.${extOf(mime, 'url' in o ? o.url : undefined, out)}`; await fs.writeFile(path.join(DATA_DIR, name), buf); return `/files/${name}`;
 }
 
-export async function runRouter(job: Job, r: RouteDef, attempt: RouteAttempt, timeoutMs: number) {
+export async function runRouter(job: Job, r: RouteDef, attempt: RouteAttempt, timeoutMs: number, keys: KeyReader = ANY_KEY) {
   const spec = routerModelOfRoute(r.routeId); if (!spec) throw new Error(`${r.routeId} has no Comfy Router model`);
   const f = testFetch ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
-  const c = new ComfyRouter(keyValue(r)!, f, routerBase(), testSleep ?? undefined);
+  const c = new ComfyRouter(keys.value(r)!, f, routerBase(), testSleep ?? undefined);
   c.onBusy = (ms) => { job.queueReason = busyReason('Comfy Router', ms); job.updatedAt = Date.now(); }; // provider busy (busyRetry.ts): the card says why it waits
   const i = refInputFor(job, r); /* prompt grammar: the model's own reference syntax (routing/jobRefs.ts) */ const n = routerCalls(spec, i); const rid = spec.idFor?.(i) ?? spec.id; // FIBO 2.0: bria/image or bria/fibo
   const quotedJob = (job.routing?.prices?.[r.routeId] ?? job.cost ?? 0) / 100; // USD the user accepted for the job (1 credit = $0.01)
