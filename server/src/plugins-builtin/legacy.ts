@@ -1,7 +1,8 @@
 /**
- * legacy: today's whole server (legacy.ts: routes, queue, tools, listen) as one plugin. Later phases move pieces out of it into their own
- * plugins until it is empty (plan §7). It starts last, after every place is registered, so a job picked up at start finds its place.
- * It takes the server from ctx.http (legacy.ts adds its routes and hooks to it and listens at the end) and closes it when disposed.
+ * legacy: the server core (legacy.ts: security, CORS, uploads, /files/, the job and library routes, the queue) as one plugin. Phase 5 moved the
+ * route groups out into feature plugins (plugins-builtin/features.ts); what is left is listed in legacy.ts. It starts after every place and tool
+ * is registered, so a job picked up at start finds its place; the feature plugins mount after it, then boot.ts starts listening (listen()).
+ * It takes the server from ctx.http (legacy.ts adds its routes and hooks to it) and closes it when disposed.
  * Keys: every key ('*'), until its code moves into plugins that declare their own.
  */
 import { definePlugin } from '../kernel/index.js';

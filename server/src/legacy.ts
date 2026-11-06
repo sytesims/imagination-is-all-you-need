@@ -26,6 +26,7 @@ import { jobPoster } from './interimTiles.js';
 import { layersPosterUrl, writeLayerPoster } from './layerPoster.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { currentHttp } from './kernel/http.js';
+import { spaFallback } from './webStatic.js';
 import { bootSettings } from './kernel/settings.js';
 import { etaFor } from './timing.js';
 import { clipTrimLimits, trimToolId } from './clipTrim.js';
@@ -50,9 +51,7 @@ import { registerJsonErrors } from './jsonErrors.js';
 import { RESULT_TTL_DAYS } from './config.js';
 import { ledger, getBalance, freeGensLeft, FREE_GENS_MAX_RES, grant, LOCAL_FREE, isLocalFree, refundOf, usageTotals } from './ledger.js';
 import { registerPrecheck } from './precheck.js';
-import { registerPreflight } from './routesPreflight.js';
 import { registerPromptPeek } from './routesPromptPeek.js';
-import { registerPromptGrammar } from './routesPromptGrammar.js';
 import { madeRealOf } from './routesMakeItReal.js';
 import { billingMode as billingModeNow } from './billingMode.js';
 import { teamMode as teamModeNow } from './billingMode.js';
@@ -64,12 +63,11 @@ import { resolveElements, type AttachedElement } from './elements/resolve.js';
 import { EXAMPLES } from './examples.js';
 import { registerBatch1, examplePrefill } from './routesBatch1.js';
 import * as MS from './mediaStore.js';
-import { registerDiscover, toolExtras } from './routesDiscover.js';
+import { toolExtras } from './routesDiscover.js';
 import { withOutputMeta } from './outputMeta.js';
 import { jobFallback as jobFallbackOf } from './routing/fallback.js';
 import { sampleFor } from './sampleMedia.js';
-import { buildSpec, withDiscovered, DOCS_HTML } from './openapi.js';
-import { loadPlugins, pluginStatus } from './plugins.js';
+import { loadPlugins } from './plugins.js';
 import { modelsFor, cardName } from './models.js';
 import { PROVIDER_FACTORS, OPTION_FACTORS, PRICE_LADDERS } from './shared/pricing.js';
 import { defaultsBlock, defaultProviderFor, defaultFirst, requestMode, SWAP_TYPES, modelFields, withWorkflowDefaults, lyricsFreeDefault, draftOn, draftCapableDefault } from './routing/defaults.js';
@@ -84,8 +82,7 @@ import { jobAttribution } from './attribution.js';
 import { jobAgentView } from './agentBudget.js';
 import { OPEN_WEIGHTS_ONLY_ENV } from './licenses.js';
 import { buildLicenseReport, stripLicenseLinks } from './licensesReport.js';
-import { registerEdge, admit, TRASH_DAYS } from './routesEdge.js';
-import { registerBackup } from './routesBackup.js';
+import { admit, TRASH_DAYS } from './routesEdge.js';
 import { HOSTED, publicMcpInfo } from './hosted.js';
 import { isEnhanced } from './pages.js';
 import { isSlow } from './edge.js';
@@ -110,8 +107,6 @@ const http = currentHttp(); export const app = http.app;
 registerLocalOnly((name, fn) => http.hook(name, fn, { stage: 'security', owner: 'local-only' })); // security/localOnly.ts: the security stage runs before every other hook, whatever loads first: Host / Origin checks for every route, /files/ serves media only
 I.registerIdempotency(app); registerJsonErrors(app); // every 5xx carries a JSON body (DP #17) // job-creating endpoints: Idempotency-Key / clientJobId, 24 h, replay = original response, mismatch → 409
 await app.register(cors, { origin: corsOrigin, exposedHeaders: [I.REPLAY_HEADER] }); // allowed origins only (security/localOnly.ts); browsers may read Idempotent-Replayed (DP client)
-const ROUTES: { method: string; url: string }[] = [];
-app.addHook('onRoute', (r) => { for (const m of [r.method].flat()) ROUTES.push({ method: String(m), url: r.url }); });
 /** Every JSON 404 carries errorType 'not_found' (unknown tool / job / model / plugin …) unless the handler set a more specific one. */
 // Re-check 6 (BH P3): every 4xx from a quote, a submit or a job action carries a machine code (issues[0].code, else one from errorType)
 const CODED = /^\/api\/(tools\/[^/]+\/(jobs|price)|models\/quote|jobs\/[^/]+\/(upscale|retry|edit|fallback))(\?|$)/;
@@ -123,17 +118,14 @@ app.addHook('preSerialization', codeHook);
 app.addHook('onSend', async (req, reply, payload: any) => { if (typeof payload !== 'string' || reply.statusCode < 400 || reply.statusCode >= 500 || !CODED.test(req.url) || !payload.startsWith('{')) return payload;
   try { const o = JSON.parse(payload); if (!o?.error || o.code) return payload; return JSON.stringify(await codeHook(req, reply, o)); } catch { return payload; } });
 app.addHook('preSerialization', async (_req, reply, payload: any) => { if (reply.statusCode === 404 && payload && typeof payload === 'object' && !Array.isArray(payload) && payload.error && !payload.errorType) return { ...payload, errorType: 'not_found' }; return payload; });
-app.get('/api/openapi.json', async (req) => withDiscovered(buildSpec(`${req.protocol}://${req.headers.host ?? 'localhost:8787'}`), ROUTES));
-app.get('/api/docs', async (_req, reply) => reply.type('text/html').send(DOCS_HTML));
+// /api/openapi.json and /api/docs: plugin openapi (plugins-builtin/features.ts), from the routes that are on
 await app.register(multipart, { limits: { fileSize: MAX_UPLOAD_MB * 1024 * 1024, files: 40 } });
 registerUploadSecurity(app);
 (await import('./cleanMedia.js')).registerCleanFiles(app); // GET /files/<name>?clean=1: metadata-free copy (share step 1)
 await app.register(fstatic, { root: DATA_DIR, prefix: '/files/', setHeaders: mediaResponseHeaders });
 await app.register(fstatic, { root: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../samples'), prefix: '/samples/', decorateReply: false });
 
-/** Prod (npm start): serve the web build so deep links (/api-docs, /tools/…, unknown → NotFound) load directly. */
-const WEB_DIST = (() => { const d = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web/dist'); return existsSync(path.join(d, 'index.html')) ? d : null; })();
-if (WEB_DIST) await app.register(fstatic, { root: WEB_DIST, prefix: '/', decorateReply: false, wildcard: false });
+// The web build at / and the page for deep links: plugin web-static (webStatic.ts)
 const publicInput = (i: Record<string, any>) => // BH10 P2 #20: no host path ever: *Path(s)/path dropped, refBatches as /files/ URLs
   scrubPaths(i) as Record<string, any>;
 /** A string that names a file inside the data dir (e.g. a job saved before a field was renamed to *Path: videoFitSource, 2026-10-26). */
@@ -172,7 +164,8 @@ const sampleTruth = (j: Job): { isSample: boolean; sampleReason: string | null }
   return { isSample: false, sampleReason: null };
 };
 /** L9: the model line follows the route that ran: fal / Replicate routes name the hosted model (Remove BG on fal = 'Bria Video Background Removal (fal)', not 'BiRefNet (local)'). */
-const pub = (j: Job) => ({
+/** A job as the API shows it (also the edge plugin's job lists: plugins-builtin/features.ts). */
+export const pub = (j: Job) => ({
   id: j.id,
   /** Pages 16-18: upscale/enhance/edit tool or derived (parentId) job; a retry / Try on re-run is not (S-04: see rerun). */
   enhanced: isEnhanced(j as any),
@@ -323,20 +316,15 @@ const pub = (j: Job) => ({
 });
 
 if (!(await import('./tools/registry.js')).toolRegistry.managed) await loadPlugins(); // booted: the workflow-folders plugin loaded them (or is off)
-(await import('./routesWorkflowImport.js')).registerWorkflowImport(app); // Add a workflow: import preview, save, remove (no restart)
-/** Plugin load report: loaded + skipped (with validation errors). */
-app.get('/api/plugins', async () => { const { isToolHidden } = await import('./tools/registry.js'); const { readFileSync: rf, existsSync: ex } = await import('node:fs');
-  return pluginStatus().map(({ dir, ...s }) => { let m: any = {}; try { m = JSON.parse(rf(path.join(dir, 'plugin.json'), 'utf8')); } catch { /* invalid manifest: fields stay null */ }
-    const t = s.toolId ? getTool(s.toolId) : undefined; const icon = m.icon ?? m.iconUrl ?? m.previewUrl ?? (t as any)?.app?.posterUrl ?? (ex(path.join(dir, 'icon.png')) ? `/plugins/${s.id}/icon.png` : null);
-    // Name, description and version are always present (null when absent); icon and homepageUrl are optional.
-    return { ...s, name: m.name ?? s.id, description: m.description ?? null, version: m.version ?? null, tab: t?.plugin?.tab ?? null, category: t?.plugin?.category ?? null, goal: t?.plugin?.goal ?? null, author: t?.plugin?.author ?? null, input: t?.plugin?.input ?? null, output: t?.plugin?.output ?? null, runsCode: !!t?.plugin?.handler, icon: icon ?? null, homepageUrl: m.homepageUrl ?? m.homepage ?? m.repository?.url ?? m.repository ?? null,
-      enabled: !(s.toolId && isToolHidden(s.toolId)), dir: path.relative(process.cwd(), dir) }; }); });
+// GET /api/plugins and the workflow import routes: plugin workflow-folders. Left out of the profile, they still answer that folders are off (#191).
+if (!http.routes.some((r) => r.owner === 'workflow-folders')) { const W = await import('./routesWorkflowImport.js'); const prev = http.owner; http.owner = 'workflow-folders';
+  try { W.registerWorkflowImport(app); W.registerPluginList(app); } finally { http.owner = prev; } for (const r of http.routes) if (r.owner === 'workflow-folders') r.keepOn = true; }
 
 /** Client config: 'No credits, local' mode hides prices + the ledger when localFree. */
 app.get('/api/config', async () => ({ backend: config.backend, /** BH9 (c): filming mode (npm run filming -- on|off|status). notificationPrompts:false → don't ask for notifications. */ filming: { on: FILMING.on, since: FILMING.since, notificationPrompts: notificationPrompts(), fallbackOffers: fallbackOffers() }, notificationPrompts: notificationPrompts(), fallbackOffers: fallbackOffers(), /** BH9 (e): true only when every enabled route is local (no cloud/API key on); cloudEnabled = provider ids with paid routes on. */ localFree: localFreeNow(), cloudEnabled: cloudProvidersEnabled(), openWeightsOnly: openWeightsOnly(), /** Open models only: locked by OPENHIGGSFIELD_OPEN_WEIGHTS_ONLY / filming mode (the setting can't turn it off). */ openWeightsLocked: OPEN_WEIGHTS_ONLY_ENV, draftQuality: '480p', draftFactor: DRAFT_PRICE_FACTOR, keepAudioDefault: true, upscaleTool: getTool('upscale') ? 'upscale' : null, mcp: publicMcpInfo(mcpInfo()), ...repoInfo(), hosted: HOSTED, trashDays: TRASH_DAYS, /** real-cost decision 2026-10-21: 'own-accounts' (default) | 'team' (billingMode.ts) */ billingMode: billingModeNow() }));
 registerPrecheck(app);
-registerPreflight(app, getTool);
-registerPromptPeek(app, getTool); registerPromptGrammar(app); // prompt grammar (read-only): how each model reads its prompt and inputs // "See the exact prompt": the job's composed prompt for a form, nothing runs
+// GET /api/tools/:id/preflight: plugin preflight
+registerPromptPeek(app, getTool); // prompt grammar: plugin prompt-grammar // "See the exact prompt": the job's composed prompt for a form, nothing runs
 /** Image features (transparency, 2026-10-22): each feature with its plain name, URL, the models that really work for it, what each pair supports and its workflow source. */
 app.get('/api/image-features', async () => ({ features: imageFeaturesPayload(), camera: { options: RIG_OPTIONS, default: RIG_DEFAULT, fields: ['cameraBody', 'lens', 'focal', 'aperture', 'film', 'lighting', 'era'], communityNode: FILM_STYLER_NODE } }));
 /** Unified Create Image (step 1): the image workflow recipes the bar's picker and strip are built from (shared/workflows.ts). Same body for
@@ -808,20 +796,18 @@ app.get<{ Params: { toolId: string }; Querystring: Record<string, string> }>('/a
 });
 (await import('./routesSpecs.js')).registerSpecs(app); // Oct 17 page refreshes 16/17/19/28 + looks + effects
 (await import('./routesPages.js')).registerPages(app); // pages 16-18: /api/assets/counts, /api/jobs/:id/locate, /api/projects/public, POST /api/projects/:id/visibility
-(await import('./routesHardware.js')).registerHardware(app); (await import('./routing/prefs.js')).applyEnvPrefsAtStartup(); (await import('./hardware.js')).warmHardware(); // HW-SHAPES: /api/hardware, /api/local/comfy, /api/local/downloads, /api/eta/learned
-(await import('./routesComfyDeploy.js')).registerComfyDeploy(app); // H3 runner Step 1: GET /api/comfy-deploy, /api/comfy-deploy/probe, POST /api/comfy-deploy/smoke
+(await import('./routing/prefs.js')).applyEnvPrefsAtStartup(); (await import('./hardware.js')).warmHardware(); // HW-SHAPES routes (/api/hardware, /api/local/*, /api/eta/learned): plugin hardware
+// your Comfy deployment (/api/comfy-deploy*): plugin comfy-deploy
 (await import('./routesGaps.js')).registerGaps(app); // report, publish, self-host health, endpoints table, hand-off, usage series, profile, route-prompt, model page, webhooks
-registerBackup(app); // BH4 #8: GET /api/export, POST /api/import
-(await import('./userStyles.js')).registerUserStyles(app); (await import('./brandKits.js')).registerBrandKits(app); // Brand Kit (2026-10-27): /api/brand-kits CRUD + exports, kv in the DB → in export/import // DP ask #5: saved user styles (Create Image 'Saved' tab), kv in the DB → in export/import
-registerEdge(app, pub); // GET /api/jobs (+ state=active), /api/queue, download.zip, trash purge
+// GET /api/export, POST /api/import: plugin backup
+(await import('./userStyles.js')).registerUserStyles(app); // DP ask #5: saved user styles (Create Image 'Saved' tab), kv in the DB → in export/import (brand kits: plugin brand-kits)
+// GET /api/jobs (+ state=active), /api/queue, download.zip, trash purge: plugin edge
 app.get<{ Params: { id: string } }>('/api/jobs/:id/layers-poster.png', async (req, reply) => { // Image to layers: the composite poster, made on first view for older jobs
   const j = jobs.get(req.params.id); if (!j || !layersPosterUrl(j)) return reply.code(404).send({ error: 'No finished layered result with that id.', errorType: 'not_found' });
   const url = layersPosterUrl(j)!.startsWith('/files/') ? layersPosterUrl(j)! : await writeLayerPoster(j); if (!url) return reply.code(404).send({ error: 'The layers could not be combined.', errorType: 'not_found' });
   return reply.header('cache-control', 'no-store').redirect(url);
 });
-(await import('./canvasAgent.js')).registerCanvasAgent(app); // Canvas agent bridge (2026-10-24): live ops, SSE, proposals (before canvasBoards so its MCP-presence hook sees them too)
-(await import('./canvasBoards.js')).registerCanvasBoards(app); // Canvas page (2026-10-24): /api/canvas/boards CRUD + snapshot save
-(await import('./filmProjects.js')).registerFilms(app); // Film tab (2026-10-27): /api/films CRUD + ops (rev), shot quote / render / continue-frame, bridge, stitch, preview
+// Canvas: plugins canvas-agent, canvas-demo, canvas; Film tab: plugin film
 (await import('./routesMakeItReal.js')).registerMakeItReal(app); // Render (Direct a Shot step 3): GET /api/make-it-real/prep
 (await import('./routesLtxLoras.js')).registerLtxLoras(app); // LTX-2.5 LoRAs (shared/ltxLoras.ts): GET /api/ltx-loras with each file's state
 (await import('./routes3d.js')).registerThreeD(app); // 3D page (2026-10-23): /api/3d-workflows, /api/3d/meta, POST /api/jobs/:id/3d-poster
@@ -843,8 +829,7 @@ registerBatch1(app);
 (await import('./libraryDb.js')).registerLibrary(app, { tools: async () => { try { return toolsList(); } catch { return []; } } }); // workflows + references databases: /api/library/* (search, tags)
 { const R = await import('./routing/http.js'); R.registerRouting(app); setToolsBuilder(() => stripLicenseLinks(R.enrichTools(toolsPayload())), () => stripLicenseLinks(listTools().map((t) => ({ id: t.id, name: t.name, presets: (t.app as any)?.gallery?.locked?.types || (t.app as any)?.gallery?.locked?.preset ? [] /* an app locked to one base mode or style: the base tool's list isn't its presets */ : visiblePresets(t) })))); } // multi-provider routing: settings, /api/me/routing, /api/routes, fallback
 (await import('./billing.js')).registerBilling(app); (await import('./agentBudget.js')).registerCompose(app); // POST /api/compose (the agent budgets' routes and quote lines: plugin agent-budgets; quotes: ctx.pricing) // real costs: /api/settings/billing, /api/spend, /api/spend/summary, /api/accounts; cost on every quote (after the routing hook)
-registerDiscover(app);
-(await import('./routesHub.js')).registerHub(app);
+// discover feeds: plugin discover; the workflow hub: plugin hub
 (await import('./cinema/routes.js')).registerCinema(app); // /api/cinema/* kept for compatibility (Director has no page since 2026-10-23); also /api/apps, /api/voices, /api/prompt/enhance
 (await import('./cinema/story.js')).registerStory(app); // Director → Story: H3 multi-shot chained by last frame, stitched (cinema/story.ts)
 (await import('./routesEdit.js')).registerEdit(app);
@@ -1211,11 +1196,7 @@ app.delete<{ Params: { id: string } }>('/api/jobs/:id/share', async (req, reply)
 const sharedView = (j: Job) => ({ id: j.id, toolId: j.toolId, toolName: getTool(j.toolId)?.name ?? j.toolId, outputs: withOutputMeta(j.outputs), resultUrl: j.resultUrl, createdAt: j.createdAt, attribution: jobAttribution(j), model: engineNameOf(j), runOnLabel: jobModelFields(j).runOnLabel, cardUrl: `/s/${lib.metaOf(j.id).shareToken}/card.png` });
 app.get<{ Params: { token: string } }>('/api/share/:token', async (req, reply) => { const id = lib.jobByToken(req.params.token); const j = id ? jobs.get(id) : undefined; return j && !lib.metaOf(j.id).deletedAt ? sharedView(j) : reply.code(404).send({ error: 'This link was revoked or never existed.' }); });
 (await import('./routesWorkflow.js')).registerWorkflowExport(app); // Get workflow: GET /api/jobs/:id/workflow (ComfyUI API graph of any result)
-(await import('./routesShare.js')).registerShare(app); // share cards: /s/:token (Open Graph / X meta), /s/:token/card.png, PUT /api/jobs/:id/share/card
-(await import('./routesStamp.js')).registerStamp(app); // Add logo and text: POST /api/jobs/:id/stamp (the stamped copy of an image or video result, free)
-(await import('./shareExport.js')).registerShareExport(app); // share step 3: POST /api/jobs/:id/share/export (branded video: badge/strip overlay + end card)
-(await import('./captions.js')).registerCaptions(app); // captions + SRT: /api/jobs/:id/captions (Whisper on this computer), .srt / .vtt, burn-in into a new job
-(await import('./routesOpenModels.js')).registerOpenModels(app); // Open models only: GET|PUT /api/settings/open-models
+// share cards, stamp, branded export: plugin share; captions: plugin captions; Open models only: plugin open-models
 /** [R44] Retention: with RESULT_TTL_DAYS > 0, finished jobs older than that are moved to Trash (hourly sweep). */
 if (RESULT_TTL_DAYS > 0) {
   const sweepRetention = () => { const cut = Date.now() - RESULT_TTL_DAYS * 86400_000; for (const j of jobs.values()) if (j.finishedAt && j.finishedAt < cut && !lib.metaOf(j.id).deletedAt) lib.trash(j.id); };
@@ -1241,7 +1222,7 @@ const FILE_URL_RE = /^\/(files|samples)\/|\.(png|jpe?g|webp|gif|avif|svg|ico|mp4
 app.setNotFoundHandler((req, reply) => { const p = req.url.split('?')[0];
   if (p.startsWith('/api/')) return reply.code(404).send({ error: `No API route ${req.method} ${p}`, errorType: 'not_found', path: p });
   if (FILE_URL_RE.test(p)) return reply.code(404).header('cache-control', 'no-store').send({ error: 'File not found.', errorType: 'not_found', path: p });
-  return WEB_DIST ? reply.type('text/html').sendFile('index.html', WEB_DIST) : reply.code(404).type('text/plain').send('Not found'); });
+  const page = spaFallback(); return page ? reply.type('text/html').sendFile('index.html', page) : reply.code(404).type('text/plain').send('Not found'); });
 // ---- Models & Licences: links only here; stripped from /api/tools + /api/models. ----
 app.get('/api/licenses', async () => { const r: any = buildLicenseReport(); const { creditOfLicenseRow } = await import('./attribution.js'); return { ...r, rows: r.rows.map((x: any) => ({ ...x, ...creditOfLicenseRow(x) })) }; });
 app.addHook('preSerialization', async (req, _reply, payload) => (/^\/api\/(tools|models)(\/|\?|$)/.test(req.url) ? stripLicenseLinks(payload) : payload));
@@ -1250,5 +1231,8 @@ app.addHook('preSerialization', async (req, _reply, payload) => (/^\/api\/(tools
 /** Network exposure requires an explicit HOST opt-in in development and production (kernel settings: HOST, read once at boot). */
 export const LISTEN_HOST = bootSettings().host;
 process.env.HOST = LISTEN_HOST; // the "runs on this computer" checks (saving keys, ComfyUI address) read process.env.HOST: keep it the address we really listen on
-if (process.env.OPENHIGGSFIELD_DUMP_ROUTES === '1') await http.ready(); // --dump-config: every route registered, nothing listens
-else await http.listen({ port: bootSettings().port, host: LISTEN_HOST });
+/** Start serving (boot.ts, once the feature plugins added their routes). --dump-config: every route registered, nothing listens. */
+export async function listen() {
+  if (process.env.OPENHIGGSFIELD_DUMP_ROUTES === '1') await http.ready();
+  else await http.listen({ port: bootSettings().port, host: LISTEN_HOST });
+}
