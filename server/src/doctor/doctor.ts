@@ -17,6 +17,7 @@ import { execFileSync, execSync } from '../security/childProcess.js';
 import { fileURLToPath } from 'node:url';
 import { comfyInstallOf, type ComfyInstall } from '../hardware/comfyInstall.js';
 import { PROVIDER_ACCOUNTS } from '../shared/providerKeys.js';
+import { BASE_OVERRIDES, baseWarnings, namesOf } from '../security/baseUrls.js';
 import { checkoutIdOf } from '../shared/checkoutId.js';
 import { classifyMachine, inputFromSystemStats, parseNvidiaSmi, type MachineProfile } from '../hardware/machineProfile.js';
 
@@ -54,7 +55,8 @@ export const realEnv = (): DoctorEnv => ({
 
 const GiB = 2 ** 30; const r1 = (n: number) => Math.round(n * 10) / 10;
 /** Settings whose VALUES the doctor may read from the env file (none of them is a secret). Every other line gives its name only. */
-const SAFE_VALUES = new Set(['PORT', 'WEB_PORT', 'MCP_PORT', 'HOST', 'COMFY_BASE_URL', 'OPENHIGGSFIELD_COMFY_MODELS_DIR', 'OPENHIGGSFIELD_BACKEND', 'OPENHIGGSFIELD_USE_LOCAL', 'OPENHIGGSFIELD_COMFY_DIR']);
+const SAFE_VALUES = new Set(['PORT', 'WEB_PORT', 'MCP_PORT', 'HOST', 'COMFY_BASE_URL', 'OPENHIGGSFIELD_COMFY_MODELS_DIR', 'OPENHIGGSFIELD_BACKEND', 'OPENHIGGSFIELD_USE_LOCAL', 'OPENHIGGSFIELD_COMFY_DIR',
+  ...BASE_OVERRIDES.flatMap((o) => namesOf(o.name))]); // the addresses a key goes to (security/baseUrls.ts): checked, never a secret
 /** The env file as {names, safe values}. A key's value never leaves this function. */
 export function readEnvFile(file: string, f: Pick<typeof fs, 'existsSync' | 'readFileSync'>): { found: boolean; names: string[]; values: Record<string, string> } {
   const out = { found: false, names: [] as string[], values: {} as Record<string, string> };
@@ -204,6 +206,7 @@ export async function runDoctor(e: DoctorEnv = realEnv(), o: DoctorOptions = {})
   if (accounts.source === 'none') { const has = (v: string) => !!e.env[v]?.trim() || ef.names.includes(v);
     accounts = { source: ef.found ? 'env-file' : 'none', connected: ACCOUNT_ENV.filter((a) => a.vars.some(has)).map((a) => a.id), notConnected: ACCOUNT_ENV.filter((a) => !a.vars.some(has)).map((a) => a.id) }; }
   const nameOf = (id: string) => ACCOUNT_ENV.find((a) => a.id === id)?.name ?? id;
+  for (const w of baseWarnings((n) => namesOf(n).map(setting).find(Boolean))) add({ id: `base-${w.name}`, section: 'accounts', status: 'warn', required: false, text: w.text, fix: `Change or remove ${w.name} in your env file` });
   add({ id: 'accounts', section: 'accounts', status: accounts.connected.length ? 'ok' : 'info', required: false, text: accounts.connected.length ? `Connected: ${accounts.connected.map(nameOf).join(', ')}` : (health.json?.freeSamples === false ? 'No accounts connected (models run on this computer)' : 'No accounts connected: until you add a key or set up your computer, Generate makes free samples from our examples'), fix: accounts.connected.length ? undefined : 'Settings → Connections, or a key line in .env.local' });
   if (backend === 'mock' && accounts.connected.length) add({ id: 'sample-mode', section: 'accounts', status: 'info', required: false, text: 'Sample mode: runs make free samples, even with these accounts connected', fix: 'set OPENHIGGSFIELD_BACKEND=comfy in .env.local, then restart the app (npm start) (every paid run still shows its price first)' });
   const hfConnected = accounts.connected.includes('hf') || (accounts.source !== 'app' && (ACCOUNT_ENV.find((a) => a.id === 'hf')?.vars ?? []).some((v) => !!e.env[v]?.trim() || ef.names.includes(v)));
