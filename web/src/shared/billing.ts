@@ -116,6 +116,11 @@ export function costToken(c: Cost, calls = 1, upTo = false): string {
  *  LOCAL_FREE locally, '≈ $0.42' anywhere else; team mode '$0.64'. Units (Comfy credits) go in priceDetail, never in the token.
  *  `credits` is what the quote shows as a charge (shownCredits, ledger units); null = nothing known yet. */
 export function priceToken(o: { q?: any; own: boolean; demo?: boolean; free?: boolean; credits?: number | null; calls?: number }): string | null {
+  const t = priceToken0(o); return t && o.q?.promptDependent === true ? fromPrice(t) : t;
+}
+/** A quote made without the prompt (promptDependent: GPT Image bills prompt text) is a starting price: 'From $0.12' (the prompt adds a little). */
+export const fromPrice = (t: string): string => /^≈ (up to )?\$/.test(t) ? `From ${t.replace(/^≈ (up to )?/, '')}` : /^\$/.test(t) ? `From ${t}` : t;
+function priceToken0(o: { q?: any; own: boolean; demo?: boolean; free?: boolean; credits?: number | null; calls?: number }): string | null {
   const calls = o.calls ?? 1; const cost: Cost | null = o.q?.cost && typeof o.q.cost === 'object' ? o.q.cost : null;
   if (o.demo) return 'Sample';
   if (o.own && cost && cost.billedTo === 'local') return LOCAL_FREE;

@@ -54,7 +54,7 @@ try {
   const bud = await post('/api/stories', { ...spec, maxUsd: usd / 2 }); assert.equal(bud.status, 400); assert.equal(bud.b.code, 'over_budget');
   const unk = await post('/api/stories', { ...spec, shots: [{ prompt: '@nobody waves' }, { prompt: 'b' }] }); assert.equal(unk.status, 400); assert.equal(unk.b.code, 'unknown_element');
   const few = await post('/api/stories/quote', { shots: [{ prompt: 'one' }] }); assert.equal(few.status, 400); assert.equal(few.b.code, 'shot_count');
-  const stale = await post('/api/stories', { ...spec, quotedCredits: sum - 1 }); assert.equal(stale.status, 409); /* D3: asks again only when dearer */ assert.equal(stale.b.code, 'route_changed');
+  const stale = await post('/api/stories', { ...spec, quotedCredits: Math.max(0, Math.min(sum - 6, Math.floor(sum / 1.11) - 1)) }); assert.equal(stale.status, 409); /* D3: asks again only when dearer than the allowance (10 % or 5¢) */ assert.equal(stale.b.code, 'route_changed');
   const jobsAfter = (await j('/api/jobs?toolId=h3-video')).b; assert.equal((Array.isArray(jobsAfter) ? jobsAfter : jobsAfter.items ?? jobsAfter.jobs ?? []).length, nBefore, 'refused stories create no shot job');
   step('spend limit, budget, unknown @element, shot count and a stale quote refuse the story before any job exists');
 

@@ -24,7 +24,7 @@ export const readQuote = (r: Response): Promise<any> => r.json().catch(() => nul
 
 /** Quote = charge: the route each quote says it would run, per tool + provider, so Generate submits exactly that route when nothing is pinned
  *  (instead of route=auto, which the server may resolve differently, e.g. past a pin). Reads `routeId`. */
-type Quoted = { route: string; credits: number | null; at: number };
+type Quoted = { route: string; credits: number | null; at: number; /** priced without the prompt (a 'from' price) */ promptDependent?: boolean };
 const QUOTED = new Map<string, Quoted>();
 /** The latest quote body per tool (any page's), for widgets that show where the next run goes without quoting themselves (the Run-on field). */
 const LASTQ = new Map<string, any>(); const lqBus = new Set<() => void>();
@@ -34,7 +34,10 @@ function noteQuote(url: string, d: any) {
   try { const u = new URL(url, location.origin); const mm = u.pathname === '/api/models/quote'; const m = mm ? ['', '*'] : u.pathname.match(/^\/api\/tools\/([^/]+)\/price$/); if (!m) return;
     const route = typeof d?.routeId === 'string' && d.routeId && d.routeId !== 'auto' ? d.routeId : null; // the price contract always carries routeId
     const k = qk(decodeURIComponent(m[1]), (mm ? u.searchParams.get('model') : u.searchParams.get('provider')) ?? '');
-    if (route && d?.runnable !== false) QUOTED.set(k, { route, credits: typeof d.credits === 'number' ? d.credits : null, at: Date.now() }); else QUOTED.delete(k);
+    // A quote made without the prompt (promptDependent: GPT Image bills prompt text; a hover or menu price) never replaces the bar's own quote
+    // that counted the prompt: the submit sends the price the user saw for THIS prompt.
+    if (d?.promptDependent === true && QUOTED.get(k) && !QUOTED.get(k)!.promptDependent) { /* keep the prompt-aware quote */ }
+    else if (route && d?.runnable !== false) QUOTED.set(k, { route, credits: typeof d.credits === 'number' ? d.credits : null, at: Date.now(), ...(d?.promptDependent === true ? { promptDependent: true } : {}) }); else QUOTED.delete(k);
     if (!mm) { LASTQ.set(decodeURIComponent(m[1]), d); lqBus.forEach(f => f()); }
   } catch { /* ignore */ }
 }

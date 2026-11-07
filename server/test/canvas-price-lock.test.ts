@@ -22,7 +22,8 @@ assert.equal(priceLockStop({ quotedCredits: 0, credits: 0 }), null);
 assert.equal(priceLockStop({ quotedRoute: 'comfy-router:a', quotedCredits: 42, route: 'comfy-router:b', credits: 40 }), 'route', 'another model or place stops, even cheaper');
 assert.equal(priceLockStop({ quotedRoute: 'comfy-router:a', quotedCredits: 42, route: 'comfy-router:a', credits: 44 }), null);
 assert.equal(priceLockStop({ quotedCredits: null, credits: 1 }), 'dearer', 'a lock without a price never runs blind');
-assert.equal(priceAskAgain({ quotedCredits: 42, credits: 44 }), true, 'without the lock, the old rule (any rise asks) is unchanged');
+assert.equal(priceAskAgain({ quotedCredits: 42, credits: 44 }), false, 'without the lock, the shared allowance applies: +2 credits is under 5¢');
+assert.equal(priceAskAgain({ quotedCredits: 42, credits: 48 }), true, 'without the lock, more than 10% or 5¢ asks');
 ok('the lock rule: under 10% runs, 10% or more or another route stops');
 
 // ---- the page's check, its words and its form fields ----
@@ -76,8 +77,10 @@ try {
   assert.ok(big.body.quote && typeof big.body.quote.credits === 'number', 'the fresh quote comes back');
   const moved = await job({ priceLock: '1', quotedCredits: String(credits), quotedRouteId: 'comfy-router:somewhere-else' });
   assert.equal(moved.status, 409); assert.equal(moved.body.reason, 'route', 'another place stops even at the same price');
-  const legacy = await job({ quotedCredits: String(credits / 1.05), quotedRouteId: route });
-  assert.equal(legacy.status, 409, 'without priceLock the old contract is unchanged (any dearer run asks)');
+  const legacySmall = await job({ quotedCredits: String(credits / 1.05), quotedRouteId: route });
+  assert.equal(legacySmall.status, 200, 'without priceLock a 5% rise is inside the shared allowance (10% or 5¢)');
+  const legacy = await job({ quotedCredits: String(Math.max(credits - 6, 0)), quotedRouteId: route });
+  assert.equal(legacy.status, 409, 'without priceLock a rise past the allowance still asks');
   ok('jobs route: priceLock=1 lets a small rise through and stops a big rise or another route (409, nothing charged)');
 
   // the proposal flow through a fake canvas page

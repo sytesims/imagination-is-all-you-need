@@ -48,6 +48,7 @@ export function createMediaPause(env: MediaPauseEnv) {
     hide, show, onPlay, sync: () => (env.hidden() ? hide() : show()),
     register: (el: MediaLike) => { extra.forEach(x => { if (x !== el && x.paused && !held.has(x)) extra.delete(x); }); /* stopped previews drop out */ extra.add(el); return () => { extra.delete(el); held.delete(el); }; },
     registerContext: (c: AudioCtxLike) => { ctxs.add(c); return () => { ctxs.delete(c); ctxHeld.delete(c); }; },
+    registered: (): MediaLike[] => [...extra],
     /** how many players wait to resume (tests, the debug readout) */ get heldCount() { return held.size; },
     isHeld: (el: MediaLike) => held.has(el),
   };
@@ -57,6 +58,8 @@ type Mgr = ReturnType<typeof createMediaPause>;
 let mgr: Mgr | null = null; const early: MediaLike[] = []; const earlyCtx: AudioCtxLike[] = [];
 /** A player that isn't in the DOM (new Audio(), a preview element): pause and resume it with the tab. Returns unregister. */
 export function registerMedia(el: MediaLike): () => void { if (mgr) return mgr.register(el); early.push(el); return () => { const i = early.indexOf(el); if (i >= 0) early.splice(i, 1); }; }
+/** The players registered with registerMedia (outside the DOM), for the sound director's page scope (shared/soundDirector.ts). */
+export function detachedPlayers(): MediaLike[] { return mgr ? mgr.registered() : [...early]; }
 /** A Web Audio graph: suspended while the tab is hidden (if it was running), resumed after. Returns unregister. */
 export function registerAudioContext(c: AudioCtxLike): () => void { if (mgr) return mgr.registerContext(c); earlyCtx.push(c); return () => { const i = earlyCtx.indexOf(c); if (i >= 0) earlyCtx.splice(i, 1); }; }
 

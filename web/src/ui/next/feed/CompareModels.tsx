@@ -19,13 +19,15 @@ import { jobInputs } from '../../../shared/jobInputs';
 import { MentionText } from '../../../shared/MentionChips';
 import { COMPARE_MAX, COMPARE_MIN, type CompareWant, type CompareParams, type CompareChange } from '../../../../../server/src/shared/compareAdapt';
 import { LOCAL_LABEL, LOCAL_FREE } from '../../../../../server/src/shared/modelIds';
+import { promptBucket, promptBytesOf } from '../../../../../server/src/shared/hostedPrices';
 import { splitCompareRows, moreLabel } from './compareRows';
 
 export interface CompareRow { model: string; name: string; ok: boolean; excluded: { code: string; reason: string } | null; unpriced: boolean; params: CompareParams | null; changes: CompareChange[];
   credits: number | null; estUsd: number; billedTo: string | null; runOn: string | null; routeId: string | null; local: boolean; demo: boolean }
 export interface CompareQuote { rows: CompareRow[]; included: string[]; order: string[]; total: { credits: number; estUsd: number; byBilledTo: Record<string, number>; models: number; localRuns: number }; runnable: boolean; block: { code: string; message: string } | null }
-export async function compareQuote(models: string[], want: CompareWant, preview = false): Promise<CompareQuote> {
-  const r = await fetch('/api/compare/quote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ models, ...want, ...(preview ? { preview: true } : {}) }) });
+/** promptBytes: the prompt's length (GPT Image bills prompt text), so each row is the price its run submits. */
+export async function compareQuote(models: string[], want: CompareWant, preview = false, promptBytes?: number): Promise<CompareQuote> {
+  const r = await fetch('/api/compare/quote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ models, ...want, ...(promptBytes != null ? { promptBytes } : {}), ...(preview ? { preview: true } : {}) }) });
   const j = await r.json().catch(() => null); if (!r.ok) throw new Error(j?.error ?? `HTTP ${r.status}`); return j;
 }
 /** A compared run's price in the Generate button's words (Sample / Free · this computer / ≈ $0.08; team mode $0.08). */
@@ -50,14 +52,14 @@ export default function CompareModels(p: CompareModelsProps) {
   useEffect(() => { setPicked(ps => ps.filter(id => p.providers.some(x => x.id === id))); }, [p.providers.map(x => x.id).join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const models = useMemo(() => p.providers.map(x => ({ x, m: modelOfEngine(p.toolId, x.id) })), [p.providers, p.toolId]);
   /* every row's price at the settings that model would really run (adapted), from the same quote as the run */
-  const [list, setList] = useState<Record<string, CompareRow> | null>(null); const allKey = JSON.stringify([p.providers.map(x => x.id), p.want]);
-  useEffect(() => { if (!p.open) return; let live = true; compareQuote(p.providers.map(x => x.id).slice(0, 60), p.want, true).then(v => { if (live) setList(Object.fromEntries(v.rows.map(r => [r.model, r]))); }).catch(() => undefined); return () => { live = false; }; }, [p.open, allKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [list, setList] = useState<Record<string, CompareRow> | null>(null); const pBytes = promptBucket(promptBytesOf(p.prompt)); const allKey = JSON.stringify([p.providers.map(x => x.id), p.want, pBytes]);
+  useEffect(() => { if (!p.open) return; let live = true; compareQuote(p.providers.map(x => x.id).slice(0, 60), p.want, true, pBytes).then(v => { if (live) setList(Object.fromEntries(v.rows.map(r => [r.model, r]))); }).catch(() => undefined); return () => { live = false; }; }, [p.open, allKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showMore, setShowMore] = useState(false); useEffect(() => { if (!p.open) setShowMore(false); }, [p.open]);
   const split = splitCompareRows(models.map(y => y.x.id), list, picked); const shownIds = new Set(showMore ? [...split.now, ...split.more] : split.now);
   const listText = (r: CompareRow | undefined) => !r ? '' : r.excluded ? r.excluded.reason : r.unpriced ? 'Price unavailable' : rowPriceText(r, own);
-  const wantKey = JSON.stringify([picked, p.want]);
+  const wantKey = JSON.stringify([picked, p.want, pBytes]);
   useEffect(() => { if (!p.open || !picked.length) { setQ(null); return; } let live = true; setQBusy(true);
-    const t = setTimeout(() => { compareQuote(picked, p.want).then(v => { if (live) { setQ(v); setQErr(''); } }).catch(e => { if (live) { setQ(null); setQErr(String(e?.message ?? 'Couldn’t price this')); } }).finally(() => { if (live) setQBusy(false); }); }, 200);
+    const t = setTimeout(() => { compareQuote(picked, p.want, false, pBytes).then(v => { if (live) { setQ(v); setQErr(''); } }).catch(e => { if (live) { setQ(null); setQErr(String(e?.message ?? 'Couldn’t price this')); } }).finally(() => { if (live) setQBusy(false); }); }, 200);
     return () => { live = false; clearTimeout(t); }; }, [p.open, wantKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const toggle = (id: string) => setPicked(ps => ps.includes(id) ? ps.filter(x => x !== id) : ps.length >= COMPARE_MAX ? ps : [...ps, id]);
   const nameOf = (id: string) => { const r = models.find(y => y.x.id === id); return (r?.m ? shownName(r.m) : null) ?? r?.x.name ?? id; };

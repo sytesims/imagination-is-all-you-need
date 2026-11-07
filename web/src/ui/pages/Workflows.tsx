@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useSoundScope } from '../../shared/soundDirector';
 import { createPortal } from 'react-dom';
 import type { ToolInfo } from '../../api';
 import { IMAGE_PAGE, VIDEO_PAGE, AUDIO_PAGE, THREE_D_PAGE } from '../../../../server/src/shared/pages';
@@ -371,6 +372,7 @@ type Item = { kind: 'row'; r: Row; id: string } | { kind: 'chain'; c: WfChain; i
 const START_LINE = 'The easiest first steps. Most are free on your computer.';
 
 export default function Workflows({ tools }: { tools: ToolInfo[] }) {
+  const soundScope = useRef<HTMLDivElement>(null); useSoundScope(soundScope); /* leaving the page stops its sound (shared/soundDirector.ts) */
   const { rows, left } = useRows(tools); const s = useSaved(); const mode = useSampleMode();
   /* a chain shows only when every step can run here */
   const chainsAll = useMemo(() => WF_CHAINS.filter((c) => c.steps.every((st) => rows.some((r) => r.e.id === st.entry))), [rows]);
@@ -417,7 +419,7 @@ export default function Workflows({ tools }: { tools: ToolInfo[] }) {
     <div className="wn-head-row"><Head id={`wn-h-${id}`} title={title} line={line} count={list.length} />
       {all && f.cat === 'all' && <button type="button" className="link-btn wn-seeall" onClick={() => { f.setCat(all); scrollTo({ top: 0 }); }} data-testid={`wn-seeall-${id}`}>See all {list.length}</button>}</div>
     <div className={`wn-grid${f.cat === 'all' ? ' is-shelf' : ''}`}>{tiles(list)}{extra}</div></section>;
-  return <div className="wn-page" data-testid="workflows-page">
+  return <div ref={soundScope} className="wn-page" data-testid="workflows-page">
     <div className="wn wn-b">
       <aside className="wn-side" aria-label="Find a workflow">
         <span className="wn-brand">Imagination is all you need</span><h1>Workflows</h1>

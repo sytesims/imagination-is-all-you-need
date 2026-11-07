@@ -214,7 +214,7 @@ export function registerStory(app: FastifyInstance) {
     const ab = budgetOfRequest(req); const g0 = agentGate(reply, ab, null, ''); if ('sent' in g0) return g0.sent; // unknown / closed id: fail closed
     const spec = p.spec; const q = await quoteStory(spec); if (!q.ok) return refuse(reply, q);
     const qc = (req.body as any)?.quotedCredits; const qu = (req.body as any)?.quotedUsd;
-    if ((qc != null && qc !== '' && priceAskAgain({ quotedCredits: Number(qc), credits: q.total.credits })) || (qu != null && qu !== '' && q.total.estUsd > Number(qu) + 0.005)) return changed(reply, q); // only a dearer story asks again (D3)
+    if ((qc != null && qc !== '' && priceAskAgain({ quotedCredits: Number(qc), credits: q.total.credits })) || (qu != null && qu !== '' && priceAskAgain({ quotedCredits: Number(qu) * 100, credits: q.total.estUsd * 100 }) /* dollars → credits (1 = $0.01), the same allowance */)) return changed(reply, q); // only a noticeably dearer story asks again (D3 + the allowance)
     const g = agentGate(reply, ab, q, spec.model); if ('sent' in g) return g.sent;
     const group = randomUUID().slice(0, 8); const ids: string[] = [];
     for (let t = 0; t < spec.takes; t++) {
