@@ -25,7 +25,7 @@ async function client(elicit: 'none' | 'accept' | 'decline', e: Record<string, s
 }
 const a = await client('none');
 const r1: any = await a.callTool({ name: 'restyle', arguments: { video: '/samples/sample-pattern.mp4', preset: 'watercolor' } });
-ok('block → refused with message', r1.isError && /blocked/.test(txt(r1)), txt(r1));
+ok('block → refused with message (names the setting, the safe option, never allow)', r1.isError && /turned off in this connector's settings \(OPENHIGGSFIELD_MCP_BLOCK=restyle\)/.test(txt(r1)) && /OPENHIGGSFIELD_MCP_SPEND=ask/.test(txt(r1)) && !/=allow|ALLOW=/.test(txt(r1)), txt(r1));
 const r2: any = await a.callTool({ name: 'generate_image', arguments: { prompt: 'a mug' } });
 ok('ask without elicitation → refused', r2.isError && /doesn't support elicitation/.test(txt(r2)), txt(r2));
 const r3: any = await a.callTool({ name: 'list_tools', arguments: {} }); ok('allow (read-only) → runs', !r3.isError, txt(r3));
@@ -66,7 +66,22 @@ const r5: any = await c.callTool({ name: 'generate_image', arguments: { prompt: 
   ok('OPENHIGGSFIELD_MCP_ALLOW=* allows spend too', permFor(loadPermissions({ OPENHIGGSFIELD_MCP_ALLOW: '*' } as any), 'retry') === 'allow');
   const e = { ...env }; delete (e as any).OPENHIGGSFIELD_MCP_SPEND; delete (e as any).OPENHIGGSFIELD_MCP_ASK; const d = await client('none', e);
   const r: any = await d.callTool({ name: 'generate_video', arguments: { prompt: 'a lighthouse' } });
-  ok('default: a spend tool without elicitation is refused, says how to allow', r.isError && /doesn't support elicitation/.test(txt(r)) && /OPENHIGGSFIELD_MCP_SPEND=allow/.test(txt(r)), txt(r));
-  const rr: any = await d.callTool({ name: 'retry', arguments: { id: 'nope' } }); ok('default: retry is gated too', rr.isError && /OPENHIGGSFIELD_MCP_SPEND=allow/.test(txt(rr)), txt(rr));
+  ok('default: a spend tool without elicitation is refused, points at a client that can ask (never allow)', r.isError && /doesn't support elicitation/.test(txt(r)) && /canvas_propose_run/.test(txt(r)) && !/=allow/.test(txt(r)), txt(r));
+  const rr: any = await d.callTool({ name: 'retry', arguments: { id: 'nope' } }); ok('default: retry prices first (price-aware): an unknown job is an error, nothing asked', rr.isError && !/elicitation/.test(txt(rr)), txt(rr));
   const desc = (await d.listTools()).tools.find((t) => t.name === 'run')?.description ?? ''; ok('default: run is marked permission: ask', /permission: ask/.test(desc)); await d.close(); }
+// ---- spend block (audit 2026-11-07 #1): price-aware for run / retry: free runs pass, paid ones are refused with the price and the safe option ----
+{ const e = { ...env, OPENHIGGSFIELD_MCP_SPEND: 'block' }; delete (e as any).OPENHIGGSFIELD_MCP_ASK; delete (e as any).OPENHIGGSFIELD_MCP_BLOCK; const d = await client('none', e);
+  const desc = (await d.listTools()).tools.find((t) => t.name === 'run')?.description ?? ''; ok('block: run says paid runs blocked, free runs work', /paid runs blocked — free, local and sample runs still work/.test(desc), desc.slice(-140));
+  const free: any = await d.callTool({ name: 'run', arguments: { tool_id: 'create-image', fields: { prompt: 'a mug', types: ['generate'] }, run_on: 'local' } }, undefined, { timeout: 120000 });
+  ok('block: a free local run goes through', !free.isError && /"status": "done"/.test(txt(free)), txt(free));
+  const q: any = await d.callTool({ name: 'quote', arguments: { tool_id: 'h3-video', fields: { prompt: 'x', types: ['t2v'] }, compare: true } }); const paid = JSON.parse(txt(q)).compare.find((r: any) => r.runnable && r.usd > 0 && !r.adjusted);
+  if (paid) { const req = { tool_id: 'h3-video', fields: { prompt: 'a lighthouse', types: ['t2v'] }, model: paid.model, run_on: paid.runOn };
+    const r: any = await d.callTool({ name: 'run', arguments: req }); const t = txt(r);
+    ok('block: a paid run is refused with the setting, the price and ask + budget (never allow)', r.isError && /OPENHIGGSFIELD_MCP_SPEND=block/.test(t) && /\$\d+\.\d\d/.test(t) && /OPENHIGGSFIELD_MCP_SPEND=ask/.test(t) && /OPENHIGGSFIELD_AGENT_BUDGET_USD/.test(t) && !/=allow|ALLOW=/.test(t) && /"charged": false/.test(t), t); }
+  else console.log('SKIP block paid refusal (no paid quote: start the API with OPENHIGGSFIELD_MOCK_KEYS=1)');
+  // a single validation issue keeps its field, allowed ids and a next step (audit #4)
+  const v: any = await d.callTool({ name: 'run', arguments: { tool_id: 'create-image', fields: { prompt: 'a mug' }, run_on: 'local' } }, undefined, { timeout: 60000 });
+  let vb: any = null; try { vb = JSON.parse(txt(v)); } catch { /* text */ }
+  ok('one issue: field types + allowed ids + next', v.isError && vb?.issues?.[0]?.field === 'types' && vb.issues[0].allowed?.includes('generate') && /set fields\.types to \["generate"\]/.test(vb.next ?? ''), txt(v));
+  await d.close(); }
 console.log(failed ? `${failed} FAILED` : 'ALL PASS'); process.exit(failed ? 1 : 0);
