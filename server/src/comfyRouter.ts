@@ -29,6 +29,9 @@ export const routerBase = () => (env('COMFY_ROUTER_URL') || 'https://api.comfy.o
 export const ROUTER_BASE = routerBase();
 /** Where the Comfy key may go from the Router and storage calls: Comfy's hosts and the base in use (keyedFetch: no redirect carries it elsewhere). */
 export const routerScope = (base = routerBase()) => scopeOf('Comfy', KEY_HOSTS.comfy, () => hostRuleOf(base));
+/** A stored Router request (job.remote, maybe from a backup) is used only when its URLs are on the Router base in use (as every call checks). */
+export const routerHandleSafe = (h: { statusUrl?: string; responseUrl?: string; cancelUrl?: string }, base = routerBase()) =>
+  [h.statusUrl, h.responseUrl, h.cancelUrl].every((u) => { try { return !!u && new URL(u).origin === new URL(base).origin; } catch { return false; } });
 /** Query string on every Router generation call (sync and queued): no provider fallback, so a failure is returned (nothing charged) instead of re-run elsewhere. */
 export const ROUTER_NO_FALLBACK = '?fallback_provider=false';
 export interface RouterRequest { provider: string; model: string; body: Record<string, unknown>; long?: boolean }

@@ -7,6 +7,7 @@ import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner } from '../services/places.js';
 import type { KeyReader } from '../kernel/keys.js';
 import { routerLive, runRouter } from '../routing/routerRun.js';
+import { routerHandleSafe } from '../comfyRouter.js';
 import { HANDOFF_POLICY, handOff } from '../mediaHandoff.js';
 
 export const ROUTER_KEYS = ['COMFY_API_KEY'];
@@ -16,7 +17,7 @@ export const routerPlaceOf = (keys: KeyReader): PlaceRunner => ({
   key: (r) => keys.value(r),
   live: (r) => routerLive(r, keys), // a keyed Router route runs for real on any backend (never a charged sample)
   attempt: (job, _tool, r, attempt, kit) => { kit.requestId(0); return runRouter(job, r, attempt, kit.timeoutMs, keys); }, // output 0's Router idempotency key, noted before anything is sent
-  resume: (h) => !!(h.statusUrl && h.responseUrl && h.cancelUrl),
+  resume: (h) => routerHandleSafe(h), // all three URLs, on the Router base in use (a stored handle may come from a backup)
   async cancel(h, r, f) {
     const key = keys.value(r); if (!key || !h.cancelUrl) return null; const { ComfyRouter } = await import('../comfyRouter.js');
     return new ComfyRouter(key, f).cancel({ requestId: h.id, statusUrl: h.statusUrl ?? '', responseUrl: h.responseUrl ?? '', cancelUrl: h.cancelUrl, estimate: null });
