@@ -13,6 +13,7 @@ const STAGES: [string, string][] = [['submitted', 'Picking a sample'], ['renderi
 
 export async function runSample(job: Job, tool: ToolDef): Promise<void> {
   const kind = outMediaKind(job); const i = job.input ?? {};
+  if (i.ownSample) return tool.run(job); // a tool that draws its own labelled sample from your own input, sending nothing (Layers: layers/mock.ts)
   const n = Array.isArray(i.shots) && i.shots.length ? i.shots.length : Math.min(4, Math.max(1, Number(i.n) || 1));
   const labels = kind === 'image' ? imageLabels(i, 'Sample') : n > 1 ? Array.from({ length: n }, (_, k) => `Sample ${k + 1}`) : ['Sample'];
   if (kind && !i.layers) i.sampleFiles = matchSamples(String(i.prompt || i.text || i.appPrompt || i.finalPrompt || '') /* the words the user typed: an enhanced prompt adds style words that match everything */, kind, labels.length, { extra: tool.name }).map((c) => c.url);

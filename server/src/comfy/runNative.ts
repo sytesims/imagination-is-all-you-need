@@ -140,7 +140,7 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
       const o = res.outputs[node]?.[0]; if (!o) throw new Error(`ComfyUI returned no output on node ${node} (${pass.workflow})`);
       const label = nodeIndex === 0 ? (plan.labels?.[k] ?? pass.label) : pass.extraOutputs![nodeIndex - 1].label;
       if ((o as any).text != null) { const tf = path.join(DATA_DIR, `${job.id}-p${k}-${node}.txt`); await writeFile(tf, (res.outputs[node] as any[]).map((x) => x.text).join('\n')); files.push(tf); labels.push(label); continue; }
-      for (const item of nativeOutputItems(res.outputs[node], plan.outKind === 'image', label)) {
+      for (const item of nativeOutputItems(res.outputs[node], plan.outKind === 'image' || !!plan.imageBatches, label)) {
         if (plan.outKind === 'image' && (job.status as string) === 'canceled') return;
         files.push(await c.download(item.output, path.join(DATA_DIR, `${job.id}-p${k}-${node}${item.suffix}${path.extname(item.output.filename) || '.bin'}`)));
         labels.push(item.label);
@@ -162,7 +162,7 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
     if (pass.unchangedVs && files[0] && (await editUnchanged(pass.unchangedVs, files[0]))?.unchanged) (job.warnings ??= []).push(unchangedNotice(!!job.diagnostics?.some((d) => d.pass === k)));
   }
   job.stage = 'muxing' as any; job.progress = Math.max(job.progress, 95); job.liveStage = 'finishing';
-  const finals: { label: string; file: string }[] = [];
+  const finals: { label: string; file: string; /** already a finished file in the data folder (a custom post step): listed as it is */ ready?: boolean }[] = [];
   const out = (i: number, ext: string) => path.join(DATA_DIR, `${job.id}-out${i}${ext}`);
   const ext0 = path.extname(outs[0][0]) || '.mp4';
   if (plan.post.kind === 'each') { const only = plan.post.only; outs.forEach((fs, k) => (only && !only.includes(k) ? undefined : fs.forEach((f, j) => finals.push({ label: outLabels[k][j], file: f })))); }
@@ -195,6 +195,7 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
       const fit = fitLines(lines, made, total, pp.maxSpeed); voices = files.map((f, k) => ({ file: f, at: fit[k].at, speed: fit[k].speed }));
       job.input.dubFit = fit; const notes = fitNotes(fit); if (notes.length) (job.warnings ??= []).push(...notes); }
     const o = out(0, '.mix.wav'); await ff(voiceMixArgs(beds, voices, o), 'voice mix'); finals.push({ label: plan.labels?.[pp.pass] ?? 'Result', file: o }); }
+  else if (plan.post.kind === 'custom') finals.push(...await plan.post.run(job, outs, outLabels)); // a plugin's finish step (Layers: layers/assemble.ts)
   else if (plan.post.kind === 'xfade') { const o = out(0, '.xfade.mp4'); await ff(blendArgs(outs.map((f) => f[0]), plan.post.chunks, o), 'crossfade'); finals.push({ label: 'Result', file: o }); }
   else if (plan.post.kind === 'talkJoin') { const o = out(0, '.talk.mp4'); const { talkJoinArgs } = await import('./infiniteTalkCloud.js'); // Talking Video: parts + crossfades + the full speech
     await ff(talkJoinArgs(outs.map((f) => f[0]), plan.post.parts, plan.post.audio, o, plan.post.fade, plan.post.fps), 'talking video join'); finals.push({ label: plan.labels?.[0] ?? 'Talking video', file: o }); }
@@ -229,6 +230,7 @@ export async function runNative(job: Job, transport?: ComfyTransport, build: (j:
   }
   for (const [i, f] of finals.entries()) {
     if (plan.outKind === 'image' && (job.status as string) === 'canceled') return;
+    if (f.ready) { job.outputs.push({ label: f.label, url: `/files/${path.basename(f.file)}` }); continue; }
     const isVid = /\.(mp4|webm|mov|mkv)$/i.test(f.file); const alphaWebm = isVid && !!job.input.alpha && /\.webm$/i.test(f.file); // Remove BG transparent: MP4 has no alpha, keep the WebM
     const ext = alphaWebm ? '.webm' : isVid ? '.mp4' : path.extname(f.file) || ext0; const dest = out(i, ext);
     if (alphaWebm) await remuxAlphaWebm(f.file, plan.muxSourceAudio && job.input.hasAudio !== false ? job.input.videoPath : null, dest);

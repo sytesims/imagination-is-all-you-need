@@ -113,6 +113,12 @@ export const VIDEO_BARS: Record<string, VideoBar> = {
       { field: 'resolution', label: 'Quality', group: 'quality', kind: 'choice', options: [opt('448p', 'Draft', 'Fastest'), opt('576p', 'Sharper', 'About twice as slow')], default: '448p' },
       { ...KEEP_AUDIO }],
     generateLabel: 'Apply effect' },
+  /* Layers (2026-11-07, plugin layers; server/src/layers): the names are the bar extra's chips (web ui/video/barExtras/LayersExtra.tsx); the options are on by default */
+  layers: { slots: [clip('Clip', 'Add a clip', 'Your footage · MP4, MOV or WEBM, up to 15 s')], prompt: { mode: 'hidden', placeholder: '' }, groups: [{ id: 'options', label: 'Options', icon: 'layers' }],
+    controls: [{ field: 'edges', label: 'Clean edges', group: 'options', kind: 'toggle', default: '1', onLabel: 'Soft hair and fur edges (BiRefNet)', offLabel: 'Edges straight from SAM 3.1' },
+      { field: 'depth', label: 'Depth', group: 'options', kind: 'toggle', default: '1', onLabel: 'A depth pass; it also orders the layers', offLabel: 'No depth; the first name is on top' },
+      { field: 'background', label: 'Clean background', group: 'options', kind: 'toggle', default: '1', onLabel: 'The scene without your layers (first 5 s, on your computer)', offLabel: 'No background layer' }],
+    generateLabel: 'Split into layers' },
   /* Prompt Edit (2026-10-27): Bernini-R on Comfy Cloud (tools/promptEdit.ts), the first 5 s at 480p (fixed); Kling 4.0 (2026-10-31): 3–30 s
    * at 720p or 1080p, its Resolution chip shown for it alone (the tool's resolution input lists each model's sizes) */
   'prompt-edit': { slots: [clip('Clip', 'Add a clip', 'The clip to change · MP4, MOV or WEBM. Bernini-R edits up to 5 s at 480p (a longer clip uses its first 5 s); Kling 4.0 edits 3–30 s at 720p or 1080p')],

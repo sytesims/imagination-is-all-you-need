@@ -33,6 +33,9 @@ import { footageFxTool } from './footageFx.js';
 import { finishTool } from './finish.js';
 import { promptEditTool } from './promptEdit.js';
 import { twoPersonSwapTool } from './twoPersonSwap.js';
+import { layersTool } from '../layers/tool.js';
+import { layersEditTool } from '../layers/editTool.js';
+import '../layers/register.js'; // Video to layers: its places, price row and licences (studio-edit turns the tool, plan and routes on and off)
 import { wireComfyFeatured } from './comfyFeatured.js'; // official Comfy templates (2026-10-27): models on tools above (Gemini Omni 1.1 Flash, Topaz Bloom 2, Wan Animate 2…)
 import { booting } from '../kernel/booting.js';
 if (!booting()) wireComfyFeatured(); // scripts and tests; a booted server wires them in plugin comfy-featured (first in the profile)
@@ -77,6 +80,8 @@ export const STUDIO_TOOLS: Record<StudioId, ToolEntry[]> = {
     { tool: makeItRealTool, order: 200 }, // Direct a Shot step 3 (2026-10-24): LTX-2.5 + Layout to Render, local and free
   ],
   'studio-edit': [
+    { tool: layersTool, order: 245 },
+    { tool: layersEditTool, order: 246 }, // Video to layers' Render (hidden: opened from the layers viewer) // Video to layers (2026-11-07, server/src/layers): its plan and /api/layers routes come with this studio (plugins-builtin/studios.ts)
     { tool: footageFxTool, order: 210 }, // Footage Effects (2026-10-26): Lightricks LTX-2.5 IC-LoRA effects on your own clip, local and free
     { tool: twoPersonSwapTool, order: 220 }, // Swap Two People (2026-10-27): H3 Character Swap twice in one Comfy Cloud job
     { tool: promptEditTool, order: 230 }, // Prompt Edit (2026-10-27): Bernini-R on Comfy Cloud, one sentence edits a clip

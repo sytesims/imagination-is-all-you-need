@@ -245,7 +245,8 @@ export const tierLabel = (r: { kind: string; routeId: string }) => { const t = t
  *  - comfy-open on Camera Moves → comfy-cloud:cloud-ltx-camera (the LTX moves only),
  *  - comfy-open on Re-shoot → comfy-cloud:cloud-reshoot.
  */
-const TWINS: { model: string; twin: string; tools: string[]; /** only the tool itself, never a gallery app built on it (app-transition, app-ugc-ad) */ exactTool?: boolean; /** picked by the mode alone, never a Run-on choice */ notAChoice?: boolean; modes?: string[]; unavailableFor?: (i: Record<string, any>) => string | null; priceInput?: RouteDef['priceInput']; adjustNote?: RouteDef['adjustNote']; addOns?: RouteDef['addOns']; needsInput?: RouteDef['needsInput']; caps?: Record<string, unknown>; /** an unmeasured price keeps the model as it was before the twin (select.ts twinHeld) */ heldUntilMeasured?: boolean; /** provider=<twin> is read as model + this route on quote and submit (mapTwinAlias) */ aliasOk?: boolean }[] = [
+type Twin = { model: string; twin: string; tools: string[]; /** only the tool itself, never a gallery app built on it (app-transition, app-ugc-ad) */ exactTool?: boolean; /** picked by the mode alone, never a Run-on choice */ notAChoice?: boolean; modes?: string[]; unavailableFor?: (i: Record<string, any>) => string | null; priceInput?: RouteDef['priceInput']; adjustNote?: RouteDef['adjustNote']; addOns?: RouteDef['addOns']; needsInput?: RouteDef['needsInput']; caps?: Record<string, unknown>; /** an unmeasured price keeps the model as it was before the twin (select.ts twinHeld) */ heldUntilMeasured?: boolean; /** provider=<twin> is read as model + this route on quote and submit (mapTwinAlias) */ aliasOk?: boolean };
+const TWINS: Twin[] = [
   { model: 'comfy-h3', twin: 'cloud-h3-wf', tools: ['h3-video'], modes: ['t2v', 'i2v'] },
   // Oct 27: MiniMax H3 Keyframes · Comfy Cloud (comfy/h3KeyframesCloud.ts): the official multiframe template, the H3 card's Keyframes mode (2–5 stills at
   // chosen times → one shot). The only place that makes Keyframes; billed per second of clip at the picked size (an estimate until measured).
@@ -295,6 +296,11 @@ const TWINS: { model: string; twin: string; tools: string[]; /** only the tool i
   { model: 'comfy-ltx25-iclora', twin: 'cloud-ltx23-vfx', tools: ['footage-fx'], unavailableFor: vfxCloudIssue, heldUntilMeasured: true, aliasOk: true,
     caps: { localOnly: false, slow: false, resolutions: ['448p', '576p'], durations: [2, 3, 4, 5], effects: FOOTAGE_CLOUD_EFFECTS.map((e) => e.id), note: 'LTX-2.3 on Comfy Cloud: remove people, day to night, rain, flood, restore old footage, remove an object or subtitles, or extend the frame. 2–5 s, Draft or Sharper, your sound kept.' } },
 ];
+/** A plugin's own Comfy Cloud place for its local model (Layers: one card, two places). Added when the plugin loads; aliases follow. */
+export function addTwin(t: Twin): void {
+  if (TWINS.some((x) => x.model === t.model && x.twin === t.twin)) return;
+  TWINS.push(t); TWIN_ALIASES[t.twin] = { model: t.model, route: `comfy-cloud:${t.twin}`, tools: t.tools }; if (t.notAChoice) NOT_A_CHOICE.add(`comfy-cloud:${t.twin}`);
+}
 /** MiniMax Music 3 · Comfy Cloud bills the song length the graph asks for (max_duration): shared/audioLengths.ts songSeconds, the rule comfy/plans.ts
  *  songPlan uses (the clip's length for a video, else the picked length; 60 s when none; at least 30 s, the model's shortest; 1–360 s), so the quote
  *  and the charge price the same seconds. A clip under 30 s is billed for the 30 s song it is cut from. */

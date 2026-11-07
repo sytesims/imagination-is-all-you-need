@@ -85,12 +85,13 @@ Other ports and advanced setups: [Install and run](docs/INSTALL.md) · [Configur
 ## What you can make
 
 - **Shoot a product in every material, then turn it into ads.** **Material Swap**: “Give an object the material from another photo”; **Ad Pack** makes a set of finished ads and places your real logo from a brand kit; **Product Shot**: “Studio or lifestyle shots of a product”; **Phone Photo**: “An everyday phone photo of a made-up person”.
+- **Video to layers: split any video into separate layers.** Name what you want, like a person, the steam or a neon sign, and each comes back on its own see-through layer with depth and a clean background. Export it all for your editor as ProRes 4444. [How it works](docs/LAYERS.md).
 - **Split a picture into layers and keep editing.** **Image to layers** gives you clean, transparent layers; **Download PSD** saves them as one layered Photoshop file, named and in place.
 - **Stage a shot, then film it.** **Direct a Shot** lets you place the camera and actors in simple 3D in your browser, then films it for real with LTX-2.5. Add **Camera Moves** (82 moves), **Lip Sync**, **Extend** and **Transitions**, then join clips with **Stitch**.
 - **Write a song, voice a script, translate a video.** **Music** (YuE2, free on your computer), **Voiceover**, **Sound effects**, and **Translate**, which keeps the background music.
 - **Turn one picture into a 3D model.** **Image to 3D**, **Text to 3D** and **Multi-view to 3D**, then a **Turntable video** of the model spinning.
 
-Ready to use today: **70 ready-made workflows** (20 image · 38 video · 8 audio · 4 3D), including the **25 one-click apps**, plus **8 step-by-step chains**. The Workflows tab lists every one of them. [Every workflow](docs/WORKFLOWS.md) documents each one: models, where they run, inputs, graph and credits. Open the bundled **Examples project** to see results and how each was made; **Recreate** loads the workflow and settings, and never starts a paid run on its own.
+Ready to use today: **71 ready-made workflows** (20 image · 39 video · 8 audio · 4 3D), including the **25 one-click apps**, plus **8 step-by-step chains**. The Workflows tab lists every one of them. [Every workflow](docs/WORKFLOWS.md) documents each one: models, where they run, inputs, graph and credits. Open the bundled **Examples project** to see results and how each was made; **Recreate** loads the workflow and settings, and never starts a paid run on its own.
 
 <table align="center">
   <tr>

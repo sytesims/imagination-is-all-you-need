@@ -1,0 +1,48 @@
+/* Layers result (VideoLayers.tsx): the video version of the image layer stack (shared/layerStack.css): synced clips on the stage, a scrub bar,
+   view tabs and solo buttons in the list. Brand tokens only. */
+html body .vly-stage{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;height:100%;min-height:0;container-type:size}
+html body .vly-canvas{flex:0 1 auto}
+html body .vly-canvas>video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .15s}
+html body .vly-canvas>video.ly-off{opacity:0}
+html body .vly-scrub{display:flex;align-items:center;gap:8px;width:min(100%,720px);flex:none}
+html body .vly-scrub input[type=range]{flex:1;accent-color:var(--accent,#FF7A1A)}
+html body .vly-time{font:500 12px/1 var(--font-mono,ui-monospace,monospace);color:var(--text-2,#a3a3a3);white-space:nowrap}
+html body .vly-modes{display:flex;gap:2px;padding:3px;border-radius:10px;background:rgba(255,255,255,.04);margin:0 0 6px}
+html body .vly-mode{all:unset;box-sizing:border-box;cursor:pointer;flex:1 1 auto;min-width:0;padding:0 6px;white-space:nowrap;text-align:center;height:30px;line-height:30px;border-radius:8px;font:500 12px/30px var(--font-ui);color:var(--text-2,#a3a3a3)}
+html body .vly-mode:hover{color:#fff}
+html body .vly-mode.on{background:rgba(255,255,255,.1);color:#fff}
+html body .vly-mode:focus-visible{outline:2px solid #fff;outline-offset:1px}
+html body .vly-solo.on{color:var(--accent,#FF7A1A);background:var(--accent-faint,rgba(255,122,26,.12))}
+html body .vly-solo-gap{flex:0 0 32px}
+html body .vly-thumb{flex:0 0 auto;width:44px;height:44px;border-radius:6px;object-fit:cover;background-size:8px 8px;background-position:0 0,0 4px,4px -4px,-4px 0}
+html body .vly-thumb:not(.alpha-bg){background-color:#000}
+html body .ly-row.off .vly-thumb{opacity:.45}
+html body .ly-pick[aria-pressed=true]{background:var(--accent-faint,rgba(255,122,26,.12));box-shadow:inset 0 0 0 1px var(--accent,#FF7A1A)}
+html body .vly-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+html body .vly-alls{grid-template-columns:1fr}
+html body .vly-note,html body .vly-models{margin:6px 0 0}
+/* Change the layers (LayerEditPanel.tsx + the stage's selection) */
+html body .vly-canvas>img.vly-text{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;transition:opacity .15s}
+html body .vly-canvas>img.vly-text.ly-off{opacity:0}
+html body .vly-editing{cursor:move;touch-action:none}
+html body .vly-sel{position:absolute;inset:0;border:1.5px dashed var(--accent,#FF7A1A);border-radius:2px;pointer-events:none}
+html body .vly-handle{position:absolute;right:10px;bottom:10px;width:14px;height:14px;border-radius:50%;background:var(--accent,#FF7A1A);border:2px solid #fff;cursor:nwse-resize;pointer-events:auto}
+html body .vly-text-sel{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--accent,#FF7A1A);pointer-events:none}
+html body .vle{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+html body .vle-box{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:10px;background:rgba(255,255,255,.04)}
+html body .vle-title{display:flex;align-items:center;justify-content:space-between}.vle-title b{font:600 13px/16px var(--font-ui);color:#fff}
+html body .vle-row{display:flex;gap:8px;flex-wrap:wrap}
+html body .vle-num{display:flex;flex-direction:column;gap:4px;flex:1 1 70px;min-width:0;font:500 11px/14px var(--font-ui);color:var(--text-2,#a3a3a3)}
+html body .vle-num>div,html body .vle-num input,html body .vle-num select{box-sizing:border-box;width:100%;height:30px;padding:0 8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font:500 12.5px/1 var(--font-ui)}
+html body .vle-num input[type=color]{padding:2px}
+html body .vle-num small{display:none}
+html body .vle-wide{flex-basis:100%}
+html body .vle-slider{display:flex;flex-direction:column;gap:4px;font:500 11px/14px var(--font-ui);color:var(--text-2,#a3a3a3)}
+html body .vle-slider span{display:flex;justify-content:space-between}.vle-slider b{color:#fff;font-weight:500}
+html body .vle-slider input{accent-color:var(--accent,#FF7A1A)}
+html body .vle-input{box-sizing:border-box;width:100%;height:34px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font:500 13px/1 var(--font-ui)}
+html body .vle-texts{display:flex;flex-wrap:wrap;gap:6px}
+html body .vle-texts .vbar-qchip{height:28px;padding:0 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);color:var(--text-2,#c9cacc);font:500 12.5px/1 var(--font-ui);cursor:pointer}
+html body .vle-texts .vbar-qchip.on{border-color:var(--accent,#FF7A1A);color:#fff}
+html body .vle-render:not([disabled]){background:var(--accent,#FF7A1A);border-color:var(--accent,#FF7A1A);color:#111}
+html body .vle-actions{grid-template-columns:1fr 1fr}

@@ -173,6 +173,7 @@ export const WF_ENTRIES: WfEntry[] = [
   FX('extend-frame', { line: 'Grow the shot past its edges.' /* the card's short line; the tab keeps its own */, art: 'outpaint', tags: ['outpaint', 'extend frame', 'reframe', 'vertical', 'widen', 'zoom out', 'footage effects', 'vfx', 'comfy cloud'] }),
   V('reframe', 'clip', { line: 'Fit any clip to any screen.', name: 'Make it vertical', art: 'outpaint', tags: ['aspect ratio', 'vertical', 'outpaint'] }),
   V('remove-bg', 'clip', { name: 'Remove Video Background', art: 'video', tags: ['cutout', 'green screen'] }),
+  V('layers', 'clip', { line: 'Every thing you name on its own layer.', art: 'video', tags: ['layers', 'rotoscope', 'matte', 'depth', 'clean plate', 'prores', 'compositing', 'sam 3.1'] }),
   V('depth-map', 'clip', { art: 'video', tags: ['depth', 'compositing', 'vfx'] }),
   // Music & sound
   A('music', 'music', { line: 'Write a song from a few words.', name: 'Make music', model: 'yue2' /* installed and run here (job d967cfc3); ACE-Step 1.5 needs setting up */, featured: 'audio-last-train', art: 'music', tags: ['song', 'lyrics', 'track', 'beat'] }),
@@ -244,6 +245,7 @@ export const WF_EXCLUDED: Record<string, string> = {
 /** Server tools no card points at, and why (every other tool on GET /api/tools has a card). */
 export const WF_TOOLS_EXCLUDED: Record<string, string> = {
   'photos-reel': 'the hidden base tool behind Photos → Reel (app-photos-to-reel), not a separate workflow',
+  'layers-edit': 'Render in the Video to layers viewer (your changes to a split), opened from a result, not a workflow you start',
   'make-it-real': 'the Render step inside Direct a Shot (v-direct-a-shot), not a workflow you open on its own',
   cinema: 'Director, retired (2026-10-23): its page opens Create Video',
   soul: 'legacy look LoRAs page: Create Image has the looks now',

@@ -11,6 +11,7 @@ import { resultKindOfUrl, fileExtOf } from './mediaKind';
 import { sendTo3dHref } from '../../../server/src/shared/threeD';
 import { ViewerImage } from './ViewerImage';
 import { layersOf, layersPosterOf, layerCountText, LayerCanvas, LayerList, useLayerView } from './LayerStack';
+import { useVideoLayers, useVideoLayerView, VideoLayersStage, VideoLayersPanel } from '../ui/layers/VideoLayers';
 import { modelNameOf } from './imageFeatures';
 import { jobInputs, isFileUrl, type JobInput } from './jobInputs';
 import { isVectorUrl } from '../../../server/src/shared/imageVector';
@@ -125,7 +126,9 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     addEventListener('keydown', k, true); return () => removeEventListener('keydown', k, true); }, [inView]); /* Esc on an input photo goes back to the result, not out of the viewer */
   useEffect(() => { setInView(null); setCmp(COMPARE_FIRST.has(job.toolId)); setGrid(false); setBadIn(new Set()); if (variant === 'viewer') { setSel(out ?? 0); setNat(''); setMDur(0); setMBad(false); } }, [job.id, out]); // eslint-disable-line react-hooks/exhaustive-deps
   /* Image to layers: the layers hidden on the viewer's stage (eye buttons in the panel); every layer shows again on another job */
-  const lys = variant === 'viewer' ? layersOf(job as any) : null; const lyView = useLayerView(job.id); /* the composite as the Output thumbnail (feed card too: ImageCanvas) */
+  const lys = variant === 'viewer' ? layersOf(job as any) : null; const lyView = useLayerView(job.id);
+  /* Layers (a split video, plugin layers): its own stage and panel, from GET /api/layers/:id; null = the clips as usual */
+  const vly = useVideoLayers(variant === 'viewer' ? job as any : null); const vlyWait = vly === undefined /* its layers are on the way: no filmstrip flash */; const vlyView = useVideoLayerView(job.id); /* the composite as the Output thumbnail (feed card too: ImageCanvas) */
   const showingOriginal = showOriginalTab && sel === -1;
   const cur0 = showingOriginal ? { label: 'Original', url: beforeUrl } : outs[Math.max(0, sel)] ?? outs[0];
   const cur = cur0 ?? { label: '', url: '' }; /* hooks below run before the empty-result return */
@@ -384,7 +387,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     /* Compare: the first input against the first output, once the image's shape is known (ViewerImage's split) */
     /* Several results (2026-10-25, shared/MultiResult): a filmstrip under the picture steps through them (← → and the stage arrows step results
        first, then the next job), with Grid; the workflow's presentation (shared/multiResultRules.ts) says how they look. Image to layers keeps its panel list. */
-    const pres = presentationOf(job); const items = resultItems(job); const multi = pres.strip && items.length > 1 && !showingOriginal && !(job as any).deletedAt;
+    const pres = presentationOf(job); const items = resultItems(job); const multi = !vly && !vlyWait && pres.strip && items.length > 1 && !showingOriginal && !(job as any).deletedAt;
     const curItem = Math.max(0, items.findIndex(x => x.out === outIx)); const okIx = items.map((x, k) => x.state === 'done' && x.out != null ? k : -1).filter(k => k >= 0);
     const pickItem = (k: number) => { const o = items[k]?.out; if (o == null) return; setSel(o); setInView(null); setGrid(false); };
     const prevK = okIx.filter(k => k < curItem).pop(); const nextK = okIx.find(k => k > curItem);
@@ -413,6 +416,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     const info = <>{sampleNote}{mockNote}{demoNote}{extras}{children}
       {job.toolId === 'app-photos-to-reel' && <LineageStrip jobId={job.id} label="Steps" />}
       {lys && <LayerList jobId={job.id} layers={lys} view={lyView} onError={m => toast(m, 'error')} />}
+      {vly && <VideoLayersPanel m={vly} view={vlyView} onError={m => toast(m, 'error')} />}
       <ViewerPrompt label={promptLabel} text={pr} full={fullPr} onCopy={copyPrompt} extra={<>{strip}
         {(job as any).elements?.length > 0 && <div className="el-chips rv-els">{(job as any).elements.map((e: any) => <span key={e.id + e.start} className="el-chip" title={e.kind}>{e.url && <img src={e.url} alt="" />}<b>{e.mention ?? `@${e.name}`}</b></span>)}</div>}</>} />
       <ResultDetails job={job} info={details} extra={<RouteAttempts job={job} label={credit.ranOn} />} onViewWorkflow={wfOk ? () => setWf('get') : undefined} /></>;
@@ -460,7 +464,8 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
       {inX.kind === 'video' ? <ViewerVideo key={inUrl} src={inUrl} poster={`/api/media/thumb?url=${encodeURIComponent(inUrl)}`} autoPlay={false} label={`${inX.label}: input clip`} />
         : inX.kind === 'audio' ? <ViewerAudio key={inUrl} src={inUrl} cover={null} label={`${inX.label}: input audio`} />
         : <ViewerImage key={inUrl} className="rvx-img" src={inUrl} before={null} alt={inX.label} />}</>
-      : <>{tabs && !lys && !multi && <div className="rvx-outs">{tabs}</div>}{showingOriginal ? <div className="rvx-media">{media}</div>
+      : <>{tabs && !lys && !vly && !vlyWait && !multi && <div className="rvx-outs">{tabs}</div>}{showingOriginal ? <div className="rvx-media">{media}</div>
+      : vly ? <VideoLayersStage m={vly} view={vlyView} />
       : kind === 'image' && lys ? <LayerCanvas layers={lys} view={lyView} ar={fitAr || undefined} label={pr ? `Layers: ${pr.slice(0, 120)}` : 'Layers'} />
       : kind === 'image' ? <ViewerImage key={adj ? plainUrl : cur.url} className={`rvx-img${fitAr ? ' rvx-fit' : ''}${(job as any).input?.transparent ? ' alpha-bg' : ''}` /* Remove Background: a transparent PNG over a checkerboard */} style={fitAr ? { ['--ar' as any]: fitAr } : undefined} src={adj ? plainUrl! : cur.url} alt={pr ? `Result: ${pr.slice(0, 140)}` : cur.label || 'Result'}
           before={cmpSrc} compareWhy={cmpWhy} compare={cmpOn} onCompare={setCmp} compareName={cmpYours ? 'your photo' : undefined} afterLabel={job.toolId === 'image-upscale' ? `Upscaled${nat ? ` ${nat}` : ''}` : multi && cur.label ? cur.label : 'Result'} beforeLabel={job.toolId === 'image-upscale' && inp.sourceSize?.width ? `Original ${inp.sourceSize.width}×${inp.sourceSize.height}` : cmpYours ? 'Your photo' : 'Original'}
@@ -509,7 +514,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     const moreTile = sample ? <button type="button" className="rvx-tile" data-testid="rv-copy-link" aria-label="Copy link" {...tip(copied === 'link' ? null : 'Copy link')} onClick={copyLink}><span aria-hidden className="rvx-tile-glyph">⧉</span><span>{copied === 'link' ? 'Copied' : 'Link'}</span></button>
       : moreOf(true, overflow.map(t => ({ k: t.k, label: t.label, icon: t.icon, hint: t.tip, href: t.href, download: t.download, onClick: t.onClick, testid: t.testid })), menuTop);
     /* Continue from last frame: the exact last frame into Video → Generate's start image, the prompt as "Continue the shot: …" (beside the primary) */
-    const contHref = frameOk ? frameHandoffHref(job.id, outIx, 'last') : null;
+    const contHref = frameOk && !(vly && job.toolId === 'layers') /* a split's first clip is the tinted overview: nothing to continue */ ? frameHandoffHref(job.id, outIx, 'last') : null;
     const contA = contHref && <a key="cont" className="rvx-second" href={contHref} onClick={go(contHref)} data-action="continue-frame" data-testid="rv-continue-frame" {...tip('Continue from last frame: a new clip that starts where this one ends (Video → Generate)')}><LastFrameIcon size={16} />Continue</a>;
     const row1 = [primary, !usedRecreate && recreateA(false), contA].filter(Boolean).slice(0, 2);
     const footer = trashed ? <TrashActions job={job} onGone={onGone ?? onClose ?? (() => 0)} /> : <>

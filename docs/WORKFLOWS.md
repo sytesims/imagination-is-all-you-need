@@ -2,7 +2,7 @@
 
 # Every workflow
 
-78 ways to start: 70 workflows and 8 step by step. This page lists each one: what it does, where to open it, the models it offers and where they run, what it takes, the ComfyUI graph behind it and where that graph comes from.
+79 ways to start: 71 workflows and 8 step by step. This page lists each one: what it does, where to open it, the models it offers and where they run, what it takes, the ComfyUI graph behind it and where that graph comes from.
 
 Read it like this:
 
@@ -17,7 +17,7 @@ Model licences and credit lines: [LICENSES.md](../LICENSES.md) and [Attribution]
 ## Contents
 
 - [Image](#image) (20)
-- [Video](#video) (38)
+- [Video](#video) (39)
 - [Audio](#audio) (8)
 - [3D](#3d) (4)
 - [Step by step](#step-by-step) (8)
@@ -792,6 +792,21 @@ Lift the subject off the background Its tab calls it “Remove Background”.
 | Settings | resolution (720p) · trimStart (number) · trimEnd (number) |
 | ComfyUI graph | [remove-bg-birefnet-api.json](../workflows/remove-bg-birefnet-api.json) (BiRefNet) |
 | Custom nodes (local) | [ComfyUI_BiRefNet_ll](https://github.com/lldacing/ComfyUI_BiRefNet_ll) |
+
+<a id="v-layers"></a>
+### Video to layers
+
+Every thing you name on its own layer.
+
+| | |
+|---|---|
+| Open | `/video?workflow=layers` |
+| Takes | 1 clip + what to split out |
+| Models | **SAM 3.1 + BiRefNet + Depth Anything 3 Small**: Your computer (free, 45 GB of model files) · Comfy Cloud (GPU time, priced before you run) |
+| Files in | Your clip (video, required) |
+| Settings | What to split out · Clean edges (1, 0) · Depth (1, 0) · Clean background (1, 0) · trimStart (number) · trimEnd (number) |
+| ComfyUI graph | [layers-split-api.json](../workflows/layers-split-api.json) (SAM License + MIT + Apache-2.0)<br>[ltx25-iclora-v2v-api.json](../workflows/ltx25-iclora-v2v-api.json) (LTX-2.x Community License + Apache-2.0) |
+| Custom nodes (local) | [ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF) |
 
 <a id="v-depth-map"></a>
 ### Depth Map
