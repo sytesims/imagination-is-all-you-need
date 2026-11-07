@@ -8,7 +8,7 @@
   transition:transform var(--dur-slow,300ms) var(--ease,cubic-bezier(.4,0,.2,1)),visibility 0s linear var(--dur-slow,300ms)}
 .cp.on{transform:none;visibility:visible;transition:transform var(--dur-slow,300ms) var(--ease,cubic-bezier(.4,0,.2,1))}
 .cv-root .cv-board{right:var(--cv-panel-w,0px);transition:left var(--dur-slow,300ms) var(--ease,cubic-bezier(.4,0,.2,1)),right var(--dur-slow,300ms) var(--ease,cubic-bezier(.4,0,.2,1))}
-.cv-root:has(.cp.on) .cv-assets-btn{right:calc(var(--cv-dock,380px) + 12px)}
+/* release 2: Assets lives in the top bar's own row (generate.css .cv-topl), which stops before the panel */
 
 /* header: tile · name / one subtitle line · pin · close */
 .cp-head{flex:none;display:flex;align-items:center;gap:10px;height:64px;padding:0 10px 0 var(--cp-pad);border-bottom:1px solid var(--hairline)}
@@ -164,7 +164,6 @@ html body .cp .gen-btn.cp-go{width:100%!important;height:var(--cp-h)!important;m
    Slim: a little narrower on smaller screens so the board keeps room beside the dock (1280 wide: dock 380 + inspector 340). */
 .cv-root{--cv-insp-w:clamp(320px, 25vw, 380px)}
 .cp.cp-insp{width:var(--cv-insp-w)}
-.cv-root:has(.cp.cp-insp.on) .cv-assets-btn{right:calc(var(--cv-insp-w) + 12px)}
 .cpi{gap:0;padding-top:4px}
 .cpi-sec{display:flex;flex-direction:column;gap:8px;padding:14px 0 4px}
 .cpi-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 2px;font:600 10.5px/1.2 var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)}
@@ -207,4 +206,4 @@ html body .cp .gen-btn.cp-go{width:100%!important;height:var(--cp-h)!important;m
   .cv-root.cv-agent-open:has(.cp.cp-insp.on) .cv-assets-btn{font-size:0;gap:0;padding:0 13px}
 }
 /* a phone: the inspector is a sheet over the board (the board keeps its full width under it) */
-@media (max-width:760px){ .cv-root .cv-board{right:0} .cp.cp-insp{width:100%;border-left:0} .cv-root:has(.cp.cp-insp.on) .cv-assets-btn{right:12px} }
+@media (max-width:760px){ .cv-root .cv-board{right:0} .cp.cp-insp{width:100%;border-left:0} }

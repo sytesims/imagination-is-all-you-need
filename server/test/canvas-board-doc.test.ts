@@ -140,7 +140,9 @@ ok('v2 validation: format, lists, ids, numbers, props, parents, links');
 const s1 = summarizeSnapshot(v1), s2 = summarizeSnapshot(plain);
 assert.deepEqual(s2, s1, 'same summary from either format');
 const sum = Object.fromEntries(s1.map((n: any) => [n.id, n]));
-assert.deepEqual(s1.map((n: any) => n.id), ['shape:frame', 'shape:gen', 'shape:note1', 'shape:res', 'shape:upload', 'shape:sticky', 'shape:text', 'shape:img', 'shape:vid']);
+assert.deepEqual(s1.map((n: any) => n.id), ['shape:frame', 'shape:gen', 'shape:note1', 'shape:res', 'shape:upload', 'shape:group', 'shape:sticky', 'shape:text', 'shape:img', 'shape:vid']);
+/* release 2: the old group card is read as a Group (boardGroups.migrateGroups); nothing's centre sits in it here */
+assert.deepEqual(sum['shape:group'], { id: 'shape:group', type: 'frame', kind: 'frame', title: 'Group', children: [] });
 assert.deepEqual(sum['shape:gen'], { id: 'shape:gen', type: 'card', kind: 'image', workflow: 'create', model: 'nano-banana-2', prompt: 'A lighthouse at dusk', name: 'Poster', title: 'Poster', status: 'done',
   inputs: ['shape:upload', 'shape:prompt'], missing: null, results: [{ url: '/files/job_g1-out0.png', kind: 'image', poster: '' }], price: { usd: 0.12, credits: 12, label: '≈ $0.12', demo: false, local: false, runnable: true }, jobId: 'job_g1' });
 assert.deepEqual(sum['shape:frame'], { id: 'shape:frame', type: 'frame', kind: 'frame', title: 'Looks', children: ['shape:gen', 'shape:note1'] });

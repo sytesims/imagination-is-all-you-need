@@ -32,7 +32,7 @@ export function buildBatch(board: BoardApi, items: BatchItem[], pos: { at: Recor
       /* frames first (they sit behind their cards), then cards and notes, then the wiring */
       items.forEach((it, i) => {
         if (it.kind !== 'add_frame') return; const b = pos.frames[i] ?? (it.at ? { x: it.at.x, y: it.at.y, w: it.w ?? 820, h: it.h ?? 520 } : { ...deps.spot(it.w ?? 820, it.h ?? 520), w: it.w ?? 820, h: it.h ?? 520 });
-        const id = board.addNode({ type: 'frame', x: b.x, y: b.y, meta: { by: 'agent' }, props: { w: b.w, h: b.h, name: String(it.name ?? 'Frame').slice(0, 80) } }); board.toBack([id]);
+        const id = board.addNode({ type: 'frame', x: b.x, y: b.y, meta: { by: 'agent' }, props: { w: b.w, h: b.h, name: String(it.name ?? '').slice(0, 80) } }); board.toBack([id]);
         byIndex[i] = id; if (it.ref) made.refs[it.ref] = id; made.frames.push(id); made.order.push(id);
       });
       items.forEach((it, i) => {

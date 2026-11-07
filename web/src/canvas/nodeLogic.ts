@@ -1,13 +1,9 @@
 /**
- * The board's graph rules, as plain functions (no React, no tldraw): which port drags may land where, who belongs to a
- * group, and the two-press Run all state machine. NodeFrame and the group node read them; server/test/canvas-nodes.test.ts
- * checks them without a browser.
- *
- * Run all never spends on the first press: runAllConfirm only prices the members (the caller's GET /price quotes). A run
- * list comes back only from runAllCommit on a fresh confirm state, which the group node only reaches on the second press.
+ * The board's graph rules, as plain functions (no React, no tldraw): which port drags may land where, who belongs to an old
+ * group card, run order and proposals. NodeFrame and the group node read them; server/test/canvas-nodes.test.ts checks them
+ * without a browser. (Release 2: the two-press Run all is gone; a Group's "Run the flow" goes through the dock's proposal card.)
  */
 import { NODE_DEFS, nodeDefOf } from './nodeTypes';
-import { ledgerUsd, usdToken } from '../shared/billing';
 
 export interface PortCandidate { id: string; type: string; /** arrows already bound into it */ inputs?: number }
 export interface PortTarget { id: string; type: string }
@@ -31,33 +27,6 @@ export function pickPortTarget(candidates: PortCandidate[], fromId: string, from
   return null;
 }
 
-export interface RunAllQuote { credits?: number | null; demo?: boolean; cost?: { estUsd?: number | null } | null }
-export interface RunAllTotal { usd: number | null; credits: number | null; demo: boolean; priced: number }
-/** Sum the existing quotes: USD when every quote has a cost, else credits, else nothing made up. */
-export function runAllTotal(quotes: (RunAllQuote | null | undefined)[]): RunAllTotal {
-  const list = quotes.filter((q): q is RunAllQuote => !!q);
-  const allUsd = list.length > 0 && list.every(q => typeof q.cost?.estUsd === 'number' && Number.isFinite(q.cost.estUsd));
-  const allCredits = list.length > 0 && list.every(q => typeof q.credits === 'number' && Number.isFinite(q.credits));
-  return {
-    usd: allUsd ? Math.round(list.reduce((s, q) => s + Number(q.cost!.estUsd), 0) * 1e4) / 1e4 : null,
-    credits: !allUsd && allCredits ? list.reduce((s, q) => s + Number(q.credits), 0) : null,
-    demo: list.length > 0 && list.every(q => q.demo === true),
-    priced: list.length,
-  };
-}
-
-export interface RunAllConfirm { phase: 'confirm'; ids: string[]; at: number; count: number; total: RunAllTotal }
-/** First press: one total, no run. */
-export function runAllConfirm(ids: string[], quotes: (RunAllQuote | null | undefined)[], now = Date.now()): RunAllConfirm {
-  return { phase: 'confirm', ids: [...ids], at: now, count: ids.length, total: runAllTotal(quotes) };
-}
-/** Second press: the ids to submit, only while the confirm is fresh (10 s by default). Null means nothing runs. */
-export function runAllCommit(state: RunAllConfirm | null | undefined, now = Date.now(), ttlMs = 10000): string[] | null {
-  if (!state || state.phase !== 'confirm' || !state.ids.length) return null;
-  if (now - state.at > ttlMs) return null;
-  return [...state.ids];
-}
-
 export interface MemberShape { id: string; type: string; bounds?: { minX: number; minY: number; maxX: number; maxY: number } | null }
 /** Generate cards whose centre sits inside the group frame (what Run all prices and runs). */
 export function groupGenIds(group: { minX: number; minY: number; maxX: number; maxY: number } | null | undefined, shapes: MemberShape[]): string[] {
@@ -66,14 +35,6 @@ export function groupGenIds(group: { minX: number; minY: number; maxX: number; m
     const x = (s.bounds!.minX + s.bounds!.maxX) / 2, y = (s.bounds!.minY + s.bounds!.maxY) / 2;
     return x >= group.minX && x <= group.maxX && y >= group.minY && y <= group.maxY;
   })()).map(s => s.id);
-}
-
-/** The total's short label for the Run all pill. */
-export function runAllPriceLabel(t: RunAllTotal): string {
-  if (t.demo) return 'Sample';
-  if (t.usd != null) return usdToken(t.usd, { approx: true });
-  if (t.credits != null) return ledgerUsd(t.credits);
-  return 'Price per node';
 }
 
 // ---------------------------------------------------------------- typed ports (2026-10-27)

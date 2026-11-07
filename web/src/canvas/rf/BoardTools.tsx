@@ -25,7 +25,7 @@ import { removeCardInput } from '../CardInputs';
 import { lineageOf } from '../graph';
 import { quoteNode } from '../nodeRun';
 import { usdOfQuote } from '../priceLock';
-import { boardCtx } from '../boardCtx';
+import { proposeCards, openDock } from '../flowRun';
 import { magnetAtom, tidyNow, Magnet } from '../LinkLayer';
 import { reducedMotion } from '../agentHand';
 import { LINK_CARD_TYPE } from '../../../../server/src/shared/boardDoc';
@@ -146,12 +146,10 @@ export async function applyDropChoice(board: BoardApi, ui: Extract<DropUi, { typ
   const st = cardState(board, board.getNode(port.cardId)!, catalogNow()); const old = st.bySlot[port.slot] ?? [];
   board.mark('replace input'); board.batch(() => { for (const i of old) removeCardInput(board, port.cardId as NodeId, i); addCardInputs(board, port.cardId as NodeId, [{ input: inp, slot: port.slot }]); });
   if (choice !== 'rerun') { toast(`Replaced ${port.label || 'the input'}`); return; }
-  const ids = afterIds(board, port.cardId); const boardId = boardCtx().boardId;
-  const r = await fetch(`/api/canvas/boards/${encodeURIComponent(boardId)}/agent/proposals`, { method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ card_ids: ids.slice(0, 20), note: `Replace and rerun: ${ids.length === 1 ? 'this card' : `this card + ${ids.length - 1} after it`}` }) }).catch(() => null);
-  const b = r ? await r.json().catch(() => null) : null;
-  if (!r?.ok) toast(b?.error ?? 'Replaced. The rerun couldn’t be priced; press Go on the card when you’re ready.', 'warn');
-  else toast('Replaced. The rerun is priced in the AI panel: press Go there when it looks right.');
+  const ids = afterIds(board, port.cardId);
+  const r = await proposeCards(ids, `Replace and rerun: ${ids.length === 1 ? 'this card' : `this card + ${ids.length - 1} after it`}`);
+  if (!r.ok) { toast(r.error || 'Replaced. The rerun couldn’t be priced; press Go on the card when you’re ready.', 'warn'); return; }
+  openDock(); toast('Replaced. The rerun is priced in the AI panel: press Go there when it looks right.');
 }
 
 /** The drop menu and the bubble, at the pointer (screen px). ↵ ⇧ ⌥ pick; Esc or a click away closes. */
@@ -253,7 +251,7 @@ export function ContextMenu({ board }: { board: BoardApi }) {
   </div>;
 }
 const KEYS: [string, string][] = [['G', 'New card'], ['Enter', 'Run the selected card (asks first when its price changed)'], [`${MOD}C`, 'Copy'], [`${MOD}X`, 'Cut'], [`${MOD}V`, 'Paste (cards, files or a link)'],
-  [`${MOD}D`, 'Duplicate'], [`${MOD}G`, 'Group the selection'], ['⇧T', 'Tidy the board'], [`${MOD}A`, 'Select all'], ['⌫', 'Delete'], [`${MOD}Z`, 'Undo'], [`⇧${MOD}Z`, 'Redo'],
+  [`${MOD}D`, 'Duplicate'], [`${MOD}G`, 'Group the selection'], ['Enter', 'Rename the selected group'], ['⇧T', 'Tidy the board'], [`${MOD}A`, 'Select all'], ['⌫', 'Delete'], [`${MOD}Z`, 'Undo'], [`⇧${MOD}Z`, 'Redo'],
   ['V', 'Select tool'], ['H', 'Hand tool'], ['Esc', 'Clear the selection'], ['?', 'This sheet']];
 const DROP_KEYS: [string, string][] = [['↵', 'Replace only'], ['⇧', 'Replace and rerun (prices first)'], ['⌥', 'Add as a new card']];
 export function ShortcutsSheet() {
@@ -264,7 +262,7 @@ export function ShortcutsSheet() {
     <section className="cv-keys" role="dialog" aria-label="Keyboard shortcuts" data-testid="rf-shortcuts">
       <header><h2>Keyboard shortcuts</h2><button type="button" className="cv-icon-btn" aria-label="Close" onClick={() => sheetAtom.set(false)}>✕</button></header>
       <div className="cv-keys-cols">
-        <dl>{KEYS.map(([k, t]) => <div key={k}><dt><kbd>{k}</kbd></dt><dd>{t}</dd></div>)}</dl>
+        <dl>{KEYS.map(([k, t]) => <div key={`${k} ${t}`}><dt><kbd>{k}</kbd></dt><dd>{t}</dd></div>)}</dl>
         <div><h3>Dropping on a filled input</h3><dl>{DROP_KEYS.map(([k, t]) => <div key={k}><dt><kbd>{k}</kbd></dt><dd>{t}</dd></div>)}</dl>
           <p className="cv-keys-note">Right-click a card or the board for the same actions. Drag a card next to another and it snaps in and links; pull it away to let go.</p></div>
       </div>

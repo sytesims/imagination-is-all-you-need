@@ -23,7 +23,7 @@ import { askConfirm } from '../../shared/Dialog';
 import { wheelZoomFactor, zoomAround } from './zoom';
 import { posterOf3d } from '../../shared/model3d';
 import { OPEN_3D_EVENT, open3d, runCard } from '../canvasEvents';
-import { BoardProvider, ToolHookContext, ViewTuneContext, useValue, type BoardApi, type ToolButtonState } from '../boardApi';
+import { BoardProvider, ToolHookContext, ViewTuneContext, useValue, type BoardApi, type NodeId, type ToolButtonState } from '../boardApi';
 import { LeftToolbar, EmptyHint } from '../CanvasUi';
 import { AssetsDrawer } from '../AssetsDrawer';
 import { FollowAgent } from '../FollowAgent';
@@ -44,6 +44,8 @@ import { BoardStore, type BoardState } from './store';
 import { makeRfBoard, clampSize, MIN_ZOOM, MAX_ZOOM, type RfPort } from './boardApiRf';
 import { NODE_TYPES, EDGE_TYPES, NO_DRAG, RouteCtx, StoreCtx, OptCtx, AgentPresence, useRoutes, rfTypeOf, isBack, adHeight } from './views';
 import { rfOptions } from './engine';
+import { settleIntoGroups } from '../groupModel';
+import { renameGroupAtom } from './GroupStrip';
 import { drawSize, ratioAtom } from './poster';
 import { boardActions, useClipboardEvents, useFileDrops, ContextMenu, ShortcutsSheet, MagnetLayer, DropUiLayer, ctxAtom, sheetAtom, assetPortDrop } from './BoardTools';
 import './rf.css';
@@ -87,7 +89,8 @@ function useFlowNodes(store: BoardStore): Node[] {
 function useFlowEdges(store: BoardStore): Edge[] {
   const links = useStore(store.zs, (s: BoardState) => s.links), nodes = useStore(store.zs, (s: BoardState) => s.nodes), selection = useStore(store.zs, (s: BoardState) => s.selection);
   return useMemo(() => { const sel = new Set(selection);
-    return Object.values(links).filter((l) => nodes[l.from] && nodes[l.to] && l.from !== l.to).map((l) => ({ id: l.id, source: l.from, target: l.to, type: 'link', selected: sel.has(l.id), zIndex: 0 }) as Edge); }, [links, nodes, selection]);
+    /* links draw under every Group (Groups sit at i - BACK), so a line never crosses a Group's strip; inside a Group they show through its box */
+    return Object.values(links).filter((l) => nodes[l.from] && nodes[l.to] && l.from !== l.to).map((l) => ({ id: l.id, source: l.from, target: l.to, type: 'link', selected: sel.has(l.id), zIndex: -BACK - 1 }) as Edge); }, [links, nodes, selection]);
 }
 
 /** Keys for this phase (the full set, with the shortcuts sheet, is the next phase). */
@@ -114,6 +117,7 @@ function useBoardKeys(board: BoardApi, store: BoardStore, toast: ReturnType<type
       if (key === 'escape') { if (sel.length) { done(); board.select([]); } return; }
       if ((key === 'delete' || key === 'backspace') && sel.length) { done(); const nodes = sel.filter((id) => board.getNode(id)), links = sel.filter((id) => board.getLink(id));
         board.mark('delete'); board.batch(() => { board.removeLinks(links); board.removeNodes(nodes); }); return; }
+      if (key === 'enter' && !e.shiftKey && sel.length === 1 && board.getNode(sel[0])?.type === 'frame') { done(); renameGroupAtom.set(sel[0]); return; }
       if (key === 'enter' && !e.shiftKey && sel.length === 1 && board.getNode(sel[0])?.type === GEN_TYPE) {
         const focusCard = t?.closest?.('[data-shape-id]')?.getAttribute('data-shape-id'); if (focusCard && focusCard !== sel[0]) return; if (t && /^(BUTTON|A)$/.test(t.tagName)) return;
         done(); runCard(sel[0]); }
@@ -139,7 +143,7 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
   const tool = useStore(store.zs, (s) => s.tool);
   const routeVal = useRoutes(board, opt.links === 'curve' || opt.joins === 'curve' ? 'curve' : opt.joins === 'notch' ? 'notch' : 'ports');
   const initial = useMemo(() => { const c = readCam(saved.id); return c ? { x: c.x * c.z, y: c.y * c.z, zoom: c.z } : undefined; }, [saved.id]);
-  const panning = useRef(false); const camTimer = useRef(0);
+  const panning = useRef(false); const camTimer = useRef(0); const settleTimer = useRef(0);
   const toast = useToast(); useBoardKeys(board, store, toast);
   const toolHook = useRfTool(store, board);
   const boardEl = useCallback(() => port.el, [port]);
@@ -171,7 +175,9 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
     const wheel = (e: WheelEvent) => { if (!(e.ctrlKey || e.metaKey)) return; if ((e.target as HTMLElement | null)?.closest?.('.nowheel')) return;
       e.preventDefault(); e.stopPropagation(); const r = el.getBoundingClientRect();
       const next = zoomAround(board.camera(), { x: e.clientX - r.left, y: e.clientY - r.top }, wheelZoomFactor(e.deltaY, e.deltaMode, r.height), MIN_ZOOM, MAX_ZOOM);
-      board.setCamera(next); onMoveEnd(null, { x: next.x * next.z, y: next.y * next.z, zoom: next.z }); };
+      /* onMove keeps the LIVE_ZOOM_MAX guard: on a big board the zoom-scaled styles update once the camera settles, not every step */
+      board.setCamera(next); onMove(null, { x: next.x * next.z, y: next.y * next.z, zoom: next.z });
+      window.clearTimeout(settleTimer.current); settleTimer.current = window.setTimeout(() => zoomVars(board.camera().z), 120); };
     el.addEventListener('wheel', wheel, { capture: true, passive: false }); return () => el.removeEventListener('wheel', wheel, { capture: true } as any); }, [port, board]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
@@ -193,7 +199,9 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
     if (sel) store.setView({ selection: [...sel] });
   }, [store]);
   const dragStart = () => { board.mark('move'); store.setView({ gesture: 'drag' }); };
-  const dragStop = () => store.setView({ gesture: null });
+  /* release 2: a card dropped with its centre in a Group goes into it; dragged out, it leaves (same undo step as the move) */
+  const dragStop = (moved: Node[]) => { store.setView({ gesture: null }); const ids = moved.map((n) => n.id as NodeId);
+    if (ids.length) settleIntoGroups(board, ids); };
 
   const hand = tool === 'hand';
   return <OptCtx.Provider value={opt}><ToolHookContext.Provider value={toolHook}><RouteCtx.Provider value={routeVal}>
@@ -206,7 +214,7 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
       noDragClassName={NO_DRAG} noWheelClassName="nowheel" nodeDragThreshold={0} autoPanOnNodeDrag elevateNodesOnSelect={false} disableKeyboardA11y
       onlyRenderVisibleElements={opt.visible === '1'} attributionPosition="bottom-left" proOptions={{ hideAttribution: false }}
       onInit={onInit} onMove={onMove} onMoveStart={onMoveStart} onMoveEnd={onMoveEnd}
-      onNodeDragStart={dragStart} onNodeDragStop={dragStop} onSelectionDragStart={dragStart} onSelectionDragStop={dragStop}
+      onNodeDragStart={dragStart} onNodeDragStop={(_, __, moved) => dragStop(moved)} onSelectionDragStart={dragStart} onSelectionDragStop={(_, moved) => dragStop(moved)}
       onNodeMouseEnter={(_, n) => store.setView({ hovered: n.id })} onNodeMouseLeave={() => store.setView({ hovered: null })}
       onNodeContextMenu={(e, n) => openCtx(e, 'node', n.id)} onSelectionContextMenu={(e) => openCtx(e, 'node')} onPaneContextMenu={(e) => openCtx(e as any, 'pane')}
       onNodeDoubleClick={(_, n) => { const s = store.s.nodes[n.id]; if (s?.type === RESULT_TYPE && s.props.kind === '3d' && s.props.jobId) open3d(String(s.props.jobId)); }}>

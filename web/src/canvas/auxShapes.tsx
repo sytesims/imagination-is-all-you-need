@@ -4,6 +4,7 @@
  */
 import { BaseBoxShapeUtil, HTMLContainer, T, resizeBox, type TLResizeInfo, type TLShape } from 'tldraw';
 import type { BoardApi, NodeId, Point } from './boardApi';
+import { createGroupNode } from './groupModel';
 import { NODE_DEFS, nodeDefOf, adCardHeight, GROUP_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, AD_TYPE, type NodeKind } from './nodeTypes';
 import { AD_SHAPES, asShape } from './adPlatforms';
 import { auxProps, adProps, type AuxNodeProps, type AdNodeProps } from './auxModel';
@@ -37,21 +38,6 @@ export function createAuxNode(board: BoardApi, kind: NodeKind, o: AuxCreateOpts 
   const c = o.at ?? freeSpot(board, props.w, props.h);
   board.mark(`new ${kind} node`);
   let id = ''; board.batch(() => { id = board.addNode({ type: def.type, x: c.x - props.w / 2, y: c.y - props.h / 2, props: props as any }); });
-  if (o.select !== false) board.select([id]);
-  return id;
-}
-
-/** A group frame around the selected nodes (or an empty frame in the middle of the view), sent behind them. */
-export function createGroupNode(board: BoardApi, o: AuxCreateOpts = {}): NodeId {
-  const def = NODE_DEFS.group; const picked = board.selection().map(id => board.getNode(id)).filter((s): s is NonNullable<typeof s> => !!s && !!nodeDefOf(s.type) && s.type !== GROUP_TYPE);
-  let box: { x: number; y: number; w: number; h: number };
-  const bounds = picked.map(s => board.boundsOf(s.id)).filter(Boolean) as { minX: number; minY: number; maxX: number; maxY: number }[];
-  if (bounds.length) {
-    const minX = Math.min(...bounds.map(b => b.minX)), minY = Math.min(...bounds.map(b => b.minY)), maxX = Math.max(...bounds.map(b => b.maxX)), maxY = Math.max(...bounds.map(b => b.maxY));
-    box = { x: minX - 28, y: minY - 58, w: Math.max(def.minW, maxX - minX + 56), h: Math.max(def.minH, maxY - minY + 86) };
-  } else { const c = o.at ?? board.viewportBounds().center; box = { x: c.x - def.defaultW / 2, y: c.y - def.defaultH / 2, w: def.defaultW, h: def.defaultH }; }
-  board.mark('new group');
-  let id = ''; board.batch(() => { id = board.addNode({ type: GROUP_TYPE, x: box.x, y: box.y, props: { ...auxProps('group'), w: box.w, h: box.h } }); board.toBack([id]); });
   if (o.select !== false) board.select([id]);
   return id;
 }

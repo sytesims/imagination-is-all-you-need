@@ -39,6 +39,13 @@ for (const [f, t] of [[C('s', 0, 0), C('e', 1600, 0)], [C('s', 0, 0), C('e', 160
   assert.match(threadPath(pts), /^M .* Q .* L /, 'rounded corners');
 }
 ok('threads: right angles with rounded corners, never through a card (also backwards and across rows)');
+{ /* no clear lane at all (a wall between them, far taller than the board): the fallback runs just below both cards, not to the top of the board */
+  const f = C('s', 0, 0), t = C('e', 800, 200), wall = C('wall', 500, -50000, 100, 100000), far = C('far', 3000, -9000);
+  const lid = C('lid', 300, -60000, 700, 10010), floor = C('floor', 300, 49990, 700, 10010);
+  const pts = routeThread(f, t, [f, t, wall, far, lid, floor]); const below = Math.max(f.y + f.h, t.y + t.h) + 56;
+  assert.ok(pts.some((p) => p.y === below), `fallback lane just below both cards (${below}): ${JSON.stringify(pts)}`);
+  assert.ok(pts.every((p) => p.y >= Math.min(f.y, t.y)), 'never up to a far lane above them'); }
+ok('threads: with no clear lane, the fallback goes just below both cards');
 
 // ---- Tidy: chains become rows (every link a neighbour); a single Undo puts it back ----
 const cards = [C('k1', 900, 800), C('c1', 0, 0), C('k2', 300, 1500), C('c2', 1800, 2200), C('m', 2600, 40), C('lone', 50, 3000)];
