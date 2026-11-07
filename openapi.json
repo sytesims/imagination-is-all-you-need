@@ -8196,7 +8196,7 @@
         "tags": [
           "Settings"
         ],
-        "summary": "Provider key status [{id, name, envKey, envAliases, configured, mockedKey, docsUrl, keysUrl, openWeights (boolean: local and comfy true), openWeightsNote (string | null), disabledReason (string | null: set in open-weights-only mode for hosted-API providers), keySetAt (ISO string when the key in use was saved here, else null), keyHint (\"••••\" + last 4 characters for keys of 12+ characters, \"••••\" for shorter ones, null when no real key; never more), keySource (\"saved\" | \"env\" | \"mock\" | null)}] + canStoreKeys. Never returns key values. POST answers {ok, id, envKey, configured, keySetAt, keyHint, keySource}.",
+        "summary": "Provider key status; baseWarnings [{name, provider, reason (not-https | not-official), text}] = address overrides that send a key off the provider’s own https hosts; providers [{id, name, envKey, envAliases, configured, mockedKey, docsUrl, keysUrl, openWeights (boolean: local and comfy true), openWeightsNote (string | null), disabledReason (string | null: set in open-weights-only mode for hosted-API providers), keySetAt (ISO string when the key in use was saved here, else null), keyHint (\"••••\" + last 4 characters for keys of 12+ characters, \"••••\" for shorter ones, null when no real key; never more), keySource (\"saved\" | \"env\" | \"mock\" | null)}] + canStoreKeys. Never returns key values. POST answers {ok, id, envKey, configured, keySetAt, keyHint, keySource}.",
         "responses": {
           "200": {
             "description": "OK",

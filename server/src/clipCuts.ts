@@ -14,7 +14,7 @@
  * frame scores 0.138). A jump cut inside one scene (11.83 s there) scores close to the floor, so it can be missed on another clip; a miss only
  * hides a note, it never blocks anything. Results are cached per file (path + size + mtime, or the upload's hash).
  */
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream, createWriteStream, existsSync, statSync } from 'node:fs';
 import { rm } from 'node:fs/promises';

@@ -13,7 +13,7 @@
 import { definePlugin } from '../kernel/index.js';
 import { PlaceError, type PlaceRunner } from '../services/places.js';
 import { liveBackend } from '../routing/keys.js';
-import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
+import type { KeyReader } from '../kernel/keys.js';
 import { RUNPOD_KEYS, runpodEndpoint, runpodSettings, runpodUsd, type RunpodSettings } from '../routing/runpodRoutes.js';
 import { RunpodComfy, runpodCancel, RUNPOD_KEY_REFUSED } from '../providers/runpod.js';
 import { HANDOFF_POLICY } from '../mediaHandoff.js';
@@ -52,6 +52,5 @@ export const runpodPlaceOf = (keys: KeyReader, o: { settings?: () => RunpodSetti
     inputs: HANDOFF_POLICY.runpod.accepts,
   };
 };
-export const runpodPlace = runpodPlaceOf(ANY_KEY);
 
 export default definePlugin({ name: 'place-runpod', inject: ['places', 'keys'], keys: RUNPOD_KEYS, apply(ctx) { ctx.places.register(runpodPlaceOf(ctx.keys)); } });

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { engineModelKey } from '../shared/modelIds.js';
 import { META_TAGS_BY_PROVIDER, META_TAG_STYLES } from './voiceTags.js';
-import { spawn } from 'node:child_process';
+import { spawn } from '../security/childProcess.js';
 import { rename, rm } from 'node:fs/promises';
 import type { Preset, ToolDef } from './types.js';
 import type { Job } from '../jobs.js';

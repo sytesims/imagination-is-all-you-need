@@ -22,7 +22,7 @@
  *  Bria Try-On        bria/image-edit-product-virtual-tryon  $0.0572 per image
  * Ideogram Remove Background, Ideogram 3.0 Reframe, fal Object Removal and FASHN stay on fal only (no Comfy place for those models).
  */
-import { spawn } from 'node:child_process';
+import { spawn } from '../security/childProcess.js';
 import { registerProvider } from '../providers.js';
 import { HOSTED_BY_ID, type HostedPrice } from '../shared/hostedPrices.js';
 import { EXTRA_ROUTES, COMING_SOON, FAL_ENV, routerPlace } from '../routing/routes.js';

@@ -74,9 +74,9 @@ const mockTransport: Transport = { name: 'mock', async fetch(f, dest, onBytes, s
   renameSync(`${dest}.part`, dest); onBytes(total);
 } };
 /** Auth header for a download: CIVITAI_TOKEN to civitai.com, the Hugging Face read token (Settings → Connections, OPENHIGGSFIELD_HF_TOKEN or HF_TOKEN)
- *  to huggingface.co only (exact host; fetch drops Authorization on the redirect to HF's file CDN). Never logged, stored or returned. */
+ *  to huggingface.co only (exact host, https only; fetch drops Authorization on the redirect to HF's file CDN). Never logged, stored or returned. */
 export const hfToken = () => process.env.OPENHIGGSFIELD_HF_TOKEN?.trim() || process.env.HF_TOKEN?.trim() || null;
-export const authFor = (url: string): Record<string, string> => { try { const h = new URL(url).hostname.toLowerCase(); const civ = process.env.CIVITAI_TOKEN?.trim(); const hf = hfToken();
+export const authFor = (url: string): Record<string, string> => { try { const u = new URL(url); if (u.protocol !== 'https:') return {}; const h = u.hostname.toLowerCase(); const civ = process.env.CIVITAI_TOKEN?.trim(); const hf = hfToken();
   if (/(^|\.)civitai\.com$/.test(h) && civ) return { Authorization: `Bearer ${civ}` }; if (h === 'huggingface.co' && hf) return { Authorization: `Bearer ${hf}` }; return {}; } catch { return {}; } };
 /** A gated / private Hugging Face file answered 401 or 403: the model page (https://huggingface.co/<org>/<repo>) where its licence is accepted. */
 export const hfModelPage = (url: string): string | null => { try { const u = new URL(url); if (u.hostname.toLowerCase() !== 'huggingface.co') return null; const [org, repo] = u.pathname.split('/').filter(Boolean); return org && repo ? `https://huggingface.co/${org}/${repo}` : null; } catch { return null; } };

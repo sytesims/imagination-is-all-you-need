@@ -1,7 +1,7 @@
 /** BH4 #8 (G11): GET /api/export and POST /api/import (see backup.ts for the archive layout and how an import is applied). */
 import type { FastifyInstance } from 'fastify';
 import { appFileName } from './shared/fileNames.js';
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn, execFileSync } from './security/childProcess.js';
 import { createWriteStream, existsSync, mkdirSync, rmSync, writeFileSync, readFileSync, statSync, readdirSync } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';

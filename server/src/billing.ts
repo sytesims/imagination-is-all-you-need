@@ -10,6 +10,8 @@
  *    Keys never leave the server except in the request to that provider's own API; billing / top-up endpoints are never called.
  * Team mode (billingMode.ts) keeps the credit ledger exactly as before; the spend log is written in both modes.
  */
+import { keyedFetch, type KeyScope } from './security/keyedFetch.js';
+import { FAL_SCOPE, BFL_SCOPE, COMFY_SCOPE } from './security/keyScopes.js';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { all, put, getKv } from './db.js';
 import { config } from './config.js';
@@ -349,17 +351,17 @@ export function plansView() {
     detectNote: 'Comfy’s API doesn’t report the plan, so pick yours. It only changes the detail line: every Comfy plan and top-up works out to about 211 Comfy credits per $1.',
     options: COMFY_PLANS } };
 }
-const get = async (url: string, headers: Record<string, string>) => { const r = await fetch(url, { headers: { accept: 'application/json', ...headers }, signal: AbortSignal.timeout(8000) });
+const get = async (scope: KeyScope, url: string, headers: Record<string, string>) => { const r = await keyedFetch(scope, url, { headers: { accept: 'application/json', ...headers }, signal: AbortSignal.timeout(8000) });
   if (!r.ok) { const e: any = new Error(`HTTP ${r.status}`); e.status = r.status; throw e; } return r.json() as Promise<any>; };
 /** Read-only endpoints only. Never billing writes, never top-ups. */
 const READERS: Record<string, Reader> = {
   // GET https://api.fal.ai/v1/account/billing?expand=credits → credits.current_balance, credits.currency (scope billing:usage:read)
-  fal: async (key) => { const j = await get('https://api.fal.ai/v1/account/billing?expand=credits', { authorization: `Key ${key}` }); const b = Number(j?.credits?.current_balance); if (!Number.isFinite(b)) throw new Error('no balance in reply');
+  fal: async (key) => { const j = await get(FAL_SCOPE, 'https://api.fal.ai/v1/account/billing?expand=credits', { authorization: `Key ${key}` }); const b = Number(j?.credits?.current_balance); if (!Number.isFinite(b)) throw new Error('no balance in reply');
     const cur = String(j?.credits?.currency ?? 'USD').toUpperCase(); return { balance: b, balanceUnit: cur, balanceUsd: cur === 'USD' ? b : NaN }; },
   // GET https://api.bfl.ai/v1/credits (x-key) → { credits } (1 credit = $0.01)
-  bfl: async (key) => { const j = await get('https://api.bfl.ai/v1/credits', { 'x-key': key }); const c = Number(j?.credits); if (!Number.isFinite(c)) throw new Error('no credits in reply'); return { balance: c, balanceUnit: 'BFL credits', balanceUsd: c / 100 }; },
+  bfl: async (key) => { const j = await get(BFL_SCOPE, 'https://api.bfl.ai/v1/credits', { 'x-key': key }); const c = Number(j?.credits); if (!Number.isFinite(c)) throw new Error('no credits in reply'); return { balance: c, balanceUnit: 'BFL credits', balanceUsd: c / 100 }; },
   // GET https://cloud.comfy.org/api/billing/usage/timeseries (X-API-Key) → summary.balance.amount_micros (cents, despite the name), summary.spend_micros (millionths of USD)
-  comfy: async (key) => { const from = new Date(startOf('month')).toISOString(); const j = await get(`https://cloud.comfy.org/api/billing/usage/timeseries?granularity=month&starting_on=${encodeURIComponent(from)}`, { 'x-api-key': key });
+  comfy: async (key) => { const from = new Date(startOf('month')).toISOString(); const j = await get(COMFY_SCOPE, `https://cloud.comfy.org/api/billing/usage/timeseries?granularity=month&starting_on=${encodeURIComponent(from)}`, { 'x-api-key': key });
     const cents = Number(j?.summary?.balance?.amount_micros); if (!Number.isFinite(cents)) throw new Error('no balance in reply'); const spend = Number(j?.summary?.spend_micros);
     return { balance: Math.round((cents / 100) * COMFY_CREDITS_PER_USD), balanceUnit: 'Comfy credits', balanceUsd: cents / 100, monthSpendUsd: Number.isFinite(spend) ? spend / 1e6 : null, plan: planInReply(j) }; },
 };

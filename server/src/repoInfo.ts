@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync } from './security/childProcess.js';
 import { readFileSync } from 'node:fs';
 import { checkoutIdOf } from './shared/checkoutId.js';
 import { fileURLToPath } from 'node:url';

@@ -186,7 +186,7 @@ export function hdrArgsLut(src: string, dst: string, lutPath: string, o: { hlg?:
     '-color_primaries', 'bt2020', '-color_trc', tr, '-colorspace', 'bt2020nc', '-c:a', 'copy', dst];
 }
 let zscaleOk: Promise<boolean> | null = null;
-const hasZscale = () => (zscaleOk ??= new Promise<boolean>((resolve) => { import('node:child_process').then(({ execFile }) => execFile('ffmpeg', ['-hide_banner', '-filters'], (e, out) => resolve(!e && / zscale /.test(String(out))))).catch(() => resolve(false)); }));
+const hasZscale = () => (zscaleOk ??= new Promise<boolean>((resolve) => { import('../../security/childProcess.js').then(({ execFile }) => execFile('ffmpeg', ['-hide_banner', '-filters'], (e, out) => resolve(!e && / zscale /.test(String(out))))).catch(() => resolve(false)); }));
 // SDR→HDR is a real local ffmpeg run (no ComfyUI); mock backend only labels the stages.
 sdrHdrTool.run = async (job: any) => {
   if (config.backend === 'mock') return mockRun(job, VIDEO_STAGES, ['HDR'], 3000);

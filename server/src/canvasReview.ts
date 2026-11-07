@@ -7,7 +7,7 @@
  * An MCP agent with vision reviews for real by looking at each version itself and posting canvas_review (no cost to the app). No paid
  * vision call exists here; one could plug in later only behind a quote and Go.
  */
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { config, DATA_DIR, SAMPLES_DIR } from './config.js';

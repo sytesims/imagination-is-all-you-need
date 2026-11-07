@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner } from '../services/places.js';
 import { liveBackend } from '../routing/keys.js';
-import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
+import type { KeyReader } from '../kernel/keys.js';
 import { pluginSettings } from '../kernel/settings.js';
 import { KIE_BASE, KIE_UPLOAD_BASE, kieRun, kieRecord, kieResultUrls, kieUpload } from '../providers/kie.js';
 import { KIE_LABEL } from '../shared/modelIds.js';
@@ -43,6 +43,5 @@ export const kiePlaceOf = (keys: KeyReader, o: { settings?: () => z.infer<typeof
     async upload(file) { const key = keys.get(KIE_KEY); if (!key) throw new Error('kie.ai isn’t connected: add your kie.ai key in Settings → Connections'); return kieUpload(cfg().uploadBaseUrl, file, key, f); },
   };
 };
-export const kiePlace = kiePlaceOf(ANY_KEY);
 
 export default definePlugin({ name: 'place-kie', inject: ['places', 'keys'], keys: KIE_KEYS, apply(ctx) { ctx.places.register(kiePlaceOf(ctx.keys)); } });

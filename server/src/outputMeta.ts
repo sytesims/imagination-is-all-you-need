@@ -9,7 +9,7 @@ import { sampleFor, type SampleCredit } from './sampleMedia.js';
  * - Until a file is probed the output carries only `kind` (and nulls); the probe runs in the background, and GET /api/jobs/:id
  *   and GET /api/share/:token wait for it (warmOutputs) so a single result always has full metadata.
  */
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, renameSync } from 'node:fs';
 import path from 'node:path';

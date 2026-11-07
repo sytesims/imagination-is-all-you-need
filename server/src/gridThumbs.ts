@@ -9,7 +9,7 @@
  */
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import path from 'node:path';
 import { DATA_DIR } from './config.js';
 import { runFfmpeg } from './ffmpeg.js';
