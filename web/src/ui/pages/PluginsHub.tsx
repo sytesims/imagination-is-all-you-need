@@ -40,8 +40,6 @@ export function PluginsHub() {
       {failed.length > 0 && <div className="pgx-banner pgx-banner-err" role="status" data-testid="plugins-failed-banner"><span className="pgx-banner-ic" aria-hidden><AlertIcon size={16} /></span>
         <span className="pgx-rt"><b>{failed.length === 1 ? '1 plugin didn’t start' : `${failed.length} plugins didn’t start`}</b><small>{failed.map((p) => p.name).join(', ')} {failed.length === 1 ? 'is' : 'are'} off until it’s fixed. The rest of the app is fine.</small></span>
         <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setQ(''); setSel(failed[0].id); document.querySelector(`[data-testid=plugin-row-${failed[0].id}]`)?.scrollIntoView({ block: 'center' }); }}>Show it</button></div>}
-      {data?.restartNeeded && <div className="pgx-banner" role="status" data-testid="plugins-restart-banner"><span className="pgx-banner-ic" aria-hidden><ResetIcon size={16} /></span>
-        <span className="pgx-rt"><b>Some changes apply after a restart</b><small>Your choices are saved. Quit the app and open it again to use them.</small></span></div>}
       {data && <label className={`pgx-search${q ? ' typed' : ''}`}><SearchIcon size={15} /><input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search plugins" aria-label="Search plugins" data-testid="plugins-search" />
         {hits && <span className="pgx-count">{hits.length} of {ps.length}</span>}</label>}
       {!data && !error && <div className="pgx-list pgx-skel" aria-busy="true">{[0, 1, 2, 3].map((i) => <div key={i} className="pgx-prow" />)}</div>}
@@ -63,6 +61,9 @@ export function PluginsHub() {
             <p className="pgx-note">Your own ComfyUI workflows are in <Link to="/workflows/yours">Your workflows</Link>.</p></div>
         </section>
       </>}
+      {/* at the bottom, sticky: it appears without pushing the list under your pointer */}
+      {data?.restartNeeded && <div className="pgx-banner pgx-banner-sticky" role="status" data-testid="plugins-restart-banner"><span className="pgx-banner-ic" aria-hidden><ResetIcon size={16} /></span>
+        <span className="pgx-rt"><b>Some changes apply after a restart</b><small>Your choices are saved. Quit the app and open it again to use them.</small></span></div>}
     </div>
     {picked && <Details p={picked} busy={busy === picked.id} nameOf={(id) => ps.find((x) => x.id === id)?.name ?? id} onClose={() => setSel(null)} onToggle={(on) => toggle(picked, on)} onInstall={() => install(picked)} />}
   </div>;
@@ -102,14 +103,15 @@ function Details({ p, busy, nameOf, onClose, onToggle, onInstall }: { p: PluginR
   return <aside ref={box} className="pgx-det" style={{ top }} tabIndex={-1} aria-label={`${p.name} details`} data-testid="plugin-details">
     <div className="pgx-det-top"><PluginTile id={p.id} size="lg" /><button type="button" className="pgx-x" aria-label="Close details" onClick={onClose}><CloseIcon size={15} /></button></div>
     <h2>{p.name}</h2><p className="pgx-det-d">{p.description}</p><Tags p={p} />
+    {/* the switch first: the notes below it come and go as you switch, and must never move it */}
+    <div className="pgx-kvs">{p.core ? <KV k="Turned on">Always on</KV> : p.state === 'not-installed' ? <KV k="Installed"><button type="button" className="btn btn-sm btn-ghost pgx-install" disabled={busy} onClick={onInstall}><DownloadIcon size={13} />Install</button></KV>
+      : <div className="pgx-kv"><span id="pgx-det-on">Turned on</span><PluginSwitch p={p} busy={busy} onToggle={onToggle} /></div>}</div>
     {p.state === 'needs-key' && p.key && <div className="pgx-call"><span className="pgx-rt"><b>{p.key.set ? 'Add its Endpoint ID to use it' : `Add your ${p.key.label} to use it`}</b><small>Until then its models show as “needs a key” and won’t run. Keys stay on this computer.</small></span>
       <button type="button" className="btn btn-sm pgx-pri" onClick={() => navigate(connectionsHref(p.key!.connection))}>Open Connections</button></div>}
     {p.state === 'failed' && <div className="pgx-call pgx-call-err"><span className="pgx-rt"><b>It didn’t start</b><small>{p.reason}</small></span><button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={() => onToggle(false)}>Turn off</button></div>}
     {p.core && <div className="pgx-call" data-testid="plugin-core-note"><span className="pgx-rt"><b>Always on</b><small>It is part of the app and can’t be turned off: every paid run shows its price and waits for your OK.</small></span></div>}
     {p.restartNeeded && <div className="pgx-call"><span className="pgx-rt"><b>Applies after restart</b><small>{p.reason}. Your choice is saved.</small></span></div>}
     <div className="pgx-kvs">
-      {p.core ? <KV k="Turned on">Always on</KV> : p.state === 'not-installed' ? <KV k="Installed"><button type="button" className="btn btn-sm btn-ghost pgx-install" disabled={busy} onClick={onInstall}><DownloadIcon size={13} />Install</button></KV>
-        : <div className="pgx-kv"><span id="pgx-det-on">Turned on</span><PluginSwitch p={p} busy={busy} onToggle={onToggle} /></div>}
       {p.needs.length > 0 && <KV k="Needs">{p.needs.map(nameOf).join(', ')}</KV>}
       {p.neededBy.length > 0 && <KV k="Needed by">{p.neededBy.map(nameOf).join(', ')}</KV>}
       <KV k="Uses">{p.key ? `Your ${p.key.label}` : 'No key'}</KV>
