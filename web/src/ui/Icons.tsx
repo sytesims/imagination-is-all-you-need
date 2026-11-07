@@ -197,7 +197,7 @@ export const LaptopIcon = svg(<><rect x="4.5" y="5" width="15" height="10.5" rx=
 /** A key (your own provider keys). */
 export const KeyIcon = svg(<><circle cx="8" cy="12" r="3.5" /><path d="M11.5 12h9M17.5 12v3M20.5 12v2.5" /></>, 'KeyIcon');
 /** A puzzle piece (Plugins: the header button and the page). Our own drawing. */
-export const PuzzleIcon = svg(<><path d="M5 8.5h3.2a2.3 2.3 0 1 1 4.6 0H16v3.2a2.3 2.3 0 1 1 0 4.6V20H5z" /></>, 'PuzzleIcon');
+export const PuzzleIcon = svg(<><path d="M10 6V5a2 2 0 1 1 4 0v1h3.5a1 1 0 0 1 1 1v3.5h1a2 2 0 1 1 0 4h-1V18a1 1 0 0 1-1 1H14v-1a2 2 0 1 0-4 0v1H6.5a1 1 0 0 1-1-1v-3.5h1a2 2 0 1 0 0-4h-1V7a1 1 0 0 1 1-1z" /></>, 'PuzzleIcon');
 /** A shield (safe mode, the spend guard). */
 export const ShieldIcon = svg(<><path d="M12 3.5 19 6v5.5c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z" /></>, 'ShieldIcon');
 /** A padlock (always on). */

@@ -80,10 +80,10 @@ function Row({ p, q, sel, busy, onPick, onToggle, onInstall }: { p: PluginRow; q
   if (p.state === 'not-installed') right = <button type="button" className="btn btn-sm btn-ghost pgx-install" disabled={busy} onClick={(e) => { e.stopPropagation(); onInstall(); }} data-testid={`plugin-install-${p.id}`}><DownloadIcon size={13} />Install</button>;
   else if (err) right = <StateTag p={p} />;
   else right = <>{p.state === 'needs-key' && p.key ? <Link to={connectionsHref(p.key.connection)} className="pgx-key-link" onClick={(e) => e.stopPropagation()}><KeyIcon size={13} />{p.key.set ? 'Add Endpoint ID' : `Add ${p.key.label}`}<ChevronRightIcon size={12} /></Link>
-    : (p.core || p.state !== 'on' || p.restartNeeded) && <StateTag p={p} />}<PluginSwitch p={p} busy={busy} onToggle={onToggle} /></>;
+    : (p.core || p.state !== 'on' || p.restartNeeded) && <StateTag p={p} />}{!p.core && <PluginSwitch p={p} busy={busy} onToggle={onToggle} />}</>;
   return <div className={`pgx-prow${sel ? ' sel' : ''}${err ? ' err' : ''}`} role="button" tabIndex={0} aria-pressed={sel} data-testid={`plugin-row-${p.id}`} onClick={onPick} onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); onPick(); } }}>
     <PluginTile id={p.id} />
-    <span className="pgx-rt"><b><Mark text={p.name} q={q} />{p.tag && <span className="pgx-tag pgx-tag-warn">{p.tag}</span>}{p.installable && <span className="pgx-tag">{MADE_BY_US}</span>}</b>
+    <span className="pgx-rt"><b><span><Mark text={p.name} q={q} /></span>{p.tag && <span className="pgx-tag pgx-tag-warn">{p.tag}</span>}{p.installable && <span className="pgx-tag">{MADE_BY_US}</span>}</b>
       <small>{err ? p.reason : <Mark text={p.description} q={q} />}</small>
       {err && <span className="pgx-row-a"><button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={(e) => { e.stopPropagation(); onToggle(false); }} data-testid={`plugin-turn-off-${p.id}`}>Turn off</button><button type="button" className="pgx-link-btn" onClick={(e) => { e.stopPropagation(); onPick(); }}>Details</button></span>}</span>
     <span className="pgx-row-r">{right}</span>
@@ -100,6 +100,7 @@ function Details({ p, busy, nameOf, onClose, onToggle, onInstall }: { p: PluginR
     {p.state === 'needs-key' && p.key && <div className="pgx-call"><span className="pgx-rt"><b>{p.key.set ? 'Add its Endpoint ID to use it' : `Add your ${p.key.label} to use it`}</b><small>Until then its models show as “needs a key” and won’t run. Keys stay on this computer.</small></span>
       <button type="button" className="btn btn-sm pgx-pri" onClick={() => navigate(connectionsHref(p.key!.connection))}>Open Connections</button></div>}
     {p.state === 'failed' && <div className="pgx-call pgx-call-err"><span className="pgx-rt"><b>It didn’t start</b><small>{p.reason}</small></span><button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={() => onToggle(false)}>Turn off</button></div>}
+    {p.core && <div className="pgx-call" data-testid="plugin-core-note"><span className="pgx-rt"><b>Always on</b><small>It is part of the app and can’t be turned off: every paid run shows its price and waits for your OK.</small></span></div>}
     {p.restartNeeded && <div className="pgx-call"><span className="pgx-rt"><b>Applies after restart</b><small>{p.reason}. Your choice is saved.</small></span></div>}
     <div className="pgx-kvs">
       {p.core ? <KV k="Turned on">Always on</KV> : p.state === 'not-installed' ? <KV k="Installed"><button type="button" className="btn btn-sm btn-ghost pgx-install" disabled={busy} onClick={onInstall}><DownloadIcon size={13} />Install</button></KV>
@@ -107,7 +108,7 @@ function Details({ p, busy, nameOf, onClose, onToggle, onInstall }: { p: PluginR
       {p.needs.length > 0 && <KV k="Needs">{p.needs.map(nameOf).join(', ')}</KV>}
       {p.neededBy.length > 0 && <KV k="Needed by">{p.neededBy.map(nameOf).join(', ')}</KV>}
       <KV k="Uses">{p.key ? `Your ${p.key.label}` : 'No key'}</KV>
-      <KV k="Can spend">{p.canSpend ? 'Only after you OK the price' : 'No'}</KV>
+      <KV k="Can spend">{p.core ? 'Never: it checks every paid run' : p.canSpend ? 'Only after you OK the price' : 'No'}</KV>
       <KV k="Health">{p.state === 'on' && !p.restartNeeded ? <span className="pgx-ok">Started fine</span> : p.reason}</KV>
       <KV k="Licence">{p.source === 'ours' ? <a href={repoDoc('LICENSE')} target="_blank" rel="noreferrer">{p.licence} ↗</a> : p.licence}</KV>
     </div>

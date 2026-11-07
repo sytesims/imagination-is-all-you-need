@@ -87,7 +87,7 @@ Some places ship in the code but are **off** until you add them to your profile.
 
 To turn it on:
 
-1. Copy `server/profiles/desktop.yml` to your own file (for example `my.yml`), add a line `  - place-kie` above `  - legacy`, and start the app with `OPENHIGGSFIELD_PROFILE=/path/to/my.yml`.
+1. Open **Plugins** (the puzzle button next to Assets) and press **Install** on kie.ai. Nothing is downloaded: it ships with the app. (Or copy `server/profiles/desktop.yml` to your own file, for example `my.yml`, add a line `  - place-kie` above `  - legacy`, and start the app with `OPENHIGGSFIELD_PROFILE=/path/to/my.yml`.)
 2. Add your kie.ai key in **Settings → Connections** (`OPENHIGGSFIELD_KIE_KEY`).
 
 Then Run on offers it for Seedance 2.5 ($0.14 / $0.315 / $0.79 per second at 480p / 720p / 1080p) and Nano Banana 2 ($0.04 / $0.06 / $0.09 per image at 1K / 2K / 4K), prices from [kie.ai's model pages](https://kie.ai/pricing), checked 2026-11-06.
@@ -101,7 +101,7 @@ Then Run on offers it for Seedance 2.5 ($0.14 / $0.315 / $0.79 per second at 480
 To turn it on:
 
 1. On RunPod, create a Serverless endpoint from the official **worker-comfyui** image ([source](https://github.com/runpod-workers/worker-comfyui), AGPL-3.0 licence; the app only calls it, no code is copied). Pick an image tag or build one with the models of the workflows you want (each model's files are listed on the Models & Licences page). Set max workers to at least 1 and active (always-on) workers to 0 so it costs nothing while idle.
-2. Add `  - place-runpod` above `  - legacy` in your own profile copy (as for kie.ai above).
+2. Open **Plugins** and press **Install** on RunPod (or add `  - place-runpod` above `  - legacy` in your own profile copy, as for kie.ai above).
 3. In **Settings → Connections → RunPod**, add your RunPod API key (`OPENHIGGSFIELD_RUNPOD_API_KEY`, or `RUNPOD_API_KEY`) and your endpoint's **Endpoint ID** (shown on the endpoint's page). Its models stay hidden until both are set.
 
 Then Run on offers RunPod for the Create Image models that have a ComfyUI workflow here.

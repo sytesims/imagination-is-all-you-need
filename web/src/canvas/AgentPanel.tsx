@@ -288,7 +288,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   const agentWorking = !agentListening && !!agent.working; /* building over MCP with no wait loop: "working on this board", not "isn't reading it" */
   const state = dockState({ connected: agentConnected || agentWorking, listening: agentListening, working: agentWorking });
   const agentLabel = agent.agentName || 'Your AI';
-  const connectedLine = dockStatusLine(state, agentLabel, { sessions: sessions.length, via: agent.listenVia ?? null });
+  const connectedLine = state === 'off' && !demoOn ? 'No agent connected' : dockStatusLine(state, agentLabel, { sessions: sessions.length, via: agent.listenVia ?? null });
   const sessionNames = sessions.map((x) => x.name).join(', ');
   const onBoardsRef = useRef(onBoards); onBoardsRef.current = onBoards; const onOpenRef = useRef(onOpenBoard); onOpenRef.current = onOpenBoard;
   void tick;
@@ -540,13 +540,13 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
             {!SAMPLE_SITE && <button type="button" className="ap-attach" onClick={() => fileIn.current?.click()} disabled={sending || pics.length >= MAX_DOCK_PICTURES} aria-label="Add pictures" {...tip(pics.length >= MAX_DOCK_PICTURES ? `Up to ${MAX_DOCK_PICTURES} pictures per message` : 'Add pictures')} data-testid="agent-attach"><PaperclipIcon size={16} /></button>}
             <textarea ref={ta} value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={4000} disabled={SAMPLE_SITE}
               onPaste={(e) => { const files = [...e.clipboardData.files]; if (!files.length) return; e.preventDefault(); e.stopPropagation(); /* the board never also gets it */ addPics(files); }}
-              placeholder={confirm ? 'What should change? Or press Looks good.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : SAMPLE_SITE ? 'The agent runs in the app on your computer' : 'Pick a demo, or connect Claude to chat'} aria-label="Message the agent" data-testid="agent-reply"
+              placeholder={confirm ? 'What should change? Or press Looks good.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : SAMPLE_SITE ? 'The agent runs in the app on your computer' : (demoOn ? 'Pick a demo, or connect Claude to chat' : 'Connect Claude to chat')} aria-label="Message the agent" data-testid="agent-reply"
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(text); } }} />
             {demo.running && !agentConnected && !text.trim() && !pics.length
               ? <button type="button" className="ap-send stop" onClick={() => void stop()} aria-label="Stop the agent" {...tip('Stop. Cards already on the board stay')} data-testid="agent-stop"><StopIcon size={15} /></button>
               : <button type="submit" className="ap-send" disabled={(!text.trim() && !pics.length) || sending} aria-label="Send" data-testid="agent-send"><SendIcon size={16} /></button>}
           </div>
-          <p className="ap-hint">{agentListening ? `Goes straight to ${agentLabel}. Canvas proposals wait for your Go.` : agentConnected ? `Waits here until ${agentLabel} reads it. Canvas proposals wait for your Go.` : SAMPLE_SITE ? 'Add cards by hand and press Go for a sample.' : 'Demos build drafts on this board. Every run waits for your Go.'}</p>
+          <p className="ap-hint">{agentListening ? `Goes straight to ${agentLabel}. Canvas proposals wait for your Go.` : agentConnected ? `Waits here until ${agentLabel} reads it. Canvas proposals wait for your Go.` : SAMPLE_SITE ? 'Add cards by hand and press Go for a sample.' : (demoOn ? 'Demos build drafts on this board. Every run waits for your Go.' : 'Every run waits for your Go.')}</p>
         </form>
       </div>
       {dropOver && <div className="ap-dropzone" data-testid="agent-dropzone" aria-hidden><span><PaperclipIcon size={18} />Drop pictures to add them</span></div>}

@@ -175,7 +175,7 @@ async function row(id: string, c: Choices): Promise<PluginRow> {
 /** GET /api/plugins. */
 export async function listPlugins(): Promise<PluginsAnswer> {
   const c = readChoices();
-  const ids = [...PLUGIN_CATALOG.map((e) => e.id).filter((x) => known(x)), ...CORE_ROWS.map((e) => e.id), ...outside.keys()];
+  const ids = [...CORE_ROWS.map((e) => e.id), ...PLUGIN_CATALOG.map((e) => e.id).filter((x) => known(x)), ...outside.keys()]; // the spend guard heads Money
   const plugins = await Promise.all(ids.map((x) => row(x, c)));
   return { edition: editionOf(profile.name), editions: editions(), safeMode: c.safeMode, restartNeeded: plugins.some((p) => p.restartNeeded), plugins };
 }
