@@ -11,6 +11,7 @@ import { useToast } from '../../shared/Toast';
 import { PuzzleIcon, ShieldIcon, LaptopIcon, LockIcon, ChevronRightIcon, ChevronDownIcon, PlusIcon, KeyIcon, DownloadIcon } from '../Icons';
 import { PluginTile, PluginSwitch, usePluginToggle } from './PluginParts';
 import { AddPluginMenu } from './AddPluginMenu';
+import '../../shared/barPop.css';
 import './plugins-ui.css';
 
 const SAFE_OFF = 'Turns outside plugins off. Ours stay on.';
@@ -28,7 +29,7 @@ export function PluginsButton({ path }: { path: string }) {
       {data?.safeMode && <span className="tn-safe">Safe mode</span>}
       {dot && <b className="tn-dot" aria-label="Something needs you" />}
     </button>
-    <Popover open={open} anchor={btn} onClose={() => setOpen(false)} label="Plugins" placement="bottom" align="end" width={404} className="pgx-pop" testId="plugins-menu">
+    <Popover open={open} anchor={btn} onClose={() => setOpen(false)} label="Plugins" placement="bottom" align="end" width={404} className="bp pgx-pop" testId="plugins-menu">
       {data ? <QuickMenu close={() => setOpen(false)} /> : <p className="pgx-qm-empty">Loading plugins…</p>}
     </Popover>
   </>;

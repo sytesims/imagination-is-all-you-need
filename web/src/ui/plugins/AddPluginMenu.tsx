@@ -10,7 +10,7 @@ const LATER: { id: string; t: string; d: string; I: typeof LinkIcon }[] = [
 ];
 
 export function AddPluginMenu({ open, anchor, onClose, onBrowse }: { open: boolean; anchor: RefObject<HTMLElement | null>; onClose: () => void; onBrowse: () => void }) {
-  return <Popover open={open} anchor={anchor} onClose={onClose} label="Add plugin" role="menu" placement="bottom" align="end" width={340} className="pgx-pop pgx-add" testId="plugins-add-menu">
+  return <Popover open={open} anchor={anchor} onClose={onClose} label="Add plugin" role="menu" placement="bottom" align="end" width={340} className="bp pgx-pop pgx-add" testId="plugins-add-menu">
     <div className="pgx-add-list">
       <button type="button" role="menuitem" className="pgx-mi" onClick={onBrowse} data-testid="plugins-add-browse">
         <span className="pgx-tile pgx-tile-sm" aria-hidden><DownloadIcon size={15} /></span><span className="pgx-rt"><b>Browse plugins</b><small>Ready-made ones from us and others, with previews</small></span></button>

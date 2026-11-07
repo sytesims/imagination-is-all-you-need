@@ -4,7 +4,7 @@
  * RunPod with Install), Community (coming soon), Made by you (coming later). Search on top; a row opens its details on the right.
  * Your workflows (the ComfyUI workflows you added) moved to /workflows/yours. Data: shared/plugins.ts (GET /api/plugins and the changes).
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, navigate } from '../../platform/router';
 import { usePluginList, connectionsHref, PLUGIN_GROUPS, type PluginRow } from '../../shared/plugins';
 import { MADE_BY_US, repoDoc } from '../../shared/brand';
@@ -92,9 +92,14 @@ function Row({ p, q, sel, busy, onPick, onToggle, onInstall }: { p: PluginRow; q
 
 function Details({ p, busy, nameOf, onClose, onToggle, onInstall }: { p: PluginRow; busy: boolean; nameOf: (id: string) => string; onClose: () => void; onToggle: (on: boolean) => void; onInstall: () => void }) {
   const box = useRef<HTMLElement>(null);
-  useEffect(() => { box.current?.focus(); const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [p.id]);
+  /* sit below the app's top bar (and the promo line above it while it shows): its bottom edge moves as the page scrolls */
+  const [top, setTop] = useState(56);
+  useLayoutEffect(() => { const h = document.querySelector<HTMLElement>('header.topnav'); const f = () => setTop(Math.max(0, Math.round(h?.getBoundingClientRect().bottom ?? 0)));
+    f(); addEventListener('scroll', f, { passive: true }); addEventListener('resize', f); const ro = h && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(f) : null; if (h) ro?.observe(h);
+    return () => { removeEventListener('scroll', f); removeEventListener('resize', f); ro?.disconnect(); }; }, []);
+  useEffect(() => { box.current?.focus({ preventScroll: true }); const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [p.id]);
   const KV = ({ k, children }: { k: string; children: ReactNode }) => <div className="pgx-kv"><span>{k}</span><b>{children}</b></div>;
-  return <aside ref={box} className="pgx-det" tabIndex={-1} aria-label={`${p.name} details`} data-testid="plugin-details">
+  return <aside ref={box} className="pgx-det" style={{ top }} tabIndex={-1} aria-label={`${p.name} details`} data-testid="plugin-details">
     <div className="pgx-det-top"><PluginTile id={p.id} size="lg" /><button type="button" className="pgx-x" aria-label="Close details" onClick={onClose}><CloseIcon size={15} /></button></div>
     <h2>{p.name}</h2><p className="pgx-det-d">{p.description}</p><Tags p={p} />
     {p.state === 'needs-key' && p.key && <div className="pgx-call"><span className="pgx-rt"><b>{p.key.set ? 'Add its Endpoint ID to use it' : `Add your ${p.key.label} to use it`}</b><small>Until then its models show as “needs a key” and won’t run. Keys stay on this computer.</small></span>
