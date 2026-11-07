@@ -20,7 +20,7 @@ import type { Context, PluginDef } from './index.js';
 import { mounted } from './index.js';
 import { NeedsRestart } from './http.js';
 import { PROFILES_DIR, parseProfile, type Profile } from './profile.js';
-import { keyConfigured } from './keys.js';
+import { keyConfigured } from './coreKeys.js';
 import { PLUGIN_CATALOG, CORE_ROWS, catalogEntry, neededBy, needsAll, type PluginRow, type PluginsAnswer } from '../shared/pluginCatalog.js';
 
 type Fiber = { state: number; dispose(): Promise<void> } & PromiseLike<unknown>;

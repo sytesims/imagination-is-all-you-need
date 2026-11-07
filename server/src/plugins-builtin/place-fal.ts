@@ -6,7 +6,7 @@ import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner, PlaceFile } from '../services/places.js';
 import { falRun, falResult, falCancel, falImageInput, type FalHandle } from '../providers/fal.js';
 import { liveBackend } from '../routing/keys.js';
-import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
+import type { KeyReader } from '../kernel/keys.js';
 import { HANDOFF_POLICY, handOff } from '../mediaHandoff.js';
 import type { RemoteHandle } from '../jobs.js';
 
@@ -40,6 +40,5 @@ export const falPlaceOf = (keys: KeyReader): PlaceRunner => ({
   inputs: HANDOFF_POLICY.fal.accepts,
   upload: (file, kind) => handOff(file, kind, 'fal'),
 });
-export const falPlace = falPlaceOf(ANY_KEY);
 
 export default definePlugin({ name: 'place-fal', inject: ['places', 'keys'], keys: FAL_KEYS, apply(ctx) { ctx.places.register(falPlaceOf(ctx.keys)); } });

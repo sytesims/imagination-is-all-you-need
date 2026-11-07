@@ -9,7 +9,7 @@
  */
 import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner } from '../services/places.js';
-import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
+import type { KeyReader } from '../kernel/keys.js';
 import { liveBackend } from '../routing/keys.js';
 
 export const DIRECT_KEYS = ['OPENHIGGSFIELD_BFL_API_KEY', 'OPENHIGGSFIELD_GEMINI_API_KEY', 'OPENHIGGSFIELD_OPENAI_API_KEY', 'OPENHIGGSFIELD_ARK_API_KEY', 'OPENHIGGSFIELD_MINIMAX_API_KEY', 'OPENHIGGSFIELD_LTX_API_KEY'];
@@ -41,6 +41,5 @@ export const directPlaceOf = (keys: KeyReader): PlaceRunner => ({
   },
   resume: (h) => !!h.pollUrl, // no cancel: the labs have no cancel call
 });
-export const directPlace = directPlaceOf(ANY_KEY);
 
 export default definePlugin({ name: 'place-direct', inject: ['places', 'keys'], keys: DIRECT_KEYS, apply(ctx) { ctx.places.register(directPlaceOf(ctx.keys)); } });

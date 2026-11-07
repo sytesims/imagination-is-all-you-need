@@ -5,7 +5,7 @@
  */
 import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner } from '../services/places.js';
-import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
+import type { KeyReader } from '../kernel/keys.js';
 import { routerLive, runRouter } from '../routing/routerRun.js';
 import { HANDOFF_POLICY, handOff } from '../mediaHandoff.js';
 
@@ -24,6 +24,5 @@ export const routerPlaceOf = (keys: KeyReader): PlaceRunner => ({
   inputs: HANDOFF_POLICY['comfy-router'].accepts,
   upload: (file, kind) => handOff(file, kind, 'comfy-router'),
 });
-export const routerPlace = routerPlaceOf(ANY_KEY);
 
 export default definePlugin({ name: 'place-comfy-router', inject: ['places', 'keys'], keys: ROUTER_KEYS, apply(ctx) { ctx.places.register(routerPlaceOf(ctx.keys)); } });

@@ -23,7 +23,7 @@ import { imageCount } from '../tools/shared.js';
 import { runOwn } from '../providers.js';
 import { stillBusyMessage, busyReason } from '../busyRetry.js';
 import { findRoute } from './routes.js';
-import { keyValue } from './keys.js';
+import { keyValue } from '../kernel/coreKeys.js';
 import { autoOrder, option, routeForRunOn, localOnlyModel, localSetupGate, demoKeyless, placeRank, builtInLocal } from './select.js';
 import { routesFor } from './routes.js';
 import { getPrefs } from './prefs.js';

@@ -25,13 +25,13 @@ const reset = () => { seen.length = 0; };
 process.env.OPENHIGGSFIELD_PLACE_SUNRA_BASE_URL = BASE; process.env.OPENHIGGSFIELD_PLACE_KIE_BASE_URL = BASE; process.env.OPENHIGGSFIELD_PLACE_KIE_UPLOAD_BASE_URL = BASE; // the plugins' settings (ctx.settings: profile → env → kv)
 const jsonOf = (r: Req) => JSON.parse(r.body.toString() || '{}');
 
-const { ANY_KEY } = await import('../src/kernel/keys.js');
+const { CORE_KEYS } = await import('../src/kernel/coreKeys.js');
 const { sunraPlaceOf } = await import('../src/plugins-builtin/place-sunra.js');
 const { kiePlaceOf } = await import('../src/plugins-builtin/place-kie.js');
 const { PlaceError, placeErrorFields, errorClassOf } = await import('../src/services/places.js');
 const { findRoute } = await import('../src/routing/routes.js');
-const sunra = sunraPlaceOf(ANY_KEY, { base: () => BASE });
-const kie = kiePlaceOf(ANY_KEY, { settings: () => ({ baseUrl: BASE, uploadBaseUrl: BASE }) });
+const sunra = sunraPlaceOf(CORE_KEYS, { base: () => BASE });
+const kie = kiePlaceOf(CORE_KEYS, { settings: () => ({ baseUrl: BASE, uploadBaseUrl: BASE }) });
 const H3 = findRoute('sunra:minimax/minimax-h3')!; const NB = findRoute('sunra:google/gemini-3.1-flash-image')!; const KNB = findRoute('kie:nano-banana-2')!; const KSD = findRoute('kie:bytedance/seedance-2-5')!;
 assert.ok(H3 && NB && KNB && KSD, 'the route rows exist (findRoute finds them even while hidden)');
 const hooks = (o: { canceledAfter?: number } = {}) => { const ev: any = { submits: [] as any[], stages: [] as string[] }; let polls = 0;
@@ -146,7 +146,7 @@ try {
 
   // ---- request bodies (routing/routeRequest.ts → aggregatorRoutes.ts): the documented fields, files through the place's own upload ----
   { const { routeRequest } = await import('../src/routing/routeRequest.js'); await import('../src/services/placesBuiltin.js'); // the built-in places (Sunra), as scripts get them
-    const { places } = await import('../src/services/places.js'); const offKie = places.register(kiePlaceOf(ANY_KEY)); // kie.ai only for this block (it isn't built in)
+    const { places } = await import('../src/services/places.js'); const offKie = places.register(kiePlaceOf(CORE_KEYS)); // kie.ai only for this block (it isn't built in)
     const img = path.join(D, 'first.png'); fs.writeFileSync(img, Buffer.from([137, 80, 78, 71]));
     answer = (r) => r.url === '/v1/storage/upload/initiate' ? { status: 201, json: { upload_url: `${BASE}/presigned/f.png`, file_url: 'https://assets.sunra.ai/uploads/f.png' } } : r.url === '/api/file-stream-upload' ? { json: { code: 200, data: { downloadUrl: 'https://tempfile.example/f.png' } } } : { text: '' };
     process.env.OPENHIGGSFIELD_SUNRA_KEY = 'fake-sunra-not-real'; process.env.OPENHIGGSFIELD_KIE_KEY = 'fake-kie-not-real';

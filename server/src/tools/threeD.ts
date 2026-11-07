@@ -30,7 +30,7 @@ import { registerLicense, registerLicenseComponents, registerWorkflowLicense } f
 import { HOSTED_BY_ID, type HostedPrice } from '../shared/hostedPrices.js';
 import { EXTRA_ROUTES, COMING_SOON, FAL_ENV } from '../routing/routes.js';
 import { NATIVE_DIRECT } from '../routing/directRoutes.js';
-import { keyValue } from '../routing/keys.js';
+import { keyValue } from '../kernel/coreKeys.js';
 import { mockRun, mockFailOf, seedOf } from './shared.js';
 import { imageDataUri } from './imageUpscaleModels.js';
 import { THREE_D_TOOL, TURNTABLE_TOOL, THREE_D_PAGE, threeDRoute, threeDModel, normalizeSettings, threeDPriceKey, usdByKey, FACE_COUNT, PIXAL3D_FILES, fmtGB, THREE_D_MODEL_IDS, type Faces, THREE_D_GENERATION_MODES, THREE_D_VIEW_SLOTS, threeDMode, threeDSupportsMode, threeDViewIssue } from '../shared/threeD.js';

@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { keyConfigured } from './keys.js';
-import { readKey, keyVarInUse, setKey, unsetKey } from '../kernel/keys.js';
+import { readKey, keyVarInUse, setKey, unsetKey } from '../kernel/coreKeys.js';
 import { getKv, setKv } from '../db.js';
 import { bootSettings } from '../kernel/settings.js';
 import { invalidateTools } from '../toolsCache.js';

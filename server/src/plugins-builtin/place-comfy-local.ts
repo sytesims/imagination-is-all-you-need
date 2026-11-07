@@ -6,7 +6,7 @@
  */
 import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner } from '../services/places.js';
-import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
+import type { KeyReader } from '../kernel/keys.js';
 import { LOCAL_LABEL } from '../shared/modelIds.js';
 
 export const localPlaceOf = (keys: KeyReader): PlaceRunner => ({
@@ -16,6 +16,5 @@ export const localPlaceOf = (keys: KeyReader): PlaceRunner => ({
   live: () => true, // a real run (on the mock backend the tools draw their own sample, as before); nothing to pick up after a restart
   attempt: async (job, tool) => (await import('../providers.js')).runOwn(job, tool), // tool.run / the native plan (providers.ts), then the H3 encode
 });
-export const localPlace = localPlaceOf(ANY_KEY);
 
 export default definePlugin({ name: 'place-comfy-local', inject: ['places', 'keys'], keys: [], apply(ctx) { ctx.places.register(localPlaceOf(ctx.keys)); } });
