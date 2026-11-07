@@ -54,6 +54,15 @@ jobs:
             echo "No install or setup files changed: the one-line install is skipped (main and nightly still run it)"
             { echo 'install_os=[]'; echo "build_os=$three"; echo "full=false"; } >> "$GITHUB_OUTPUT"
           fi
+      # Soft size check: warns on PR files over 800 lines or with many lines over 200 characters, and lists the 15 biggest
+      # files in the run summary. Never fails the build (the script always exits 0, and the step may not fail the job).
+      - name: Source file sizes (warning only)
+        continue-on-error: true
+        timeout-minutes: 2
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then node scripts/ci/file-size-report.mjs --base HEAD^1; else node scripts/ci/file-size-report.mjs; fi
 
   build-start:
     name: Build and start (${{ matrix.os }}, Node ${{ matrix.node }})

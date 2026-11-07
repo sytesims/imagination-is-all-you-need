@@ -36,6 +36,7 @@
     "qa:routing": "node scripts/qa/routing.mjs",
     "check:proxy": "node scripts/check-dev-proxy.mjs",
     "check": "npm run check:proxy",
+    "size:report": "node scripts/ci/file-size-report.mjs --base origin/main",
     "try:build": "node scripts/try/build.mjs",
     "doctor": "node scripts/doctor.mjs",
     "setup": "node scripts/setup.mjs",
