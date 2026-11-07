@@ -13,7 +13,7 @@
  * Showcase data: server/src/shared/exploreShowcase.ts; featured media: shared/featured.ts. Every card opens the exact tool with its settings
  * filled in. Posters first; clips mount on hover / on screen; reduced motion gets posters only. Our own copy, accent and icons.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ToolInfo } from '../api';
 import { Link } from '../platform/router';
 import { REPO_URL } from '../shared/brand';
@@ -22,6 +22,7 @@ import { MakerTile } from '../shared/MakerTile';
 import { StandInArt } from '../shared/StandInArt';
 import { HoverClip, prefersReducedMotion } from '../shared/HoverClip';
 import { MediaRail } from '../shared/MediaRail';
+import { useSoundScope } from '../shared/soundDirector';
 import { XpHero, XpStill, XpKoi, XpSwap, XpLayers, XpSheets, XpLooks, XpYourTurn, XpBoard, XpFilm } from './explore/ExploreShowcase';
 import { EXPLORE_ROWS, type ExploreCard, type ExploreRow, type FlowArt } from '../../../server/src/shared/exploreFlows';
 import { featuredByKey, featuredRecreateHref } from '../../../server/src/shared/featured';
@@ -137,12 +138,14 @@ function Jump({ rows }: { rows: ExploreRow[] }) {
 
 export default function Home({ tools }: { tools: ToolInfo[] }) {
   const [repoUrl, setRepoUrl] = useState<string>(REPO_URL);
+  /* leaving Explore (another tab) stops every sound on it at once, even while the next page is still loading (shared/soundDirector.ts) */
+  const page = useRef<HTMLDivElement>(null); useSoundScope(page);
   useEffect(() => { fetch('/api/config').then(r => r.ok ? r.json() : null).then(c => setRepoUrl(typeof c?.repoUrl === 'string' && /^https?:\/\//.test(c.repoUrl) ? c.repoUrl.replace(/\.git$/, '') : REPO_URL)).catch(() => 0); }, []);
   const has = (id: string) => !id || tools.some(t => t.id === id) || id === 'make-it-real' || id === 'plan-a-shot' || id === 'three-d-turntable';
   const rows = EXPLORE_ROWS.map(r => ({ ...r, cards: r.cards.filter(c => has(c.toolId)) })).filter(r => r.cards.length);
   const chips = tools.filter(x => (x as any).listed !== false).map(x => ({ id: x.id, name: x.name, route: x.route }));
   /* two tools with one name (Upscale for images and for clips): say which */ const dup = new Set(chips.map(c => c.name).filter((n, k, a) => a.indexOf(n) !== k)); chips.forEach(c => { if (dup.has(c.name)) { const m = (tools.find(t => t.id === c.id) as any)?.media ?? (/image|app-remove-bg/.test(c.id) ? 'image' : 'video'); c.name = `${c.name} · ${m === 'image' ? 'image' : 'video'}`; } });
-  return <div className="home xp" data-testid="explore">
+  return <div ref={page} className="home xp" data-testid="explore">
     <h1 className="sr-only-vis">Imagination Is All You Need: an open studio for video, images, sound and 3D</h1>
     {/* Act 1, Wonder: the hero, then what a character, a picture and a song can become */}
     <XpHero />

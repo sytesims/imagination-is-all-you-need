@@ -6,6 +6,7 @@ import { usePosterSlots, presetArt, PLACEHOLDER_TITLE } from '../shared/posterSl
 import { ResumeStatus } from './edge/Edge';
 import { CommunityGrid } from './pages/Live';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useSoundScope } from '../shared/soundDirector';
 import { HeroTitle, setHeroCanvasHidden, useHeroShown, useNarrow } from '../shared/HeroTitle';
 import { JobState, listJobs, STATE_LABELS, ToolInfo } from '../api';
 import { Link, navigate } from '../platform/router';
@@ -28,11 +29,12 @@ export const LIB_EXTRA: Record<string, (t: ToolInfo) => React.ReactNode> = {};
  * `stage` (failure / result / versions) sits on top of the canvas; canvas tabs below: History · Library · Styles · How it works.
  */
 export default function Workspace({ tool, modes, panel, stage, hero }: { tool: ToolInfo; modes?: React.ReactNode; panel: React.ReactNode; stage?: React.ReactNode; /** B29: a tool's own Library hero (e.g. Re-shoot's upload card) instead of the shared one */ hero?: React.ReactNode }) {
+  const soundScope = useRef<HTMLDivElement>(null); useSoundScope(soundScope); /* leaving the page stops its sound (shared/soundDirector.ts) */
   // Narrow screens: one view at a time. "Create" shows the form; a canvas tab shows that tab's content. The tab strip sits on top.
   const [mv, setMv] = useState<'form' | 'canvas'>('form'); const heroShown = useHeroShown(); const narrow = useNarrow();
   useLayoutEffect(() => { setHeroCanvasHidden(narrow && mv === 'form'); return () => setHeroCanvasHidden(false); }, [narrow, mv]);
   return (
-    <div className={`ws mv-${mv}`}>
+    <div ref={soundScope} className={`ws mv-${mv}`}>
       {/* BH12: the panel title block is hidden on tool pages, so the page h1 lives here (one per page) */}{(!heroShown || (narrow && mv === 'form')) && <h1 className="sr-only-vis" data-testid="ws-h1">{tool.name}</h1>}
       <aside className="ws-panel">
         {/* One Video page (2026-10-23): a video workflow's panel starts with the workflow chip instead of the Create / Edit / Motion Control tabs */}

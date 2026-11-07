@@ -6,6 +6,7 @@
  * (POST …/preview, not a job); Stitch is the full free one (POST …/stitch → Assets).
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useSoundScope } from '../../shared/soundDirector';
 import type { ToolInfo } from '../../api';
 import { Link, navigate } from '../../platform/router';
 import { useToast } from '../../shared/Toast';
@@ -58,7 +59,7 @@ function useFilmDoc(id: string) {
 export async function fileUrl(f: File): Promise<string> { return libraryUrlOf(f) ?? (await uploadMedia([f]))[0].url; }
 
 export default function FilmEditor({ id, tools }: { id: string; tools: ToolInfo[] }) {
-  const workspace = useRef<HTMLDivElement>(null);
+  const workspace = useRef<HTMLDivElement>(null); useSoundScope(workspace); /* leaving the editor stops its sound (shared/soundDirector.ts) */
   /* Measure the real shell: the announcement, offline notice and mobile header can change height. */
   useLayoutEffect(() => {
     const el = workspace.current; if (!el) return;

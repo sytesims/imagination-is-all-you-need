@@ -19,6 +19,7 @@ import { IMAGE_PAGE } from '../../../../server/src/shared/pages';
 import { IMAGE_ACCEPT, fileFits, wrongTypeText } from '../../../../server/src/shared/mediaAccept';
 import { RowMore } from '../../shared/RowMore';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useSoundScope } from '../../shared/soundDirector';
 import { appFileName } from '../../shared/brand';
 import type { JobState, ToolInfo } from '../../api';
 import { createJob, getJob, listJobs, issuesOf, retryJob } from '../../api';
@@ -105,6 +106,7 @@ const retryVideo = (e: React.SyntheticEvent<HTMLVideoElement>) => { const v = e.
 const fileFromUrl = async (url: string, name = 'image.png') => { const r = await fetch(url); if (!r.ok) throw new Error('That image could not be loaded.'); const b = await r.blob(); return new File([b], name, { type: b.type || 'image/png' }); };
 
 export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: ToolInfo[] }) {
+  const soundScope = useRef<HTMLDivElement>(null); useSoundScope(soundScope); /* leaving the page stops its sound (shared/soundDirector.ts) */
   const toast = useToast(); const search = useSearch(); const data = useThreeD(); const bill = useBilling();
   const wf = currentThreeDWorkflow(search); const wfRow = data?.workflows.find((w) => w.id === wf.id); const generation = wf.toolId === TOOL && wf.status === 'ready'; const textMode = wf.id === 'text-to-3d'; const multiMode = wf.id === 'multiview-to-3d';
   useToolModels(TOOL);
@@ -351,7 +353,7 @@ export default function ThreeDStudio({ tool, tools }: { tool: ToolInfo; tools: T
   const chip = <WorkflowChip name={wf.name} icon={<WfIcon name={wf.icon} />} title={`${wf.name}: ${wf.tagline}. Change workflow`} picked={wf.id !== 'image-to-3d'} backTo="Image to 3D"
     open={pop === 'wf'} onOpen={() => setPop(pop === 'wf' ? '' : 'wf')} onClear={() => pick('image-to-3d')} chipRef={wfRef} testId="t3-wf-chip" clearTestId="t3-wf-clear" wrapTestId="t3-wf-chip-wrap" />;
 
-  return <div className="vs vs-dk t3" data-testid="three-d-studio">
+  return <div ref={soundScope} className="vs vs-dk t3" data-testid="three-d-studio">
     <section className="vs-main" aria-label={isPS ? 'Direct a Shot' : 'Your 3D models'}>
       {isPS && <PrevizPlayer ref={player} shot={effShot} view={pvView} step={step} onStep={setStep} slots={{ main: slotMain, chips: slotChips }} useModel={useModelQ} onUsedModel={usedModel}
         topRight={<button ref={moreRef} type="button" className={`pv-glass pv-sq${pop === 'more' ? ' on' : ''}`} aria-label="More: preview style, shape and length, layout" aria-haspopup="dialog" aria-expanded={pop === 'more'} data-testid="ps-more" onClick={() => setPop(pop === 'more' ? '' : 'more')} {...tip(pop === 'more' ? null : 'Preview style, shape and length, what to record, layout')}><MoreIcon size={15} /></button>}

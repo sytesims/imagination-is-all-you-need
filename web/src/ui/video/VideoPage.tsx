@@ -5,6 +5,7 @@
  * never waits on a chunk; if one still loads, only the bar area waits (its own Suspense), never the feed.
  */
 import { Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useSoundScope } from '../../shared/soundDirector';
 import type { JobState, ToolInfo } from '../../api';
 import VideoFeed from './VideoFeed';
 import { VideoFeedHost, type VideoFeedSlot } from './videoFeedSlot';
@@ -14,6 +15,7 @@ import './videoWorkflows.css';
 
 const NO_JOBS: JobState[] = [];
 export default function VideoPage({ workflowId, tools, children }: { /** the workflow in the bar ('create' = Create Video) */ workflowId: string; tools: ToolInfo[]; /** the bar */ children: ReactNode }) {
+  const soundScope = useRef<HTMLDivElement>(null); useSoundScope(soundScope); /* leaving the page stops its sound (shared/soundDirector.ts) */
   const slot = useRef<VideoFeedSlot | null>(null); const [jobs, setJobs] = useState<JobState[]>(NO_JOBS);
   /* the latest bar's slot; the feed re-renders when its runs change */
   const host = useCallback((s: VideoFeedSlot) => { slot.current = s; setJobs(j => (j === s.jobs ? j : s.jobs)); }, []);
@@ -22,7 +24,7 @@ export default function VideoPage({ workflowId, tools, children }: { /** the wor
   const onSelect = useCallback((id: string) => slot.current?.onSelect(id), []);
   const viewerActions = useCallback((j: JobState, close: () => void) => slot.current?.viewerActions?.(j, close) ?? null, []);
   return <VideoFeedHost.Provider value={host}>
-    <div className="vs vs-dk" data-testid="video-studio" data-workflow={workflowId}>
+    <div ref={soundScope} className="vs vs-dk" data-testid="video-studio" data-workflow={workflowId}>
       <section className="vs-main" aria-label="Your videos">
         <VideoFeed jobs={jobs} onSelect={onSelect} workflowId={workflowId} viewerActions={viewerActions} tools={tools} />
       </section>

@@ -18,7 +18,8 @@ const { checkImageCaps } = await import('../src/shared/imageCaps.js');
 const { failedAttemptNotCharged } = await import('../src/routing/run.js');
 
 // D3
-assert.equal(priceAskAgain({ quotedCredits: 9, credits: 12 }), true, 'dearer asks');
+assert.equal(priceAskAgain({ quotedCredits: 9, credits: 15 }), true, 'dearer than the allowance asks');
+assert.equal(priceAskAgain({ quotedCredits: 9, credits: 12 }), false, 'a few cents dearer runs (allowance)');
 assert.equal(priceAskAgain({ quotedCredits: 9, credits: 9 }), false, 'same runs');
 assert.equal(priceAskAgain({ quotedCredits: 9, credits: 4, quotedRoute: 'a', route: 'b' }), false, 'cheaper on another place runs');
 assert.equal(priceAskAgain({ quotedCredits: null, credits: 4, quotedRoute: 'a', route: 'b' }), true, 'unknown quote on another place asks');

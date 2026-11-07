@@ -709,6 +709,7 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
     if (lock ? !!lockStop : PC.priceAskAgain({ quotedRoute: qr || null, quotedCredits: qc, route: nowRoute, credits: nowCost })) {
       const qs = new URLSearchParams(); for (const [k, v] of Object.entries(fields)) if (typeof v === 'string' && v.length <= 4000 && !['quotedRouteId', 'quotedCredits', 'priceLock', 'webhookUrl', 'rights'].includes(k)) qs.set(k, v);
       for (const f of Object.keys(files)) if (files[f]?.length && !qs.has(f)) qs.set(f, '1'); // uploads → markers (same as POST /price)
+      if (typeof fields.prompt === 'string' && !qs.has('prompt') && !qs.has('promptBytes')) qs.set('promptBytes', String(Buffer.byteLength(fields.prompt))); // a prompt too long for the query still prices by its length (GPT Image bills prompt text)
       if (Number(inp.refVideoSeconds) > 0) qs.set('refVideoSeconds', String(inp.refVideoSeconds)); qs.set('provider', prov.id);
       const fresh = await app.inject({ method: 'GET', url: `/api/tools/${tool.id}/price?${qs}` }); let quote: any = null; try { quote = fresh.json(); } catch { /* */ }
       return reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: ROUTE_CHANGED_MSG, userMessage: ROUTE_CHANGED_MSG, detail: 'Review the new price and press Generate again.', charged: false, calm: true, quote, quotedCredits: qc, credits: nowCost, dearer: lockStop !== 'route',

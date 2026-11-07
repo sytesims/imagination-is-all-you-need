@@ -4,7 +4,8 @@ import { ledgerUsd } from '../../shared/billing';
 import { openWeightsOf } from '../../shared/OpenWeights';
 /** PB backlog, Oct 17 05:06: share page, self-host health, API endpoints, handoff, publish,
  *  usage chart, profile, route-prompt suggestion, model page. Our tokens; licence details stay on /licenses. */
-import { useEffect, useMemo, useState } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
+import { useSoundScope } from '../../shared/soundDirector';
 import { Link, navigate } from '../../platform/router';
 import { useToast } from '../../shared/Toast';
 import { AttributionLine } from '../../shared/Attribution';
@@ -14,10 +15,11 @@ const j = (u: string, o?: RequestInit) => fetch(u, o).then(async r => { const b 
 const post = (u: string, body?: any, method = 'POST') => j(u, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
 /** /share/:token: public view of a shared result. */
 export function SharePage({ token }: { token: string }) {
+  const soundScope = useRef<HTMLDivElement>(null); useSoundScope(soundScope); /* leaving the page stops its sound (shared/soundDirector.ts) */
   const [d, setD] = useState<any>(null); const [err, setErr] = useState('');
   useEffect(() => { j(`/api/share/${encodeURIComponent(token)}`).then(setD).catch(e => setErr(e.message)); }, [token]);
   const url = d?.resultUrl ?? d?.job?.resultUrl ?? d?.url;
-  return <div className="page bl-share" data-testid="share-page">
+  return <div ref={soundScope} className="page bl-share" data-testid="share-page">
     {err && <p className="helper warn">{err}</p>}
     {d && <><ShareByline />
       <div className="bl-share-media">{url ? (/\.(png|jpe?g|webp)$/i.test(url) ? <img src={url} alt="" /> : <video src={url} controls playsInline />) : <div className="canvas-empty"><h3>No media</h3></div>}</div>

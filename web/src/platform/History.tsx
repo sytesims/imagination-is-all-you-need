@@ -31,6 +31,7 @@ import { useLedger } from '../shared/balance';
 import { ownAccountsNow, ledgerUsd } from '../shared/billing';
 import { pollWithBackoff, jobSig } from '../shared/backoff';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { useSoundScope } from '../shared/soundDirector';
 import { JobState, JobLocation, listJobsPage, locateJob, ToolInfo, STATE_LABELS, listAssets, setJobProject, trashJob, restoreJob, listProjects, createProject, deleteProject, patchProject, setProjectVisibility, listPublicProjects, Project, restoreAllTrash, emptyTrash, fmtBytes } from '../api';
 import { recreateUrl, refTarget, sendGroups, sendTo, outputMedium } from './SendTo';
 import { stitchAddHref } from '../../../server/src/shared/videoWorkflows';
@@ -97,6 +98,7 @@ const thumbOf = (j?: JobState) => !j?.resultUrl ? '' : /\.(png|jpe?g|webp|gif|av
 
 /** Assets / history: every job across tools, split by day, in native aspect ratios. Multi-select with a bulk bar; Filter and View popovers. */
 export default function History({ tools, toolId }: { tools: ToolInfo[]; toolId?: string }) {
+  const soundScope = useRef<HTMLDivElement>(null); useSoundScope(soundScope); /* leaving the page stops its sound (shared/soundDirector.ts) */
   const toast = useToast(); useFavourites(); /* re-render when any heart changes */ const liveJobs = useActiveJobs().jobs; const [copied, flash] = useCopied();
   const [jobs, setJobs] = useState<JobState[]>([]); const [err, setErr] = useState(''); const [loaded, setLoaded] = useState(false); const [filter, setFilter] = useState(() => new URLSearchParams(location.search).get('tool') ?? ''); const [section, setSection] = useState(() => fromUrl().sec); const [openErr, setOpenErr] = useState<Set<string>>(new Set());
   const [project, setProject] = useState(() => new URLSearchParams(location.search).get('project') ?? ''); /* ?project=<id>: the profile page's Projects tab opens one */ const [projects, setProjects] = useState<Project[]>([]); const [tick, setTick] = useState(0); const [hideDrafts, setHideDrafts] = useState(false);
@@ -354,7 +356,7 @@ export default function History({ tools, toolId }: { tools: ToolInfo[]; toolId?:
   const radio = (on: boolean, lbl: React.ReactNode, onClick: () => void, tid: string, icon?: React.ReactNode) => <button key={tid} type="button" className="am-item" role="radio" aria-checked={on} data-testid={tid} onClick={onClick}>{icon ?? <span className="am-ic am-tick" aria-hidden>{on ? '✓' : ''}</span>}<span className="am-l">{lbl}</span>{icon && on && <span className="am-tick" aria-hidden>✓</span>}</button>;
   const sw = (on: boolean, lbl: React.ReactNode, set: (v: boolean) => void, tid: string) => <button type="button" className="am-item asf-sw" role="switch" aria-checked={on} data-apop-item data-testid={tid} onClick={() => set(!on)}><span className="am-l">{lbl}</span><i aria-hidden /></button>;
   return (
-    <div className={`assets-shell pp-assets${selecting ? ' as-selecting' : ''}`}>
+    <div ref={soundScope} className={`assets-shell pp-assets${selecting ? ' as-selecting' : ''}`}>
       <aside className="assets-side" aria-label="Library sections">
         {SECTIONS.map(([n, I]) => <button key={n} data-testid={`as-sec-${n.toLowerCase()}`} className={`assets-link ${section === n && !media ? 'on' : ''}`} onClick={() => go(n)}><span className="pp-assets-ic" aria-hidden><I size={16} /></span>{n}{n !== 'Trash' && <span className="count">{secCount(n) ?? ''}</span>}</button>)}
         <span className="side-label as-tools-h">Workflows</span>
