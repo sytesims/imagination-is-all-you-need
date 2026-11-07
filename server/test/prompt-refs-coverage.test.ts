@@ -67,6 +67,7 @@ function attempts(t: any, engine: string, prompt: string): { fields: Record<stri
 }
 /** Field sets a tool needs beyond the generic ones (a mode's own files and fields). */
 const EXTRA: Record<string, { types?: string; files: string[]; count?: number; fields?: Record<string, string> }[]> = {
+  layers: [{ files: ['video'], fields: { objects: '["person"]' } }], // Video to layers: names, not a prompt (each name is its own SAM text)
   voice: [{ types: 'voiceover', files: ['video'] }, { types: 'lipsync', files: ['image', 'speech'] }, { types: 'change-voice', files: ['video', 'voiceAudio'] }, { types: 'translate', files: ['video'], fields: { language: 'es' } }],
   'h3-video': ['r2v', 'i2v', 't2v'].map((m) => ({ types: m, files: m === 't2v' ? [] : ['image'], fields: { duration: '5', aspect: 'auto' } })), // the fal H3 routes start at 5 s
   reshoot: [{ files: ['video'], fields: { yaw: '30', tilt: '10' } }], // H3 CrossView: the take alone and a camera position
@@ -106,6 +107,7 @@ const NO_BODY: Record<string, string> = {
 const NO_GRAMMAR: Record<string, string> = {};
 /** tool|model the test can't make an input for (by model key, with the reason). */
 const NO_TEST_INPUT: Record<string, string> = {
+  'layers-edit|local-layers-edit': 'Video to layers: Render: changes a stored split (fromJob = a finished layers job); ffmpeg on this computer, no model prompt',
   'make-it-real|comfy-ltx25-layout': 'renders a stored Direct a Shot plan job (planJob id + its mockup video); its Router renders build through routeRequest like every other Router body',
   'make-it-real|kling-v3-omni-edit': 'renders a stored Direct a Shot plan job (planJob id + its mockup video)', 'make-it-real|luma-ray-3.2-edit': 'renders a stored Direct a Shot plan job',
   'make-it-real|runway-aleph-2': 'renders a stored Direct a Shot plan job', 'make-it-real|seedance-2.5-edit': 'renders a stored Direct a Shot plan job',

@@ -60,7 +60,7 @@ export const layersTool: ToolDef = {
   async parseInput(fields, files) {
     const vf = files.video?.[0]; if (!vf) return bad('video', 'Add a clip to split into layers.', 'required');
     if (/\.(png|jpe?g|webp|gif)$/i.test(vf)) return bad('video', 'Video to layers takes a video clip, not a photo.', 'format');
-    const objects = objectNames(fields.objects ?? fields.prompt);
+    const objects = objectNames(fields.objects); // the names only: a prompt is never read as names (it would reach SAM unrewritten)
     if (!objects.length) return bad('objects', 'Name at least one thing to split out, like “woman” or “neon sign”.', 'required');
     if (objects.length > LAYERS_MAX_OBJECTS) return bad('objects', `Up to ${LAYERS_MAX_OBJECTS} things per clip. Remove ${objects.length - LAYERS_MAX_OBJECTS}.`, 'too_many');
     const src = path.join(DATA_DIR, vf); const p = await probe(src);
