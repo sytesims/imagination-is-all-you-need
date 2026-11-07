@@ -9,6 +9,8 @@
  */
 import { BusyError, retryAfterMs, withBusyRetry } from '../busyRetry.js';
 import { PollTolerance, MISS, httpError, HOSTED_POLL_MS } from '../hostedPoll.js';
+import { keyedFetch, keyUrlAllowed } from '../security/keyedFetch.js';
+import { FAL_SCOPE } from '../security/keyScopes.js';
 export const FAL_QUEUE = 'https://queue.fal.run';
 export interface FalSubmit { request_id: string; status_url?: string; response_url?: string; cancel_url?: string; queue_position?: number }
 export interface FalStatus { status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED'; request_id?: string; queue_position?: number; response_url?: string; error?: string; error_type?: string; metrics?: { inference_time?: number } }
@@ -56,21 +58,24 @@ export function falImageInput(slug: string, i: { prompt: string; seed?: number; 
   return body;
 }
 export async function falSubmit(slug: string, input: Record<string, unknown>, key: string, opts: { startTimeoutSec?: number; f?: Fetch } = {}): Promise<FalSubmit> {
-  const r = await (opts.f ?? fetch)(`${FAL_QUEUE}/${slug}`, { method: 'POST', headers: { ...headers(key), ...(opts.startTimeoutSec ? { 'X-Fal-Request-Start-Timeout': String(opts.startTimeoutSec) } : {}) }, body: JSON.stringify(input) });
+  const r = await keyedFetch(FAL_SCOPE, `${FAL_QUEUE}/${slug}`, { method: 'POST', headers: { ...headers(key), ...(opts.startTimeoutSec ? { 'X-Fal-Request-Start-Timeout': String(opts.startTimeoutSec) } : {}) }, body: JSON.stringify(input) }, { f: opts.f });
   if (r.status === 429) throw new BusyError(`fal submit 429: ${(await r.text()).slice(0, 300)}`, 429, retryAfterMs(r.headers)); // busy: refused before it started (busyRetry.ts)
   if (!r.ok) throw new Error(`fal submit ${r.status}: ${(await r.text()).slice(0, 300)}`);
   return r.json() as Promise<FalSubmit>;
 }
 export async function falStatus(statusUrl: string, key: string, f: Fetch = fetch): Promise<FalStatus> {
-  const r = await f(statusUrl, { headers: headers(key) }); if (!r.ok) throw httpError(`fal status ${r.status}`, r.status); return r.json() as Promise<FalStatus>;
+  const r = await keyedFetch(FAL_SCOPE, statusUrl, { headers: headers(key) }, { f }); if (!r.ok) throw httpError(`fal status ${r.status}`, r.status); return r.json() as Promise<FalStatus>;
 }
 export async function falResult<T = FalImageResult>(responseUrl: string, key: string, f: Fetch = fetch): Promise<T> {
-  const r = await f(responseUrl, { headers: headers(key) }); if (!r.ok) throw httpError(`fal result ${r.status}: ${(await r.text()).slice(0, 300)}`, r.status); return r.json() as Promise<T>;
+  const r = await keyedFetch(FAL_SCOPE, responseUrl, { headers: headers(key) }, { f }); if (!r.ok) throw httpError(`fal result ${r.status}: ${(await r.text()).slice(0, 300)}`, r.status); return r.json() as Promise<T>;
 }
 /** Ask fal to cancel (best effort, never throws): true when fal accepted it (202) or the request is already finished / gone. */
-export async function falCancel(cancelUrl: string, key: string, f: Fetch = fetch) { try { const r = await f(cancelUrl, { method: 'PUT', headers: headers(key) }); return r.ok || r.status === 400 || r.status === 404; } catch { return false; } }
+export async function falCancel(cancelUrl: string, key: string, f: Fetch = fetch) { try { const r = await keyedFetch(FAL_SCOPE, cancelUrl, { method: 'PUT', headers: headers(key) }, { f }); return r.ok || r.status === 400 || r.status === 404; } catch { return false; } }
 /** Where a submitted fal request lives: stored on the job at once (job.remote), so a restart or Retry download can poll it again. */
 export interface FalHandle { requestId: string; statusUrl: string; responseUrl: string; cancelUrl: string }
+/** A stored handle (job.remote, maybe from a backup) is only used when every URL in it is one of fal's own hosts. */
+export const falHandleSafe = (h: { statusUrl?: string; responseUrl?: string; cancelUrl?: string }) =>
+  [h.statusUrl, h.responseUrl, h.cancelUrl].every((u) => !u || keyUrlAllowed(u, FAL_SCOPE.hosts()));
 /** submit → poll status until COMPLETED (error/error_type = failure) → fetch result. */
 /** A busy submit (429) is sent again later (busyRetry.ts): fal never queued it, so nothing runs twice. onBusy(ms) = waiting that long.
  *  Polling keeps the SAME request through network blips (hostedPoll.ts); resume = a handle from before (restart / Retry download): no submit,

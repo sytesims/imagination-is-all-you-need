@@ -9,8 +9,9 @@
  */
 import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner } from '../services/places.js';
-import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
+import type { KeyReader } from '../kernel/keys.js';
 import { liveBackend } from '../routing/keys.js';
+import { directPollSafe } from '../providers/direct.js';
 
 export const DIRECT_KEYS = ['OPENHIGGSFIELD_BFL_API_KEY', 'OPENHIGGSFIELD_GEMINI_API_KEY', 'OPENHIGGSFIELD_OPENAI_API_KEY', 'OPENHIGGSFIELD_ARK_API_KEY', 'OPENHIGGSFIELD_MINIMAX_API_KEY', 'OPENHIGGSFIELD_LTX_API_KEY'];
 export const directPlaceOf = (keys: KeyReader): PlaceRunner => ({
@@ -39,8 +40,7 @@ export const directPlaceOf = (keys: KeyReader): PlaceRunner => ({
     job.outputs = outs; job.resultUrl = outs[0].url; job.status = 'done'; job.stage = 'done'; job.progress = 100; job.eta = 0;
     if (tool.id === 'h3-video' && tool.routedPost) await tool.routedPost(job, { live: true }); // our final encode (bitrate / audio off) on direct video runs too
   },
-  resume: (h) => !!h.pollUrl, // no cancel: the labs have no cancel call
+  resume: (h) => !!h.pollUrl && directPollSafe(h.model, h.pollUrl), // only on that lab's own hosts (a stored handle may come from a backup); no cancel: the labs have no cancel call
 });
-export const directPlace = directPlaceOf(ANY_KEY);
 
 export default definePlugin({ name: 'place-direct', inject: ['places', 'keys'], keys: DIRECT_KEYS, apply(ctx) { ctx.places.register(directPlaceOf(ctx.keys)); } });

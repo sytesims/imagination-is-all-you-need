@@ -53,6 +53,7 @@ curl -X POST "$APP/api/import" \
    - your current database is moved to `server/data/backups/pre-import-<date and time>/`, so you can go back;
    - the backup's database takes its place;
    - the backup's media files are copied in. A file with the same name is overwritten; nothing else is deleted, so files already in your data folder stay.
+   - addresses stored in the backup are cleared, because a backup made somewhere else could point them at another server: where a provider request was being checked or cancelled, job webhooks, and addresses in saved plugin settings. A run that was still going when the backup was made can't be picked up from here.
 5. Check History, Assets and Usage. If the import couldn't be applied, the terminal says so and your current library stays as it was.
 
 **Going back after an import:** stop the app, copy `openhiggsfield.db` (and any `-wal` / `-shm` files) from the `backups/pre-import-…/` folder back into the data folder, then start the app.

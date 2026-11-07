@@ -1,36 +1,19 @@
 /**
- * ctx.keys (plan §3.2, §3.6, R12): provider keys, read only through here. Keys live in the process environment (the env file the API loads
- * at start, plus keys saved in Settings, which storeKey/removeKey write through setKey/unsetKey). Values are never logged, printed or returned
- * by any route; settings and --dump-config never contain them.
+ * ctx.keys (plan §3.2, §3.6, R12; security review 2026-11-07, F5): a plugin reads only the keys it declares (PluginDef.keys, e.g.
+ * place-fal: ['OPENHIGGSFIELD_FAL_KEY', 'FAL_KEY']); asking for any other one throws KeyNotDeclared. Values are never logged, printed or
+ * returned by any route; settings and --dump-config never contain them.
  *
- * A plugin gets only the keys it declares (PluginDef.keys, e.g. place-fal: ['OPENHIGGSFIELD_FAL_KEY', 'FAL_KEY']); asking ctx.keys for any
- * other one throws KeyNotDeclared. The `legacy` plugin (today's server) declares '*' and the module functions below (keyValue, keyConfigured,
- * readKey) stay unrestricted for code that has no ctx yet: they move behind ctx.keys as that code becomes plugins.
+ * Least privilege, NOT a sandbox: code plugins run inside the server process, where keys sit in process.env, so code that wants to
+ * misbehave could still reach them. That is why only our own (official) code plugins run today; plugins made by others are refused
+ * (kernel/switchboard.ts) until they can run out of process. ctx.keys keeps honest plugins to what they declared and makes a new key
+ * request visible (the permission diff on updates).
+ *
+ * Only `legacy` (today's server core) may declare '*'. Unrestricted reads for the core live in kernel/coreKeys.ts, which plugins never import.
  */
 import { Service, type Context } from 'cordis';
-import type { RouteDef } from '../routing/types.js';
-import { mockKeys, NOT_MOCKED } from '../routing/keys.js';
+import { readKey, keyValue, keyConfigured, type KeyRef } from './coreKeys.js';
 
-export type KeyRef = Pick<RouteDef, 'envKey' | 'envAliases'>;
-
-/** The value of one key variable (trimmed; blank = unset). */
-export const readKey = (name: string): string | undefined => process.env[name]?.trim() || undefined;
-/** The first set variable among names (a name, never a value). */
-export const keyVarInUse = (names: string[]): string | null => names.find((k) => !!readKey(k)) ?? null;
-/** Save or remove a key for this process (Settings → Connections; the env file is written by routing/settings.ts). */
-export const setKey = (name: string, value: string) => { process.env[name] = value; };
-export const unsetKey = (name: string) => { delete process.env[name]; };
-
-/** A route's key: its envKey, else its first alias that is set. */
-export const keyValue = (r: KeyRef): string | undefined => (r.envKey ? [r.envKey, ...(r.envAliases ?? [])].map(readKey).find(Boolean) : undefined);
-/** Is the key set (or mocked: OPENHIGGSFIELD_MOCK_KEYS on the mock backend, routing/keys.ts)? A route without a key always is. */
-export const keyConfigured = (envKey: string | null | undefined, aliases: string[] = []): boolean =>
-  !envKey || (mockKeys() && !NOT_MOCKED.has(envKey)) || [envKey, ...aliases].some((k) => !!readKey(k));
-
-/** How code reads a route's key: ctx.keys inside a plugin (its declared keys only), ANY_KEY where routing code runs without booting
- *  (scripts and tests: services/places.ts BUILT_IN). */
-export interface KeyReader { configured(r: KeyRef): boolean; value(r: KeyRef): string | undefined; get(name: string): string | undefined }
-export const ANY_KEY: KeyReader = { configured: (r) => keyConfigured(r.envKey, r.envAliases), value: keyValue, get: readKey };
+export type { KeyRef, KeyReader } from './coreKeys.js';
 
 export class KeyNotDeclared extends Error {
   constructor(plugin: string, names: string[]) { super(`ctx.keys: plugin "${plugin}" did not declare ${names.join(', ')} (add it to the plugin's keys)`); this.name = 'KeyNotDeclared'; }
@@ -38,7 +21,12 @@ export class KeyNotDeclared extends Error {
 
 /** Keys each plugin declared (kernel/index.ts mount() fills it). '*' = every key (legacy only). */
 const declared = new Map<string, ReadonlySet<string> | '*'>();
-export const declareKeys = (plugin: string, keys: readonly string[] | '*' | undefined) => { declared.set(plugin, keys === '*' ? '*' : new Set(keys ?? [])); };
+/** The one plugin that may read every key, until its code moves into plugins that declare their own. */
+export const ALL_KEYS_PLUGIN = 'legacy';
+export const declareKeys = (plugin: string, keys: readonly string[] | '*' | undefined) => {
+  if (keys === '*' && plugin !== ALL_KEYS_PLUGIN) throw new Error(`plugin "${plugin}": only the server core may read every key; list the keys it needs`);
+  declared.set(plugin, keys === '*' ? '*' : new Set(keys ?? []));
+};
 export const declaredKeys = (plugin: string): string[] | '*' => { const d = declared.get(plugin); return d === '*' ? '*' : [...(d ?? [])]; };
 
 /** The kernel service: ctx.keys, scoped to the calling plugin's declared keys. */

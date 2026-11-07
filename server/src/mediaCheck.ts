@@ -3,7 +3,7 @@
  * Images: unreadable (can't be decoded), low_res, dark (all-black is blocking, very dark/bright is a warning).
  * Audio: unreadable, too_short, silent. Codes match PrecheckWarning codes.
  */
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 
 export interface MediaIssue { code: 'unreadable' | 'low_res' | 'dark' | 'too_short' | 'too_long' | 'silent'; field: string; severity: 'block' | 'warn' | 'info'; message: string }
 export interface MediaCheck { kind: 'image' | 'audio'; ok: boolean; issues: MediaIssue[]; width?: number; height?: number; duration?: number; luma?: number | null; maxVolumeDb?: number | null }

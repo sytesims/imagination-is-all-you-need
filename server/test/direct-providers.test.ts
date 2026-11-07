@@ -119,7 +119,7 @@ const noSleep = async () => {};
   const { f } = fakeFetch((_u, init) => init.method === 'POST' ? { body: { id: 'b', polling_url: 'https://api.bfl.ai/v1/get_result?id=b', cost: 24 } } : { body: { status: 'Ready', result: { sample: 'https://x.invalid/v.mp4' }, cost: 24 } });
   const costs: any[] = []; await directRun(S.bflVideoSpec, await S.bflVideoSpec.build(job({ mode: 't2v', prompt: 'x', resolution: '1080p', duration: 5 })), 'k', { f, sleep: noSleep, onCost: (c) => costs.push(c) });
   assert.deepEqual(costs.map((c) => [c.usd, c.settled, c.unitLabel]), [[0.24, false, 'BFL credits'], [0.24, true, 'BFL credits']]);
-  const m = fakeFetch((_u, init) => init.method === 'POST' ? { body: { id: 'b', polling_url: 'p' } } : { body: { status: 'Request Moderated' } });
+  const m = fakeFetch((_u, init) => init.method === 'POST' ? { body: { id: 'b', polling_url: 'https://api.bfl.ai/v1/get_result?id=b' } } : { body: { status: 'Request Moderated' } });
   await assert.rejects(directRun(S.bflVideoSpec, await S.bflVideoSpec.build(job({ prompt: 'x' })), 'k', { f: m.f, sleep: noSleep }), (e: any) => e.reasonCode === 'content_blocked' && /bfl: Request Moderated/.test(e.message));
   const k = fakeFetch(() => ({ status: 403, body: { detail: 'bad key' } })); await assert.rejects(directRun(S.bflVideoSpec, await S.bflVideoSpec.build(job({ prompt: 'x' })), 'k', { f: k.f }), (e: any) => e.reasonCode === 'key_invalid' && /^bfl submit 403/.test(e.message));
   ok('BFL on the generic runner: x-key, credits estimate then settled, moderation → content_blocked, 403 → key_invalid (old "bfl submit 403" wording kept)'); }

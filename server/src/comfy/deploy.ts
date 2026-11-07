@@ -15,6 +15,7 @@
  */
 import { CLOUD_WORKFLOWS, isStandalone } from './cloudWorkflows.js';
 import { lastProbeState, setLastProbeState } from './deployProbeState.js';
+import { isLoopbackUrl } from '../security/keyedFetch.js';
 
 export const DEPLOY_ENV = { url: 'COMFY_DEPLOY_URL', key: 'COMFY_API_KEY', runnerUrl: 'COMFY_RUNNER_URL', runnerToken: 'COMFY_RUNNER_TOKEN' } as const;
 export type DeployVia = 'comfy-deploy' | 'runner';
@@ -25,10 +26,13 @@ export const DEPLOY_LABEL = 'Your Comfy deployment';
 export type ReadKey = (name: string) => string | undefined;
 const anyKey: ReadKey = (k) => process.env[k]?.trim() || undefined;
 const okUrl = (u: string) => { try { const x = new URL(u); return x.protocol === 'https:' || x.protocol === 'http:'; } catch { return false; } };
+/** Your Comfy key goes to COMFY_DEPLOY_URL: https only, plain http only on this computer (security review 2026-11-07, F6). */
+const keyOkUrl = (u: string) => okUrl(u) && (/^https:/i.test(u.trim()) || isLoopbackUrl(u.trim()));
+export const DEPLOY_INSECURE_REASON = `${DEPLOY_ENV.url} must start with https:// because your Comfy key is sent there (plain http works only for this computer)`;
 
 /** Where deployment routes send jobs, or null when nothing usable is set. Server-internal: the token never leaves this process. */
 export function deployTarget(read: ReadKey = anyKey): { via: DeployVia; base: string; token: string } | null {
-  const v = (k: string) => read(k) || ''; const d = v(DEPLOY_ENV.url); if (d && okUrl(d) && v(DEPLOY_ENV.key)) return { via: 'comfy-deploy', base: d.replace(/\/+$/, ''), token: v(DEPLOY_ENV.key) };
+  const v = (k: string) => read(k) || ''; const d = v(DEPLOY_ENV.url); if (d && keyOkUrl(d) && v(DEPLOY_ENV.key)) return { via: 'comfy-deploy', base: d.replace(/\/+$/, ''), token: v(DEPLOY_ENV.key) };
   const r = v(DEPLOY_ENV.runnerUrl); if (!d && r && okUrl(r)) return { via: 'runner', base: r.replace(/\/+$/, ''), token: v(DEPLOY_ENV.runnerToken) };
   return null;
 }
@@ -36,6 +40,7 @@ export function deployTarget(read: ReadKey = anyKey): { via: DeployVia; base: st
 export function deployState(): { configured: boolean; via: DeployVia | null; reasonCode: string | null; reason: string | null } {
   const v = (k: string) => anyKey(k) || ''; const d = v(DEPLOY_ENV.url); const r = v(DEPLOY_ENV.runnerUrl);
   if (d && !okUrl(d)) return { configured: false, via: 'comfy-deploy', reasonCode: 'deploy_url_invalid', reason: `${DEPLOY_ENV.url} isn't a web address (it should look like https://<name>.run.comfy.app)` };
+  if (d && !keyOkUrl(d)) return { configured: false, via: 'comfy-deploy', reasonCode: 'deploy_url_insecure', reason: DEPLOY_INSECURE_REASON };
   if (d && !v(DEPLOY_ENV.key)) return { configured: false, via: 'comfy-deploy', reasonCode: 'key_missing', reason: `Your deployment needs your Comfy API key (${DEPLOY_ENV.key}) too` };
   if (!d && r && !okUrl(r)) return { configured: false, via: 'runner', reasonCode: 'deploy_url_invalid', reason: `${DEPLOY_ENV.runnerUrl} isn't a web address` };
   const t = deployTarget(); if (t) return { configured: true, via: t.via, reasonCode: null, reason: null };

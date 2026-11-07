@@ -12,7 +12,7 @@ import { modelsDir } from './hardware/requirements.js';
 import { modelsTarget, canDownloadHere, whereToPut } from './hardware/modelsTarget.js';
 import { separationStatus } from './comfy/separation.js';
 import { config } from './config.js';
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import { nodePackStates } from './hardware/nodePacks.js';
 import { refreshComfyNodes } from './comfyNodes.js';
 import { localComfyBase } from './hardware/comfyModels.js';

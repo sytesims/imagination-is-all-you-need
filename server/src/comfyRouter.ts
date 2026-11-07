@@ -22,9 +22,16 @@
 import { env } from './env.js';
 import { retryAfterMs, withBusyRetry } from './busyRetry.js';
 import { PollTolerance, MISS } from './hostedPoll.js';
+import { keyedFetch, hostRuleOf } from './security/keyedFetch.js';
+import { KEY_HOSTS, scopeOf } from './security/keyScopes.js';
 export const routerBase = () => (env('COMFY_ROUTER_URL') || 'https://api.comfy.org').replace(/\/+$/, '');
 /** @deprecated kept for readiness/contracts (the base at import time). */
 export const ROUTER_BASE = routerBase();
+/** Where the Comfy key may go from the Router and storage calls: Comfy's hosts and the base in use (keyedFetch: no redirect carries it elsewhere). */
+export const routerScope = (base = routerBase()) => scopeOf('Comfy', KEY_HOSTS.comfy, () => hostRuleOf(base));
+/** A stored Router request (job.remote, maybe from a backup) is used only when its URLs are on the Router base in use (as every call checks). */
+export const routerHandleSafe = (h: { statusUrl?: string; responseUrl?: string; cancelUrl?: string }, base = routerBase()) =>
+  [h.statusUrl, h.responseUrl, h.cancelUrl].every((u) => { try { return !!u && new URL(u).origin === new URL(base).origin; } catch { return false; } });
 /** Query string on every Router generation call (sync and queued): no provider fallback, so a failure is returned (nothing charged) instead of re-run elsewhere. */
 export const ROUTER_NO_FALLBACK = '?fallback_provider=false';
 export interface RouterRequest { provider: string; model: string; body: Record<string, unknown>; long?: boolean }
@@ -140,7 +147,7 @@ export class ComfyRouter {
   private assertOurs(u: string) { if (new URL(u).origin !== new URL(this.base).origin) throw new RouterError('cloud_unreachable', ROUTER_MESSAGES.cloud_unreachable, null, null, false, `refused to send the key to ${new URL(u).origin}`); }
   private async call(u: string, init: RequestInit, what: string): Promise<Response> {
     this.assertOurs(u);
-    try { return await this.f(u, { ...init, headers: { ...(init.headers as any), 'X-API-Key': this.key } }); }
+    try { return await keyedFetch(routerScope(this.base), u, { ...init, headers: { ...(init.headers as any), 'X-API-Key': this.key } }, { f: this.f }); }
     catch (e) { throw new RouterError('cloud_unreachable', ROUTER_MESSAGES.cloud_unreachable, null, null, true, `${what}: ${e instanceof Error ? e.message : e}`); }
   }
   private async fail(r: Response, what: string): Promise<never> { const e = routerErrorFor(r.status, r.headers.get('x-comfy-error-type'), await r.text().catch(() => ''), what, r.headers.get('x-comfy-request-id'), r.headers); (e as any).retryAfterMs = retryAfterMs(r.headers); throw e; }

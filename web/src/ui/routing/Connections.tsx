@@ -37,7 +37,7 @@ import { SecretInput } from '../../shared/SecretInput';
 
 type Field = { id: string; label: string; value: string | null; placeholder: string; help: string };
 type Prov = { id: string; name: string; envKey?: string; fields?: Field[]; configured: boolean; mockedKey?: boolean; keysUrl?: string; docsUrl?: string; keySetAt?: string | null; keySource?: 'saved' | 'env' | 'mock' | null; keyEnvVar?: string | null; keyFormat?: 'ok' | 'unexpected' | 'unchecked' | null; disabledReason?: string | null };
-type ProvList = { providers: Prov[]; canStoreKeys: boolean; storeKeysNote?: string };
+type ProvList = { providers: Prov[]; canStoreKeys: boolean; storeKeysNote?: string; /** address overrides that send a key off the provider's own https hosts */ baseWarnings?: { name: string; text: string }[] };
 /** Card names (the settings list names some providers by their API; Connections uses the account name). */
 const NAME: Record<string, string> = { local: LOCAL_LABEL, comfy: 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', sunra: 'Sunra', kie: 'kie.ai · reseller, may change without notice', runpod: 'RunPod', bfl: 'Black Forest Labs', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google Gemini API', byteplus: 'BytePlus ModelArk', dashscope: 'Alibaba Cloud', luma: 'Luma AI', hf: 'Hugging Face' };
 /** Billing id → run-on id (the models' runsOn rows). */
@@ -135,6 +135,7 @@ export function Connections() {
           note="Accept each gated model’s licence on its Hugging Face page first." />}</div>
 
       {!SAMPLE_SITE && !d.canStoreKeys && <KeysOffBanner example={prov('comfy')?.envKey ?? 'COMFY_API_KEY'} />}
+      {!SAMPLE_SITE && (d.baseWarnings ?? []).map(w => <p key={w.name} className="helper warn" role="note" data-testid="conn-base-warning">{w.text}</p>)}
 
       {/* ---- Comfy ---- */}
       <div className="conn-sec" id="conn-comfy"><SecHead id="comfy" />

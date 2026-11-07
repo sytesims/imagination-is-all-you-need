@@ -6,7 +6,7 @@
  * audio[]/samples[] (voice samples; minSeconds? default 3). blocking=true (ok=false) only when a file can't be used at all:
  * unreadable, all-black, too_short or silent audio. Everything else is advisory.
  */
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import { createWriteStream, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';

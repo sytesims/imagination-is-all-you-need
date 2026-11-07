@@ -8,7 +8,7 @@
  * sampled frame changed (masked: median 8.1% of cells, lowest 4.9%; mask-free: median 6.1%, lowest 3.7%). Fewer than 3 frames compared, or any ffmpeg
  * error → null (say nothing: never block a good result).
  */
-import { spawn } from 'node:child_process';
+import { spawn } from '../security/childProcess.js';
 
 export const UNCHANGED_RULE = { fps: 4, cell: 16, scale: 4, cellDiff: 15, frameCells: 0.02, clipFrames: 0.25, minFrames: 3 } as const;
 const run = (cmd: string, args: string[]) => new Promise<Buffer>((res, rej) => {

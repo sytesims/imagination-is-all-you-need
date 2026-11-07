@@ -6,7 +6,7 @@
  * (bilinear) at the card's size into a transparent frame with a soft shadow, and written as a PNG with node:zlib.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import path from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { SAMPLES_DIR } from './config.js';

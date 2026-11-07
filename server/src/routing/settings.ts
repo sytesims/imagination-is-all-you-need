@@ -6,9 +6,10 @@
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { keyConfigured } from './keys.js';
-import { readKey, keyVarInUse, setKey, unsetKey } from '../kernel/keys.js';
+import { readKey, keyVarInUse, setKey, unsetKey } from '../kernel/coreKeys.js';
+import { baseWarnings, namesOf } from '../security/baseUrls.js';
 import { getKv, setKv } from '../db.js';
-import { bootSettings } from '../kernel/settings.js';
+import { bootSettings, snapshot } from '../kernel/settings.js';
 import { invalidateTools } from '../toolsCache.js';
 import { openWeightsOnly } from '../providers.js';
 import { aKey } from '../shared/modelIds.js';
@@ -148,3 +149,14 @@ export const providerForEnvKey = (envKey: string | null | undefined): string | n
 /** billing.ts (connected accounts): the REAL key for a provider, server-side only (never returned, logged or sent anywhere but that provider's API). Mock keys don't count. */
 export const realKeyFor = (id: string): string | null => { const p = P.find((x) => x.id === id && x.id !== 'local'); if (!p) return null; return [p.envKey, ...p.envAliases].map(readKey).find((x) => !!x) ?? null; };
 export const providerName = (id: string): string => P.find((p) => p.id === id)?.name ?? id;
+
+/** Plugin settings that hold an address a key goes to (security/baseUrls.ts name → plugin, field): the profile's or the saved value. */
+const PLUGIN_BASES: Record<string, [string, string]> = { PLACE_SUNRA_BASE_URL: ['place-sunra', 'baseUrl'], PLACE_KIE_BASE_URL: ['place-kie', 'baseUrl'],
+  PLACE_KIE_UPLOAD_BASE_URL: ['place-kie', 'uploadBaseUrl'], PLACE_RUNPOD_BASE_URL: ['place-runpod', 'baseUrl'] };
+const savedBase = (name: string): string | undefined => {
+  const pb = PLUGIN_BASES[name]; if (!pb) return undefined; const [plugin, field] = pb;
+  const saved = getKv<Record<string, unknown> | null>(`settings.${plugin}`, null)?.[field] ?? snapshot().profile.config?.[plugin]?.[field];
+  return typeof saved === 'string' ? saved : undefined;
+};
+/** Settings → Connections: one line per address override that sends a key off the provider's own https hosts (security/baseUrls.ts). */
+export const keyBaseWarnings = () => baseWarnings((n) => namesOf(n).map((k) => process.env[k]?.trim()).find(Boolean) || savedBase(n)).map(({ name, provider, reason, text }) => ({ name, provider, reason, text }));

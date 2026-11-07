@@ -255,7 +255,7 @@ export function registerEdge(app: FastifyInstance, pub: (j: Job) => any) {
   // the total goes in as refVideoSeconds, and the answer is the GET price for that query (quote = charge). Files are deleted afterwards.
   app.post<{ Params: { id: string } }>('/api/tools/:id/price', async (req, reply) => {
     if (!getTool(req.params.id)) return reply.code(404).send({ error: `unknown tool ${req.params.id}` });
-    const { mkdtempSync, writeFileSync } = await import('node:fs'); const os = await import('node:os'); const { spawn } = await import('node:child_process');
+    const { mkdtempSync, writeFileSync } = await import('node:fs'); const os = await import('node:os'); const { spawn } = await import('./security/childProcess.js');
     const dur = (f: string) => new Promise<number>((ok) => { const p = spawn('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f]); let o = ''; p.stdout.on('data', (d) => (o += d)); p.on('close', () => ok(Number(o.trim()) || 0)); p.on('error', () => ok(0)); });
     const dir = mkdtempSync(path.join(os.tmpdir(), 'ohf-quote-')); const q: Record<string, string> = {}; const each: number[] = [];
     try {

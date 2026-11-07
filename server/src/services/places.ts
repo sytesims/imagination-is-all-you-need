@@ -14,7 +14,7 @@ import type { Job, RemoteHandle } from '../jobs.js';
 import type { RouteAttempt, RouteDef, RouteKind } from '../routing/types.js';
 import type { ToolDef } from '../tools/types.js';
 import { Service, type Context } from '../kernel/index.js';
-import { keyConfigured, keyValue, type KeyRef } from '../kernel/keys.js';
+import { keyConfigured, keyValue, type KeyRef } from '../kernel/coreKeys.js';
 
 /** A place: a route kind, or 'sample' (free samples and mock-backend sample runs). */
 export type PlaceKind = RouteKind | 'sample';

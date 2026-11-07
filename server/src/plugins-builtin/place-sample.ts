@@ -9,7 +9,7 @@
  */
 import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner } from '../services/places.js';
-import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
+import type { KeyReader } from '../kernel/keys.js';
 
 const stages = (label: string): [string, string][] => [['submitted', `Submitted to ${label}`], ['rendering', `${label} rendering`], ['downloading', 'Downloading result']];
 
@@ -28,6 +28,5 @@ export const samplePlaceOf = (_keys: KeyReader): PlaceRunner => ({
     return (await import('../providers.js')).runOwn(job, tool); // the model's own sample (providers.ts hostedMock, or the tool's mock render), then the H3 encode
   },
 });
-export const samplePlace = samplePlaceOf(ANY_KEY);
 
 export default definePlugin({ name: 'place-sample', inject: ['places', 'keys'], keys: [], apply(ctx) { ctx.places.register(samplePlaceOf(ctx.keys)); } });

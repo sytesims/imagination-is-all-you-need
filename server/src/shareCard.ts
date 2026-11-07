@@ -11,7 +11,7 @@
  */
 import path from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import { deflateSync } from 'node:zlib';
 import { DATA_DIR, SAMPLES_DIR } from './config.js';
 import type { Job } from './jobs.js';
