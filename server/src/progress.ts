@@ -33,6 +33,7 @@ export function progressSourceOf(j: Job): ProgressSource {
   if (kind === 'local') return 'local-comfy';
   if (kind === 'comfy-router' || kind === 'comfy-cloud' || kind === 'fal' || kind === 'replicate') return kind;
   if (kind === 'sunra' || kind === 'kie') return 'fal'; // a queue place: the same stage names
+  if (kind === 'runpod') return 'comfy-cloud'; // a remote ComfyUI that reports queued / running only, like Comfy Cloud
   if (kind === 'direct') return /bfl|flux-?3/i.test(r) ? 'bfl' : 'mock'; // other direct vendors are sample-only today
   if (!r && config.backend === 'comfy') return nativeMode() ? 'local-comfy' : 'comfy-cloud'; // pre-routing / free lane jobs on the comfy backend
   return simulatedAtSubmit() ? 'mock' : 'local-comfy';

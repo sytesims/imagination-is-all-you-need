@@ -11,6 +11,7 @@ plugins:
   - place-replicate     # Replicate (your Replicate token)
   - place-sunra         # Sunra (your Sunra key; its models stay hidden until the key is set)
   # place-kie is installable and off here: add a line `- place-kie` above legacy to use kie.ai (a reseller; docs/PROVIDERS-AND-MODELS.md)
+  # place-runpod is installable and off here: add a line `- place-runpod` above legacy to run our image workflows on your RunPod endpoint (docs/PROVIDERS-AND-MODELS.md)
   - place-direct        # the labs' own APIs: BFL, Google, OpenAI, BytePlus, MiniMax, LTX (their keys)
   - place-sample        # free samples, and samples on the mock backend
   - studio-video      # the Video tab: create, extend, Camera Moves, Swap & Motion, Re-shoot

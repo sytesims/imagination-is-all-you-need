@@ -156,19 +156,19 @@ export interface PlaceRunner {
 }
 
 /** Every place kind. A kind listed here with no plugin loaded is off: its routes are hidden. */
-export const PLACE_KINDS: readonly PlaceKind[] = ['local', 'comfy-cloud', 'comfy-router', 'fal', 'replicate', 'sunra', 'kie', 'direct', 'sample'];
+export const PLACE_KINDS: readonly PlaceKind[] = ['local', 'comfy-cloud', 'comfy-router', 'fal', 'replicate', 'sunra', 'kie', 'runpod', 'direct', 'sample'];
 export const PLUGGABLE_KINDS: ReadonlySet<string> = new Set<string>(PLACE_KINDS);
 /** Queue places (one request per output through runner.run): any route of their kind runs, the route being the model slug (routing/runnable.ts). */
 export const QUEUE_PLACES: ReadonlySet<string> = new Set<PlaceKind>(['fal', 'replicate', 'sunra', 'kie']);
 /** Places shipped as code but not in the desktop profile (installable: the user adds the line to their profile). Off unless a plugin registers
  *  them, also in scripts and tests that run without booting. */
-export const INSTALLABLE_KINDS: ReadonlySet<string> = new Set<PlaceKind>(['kie']);
+export const INSTALLABLE_KINDS: ReadonlySet<string> = new Set<PlaceKind>(['kie', 'runpod']);
 /** Places whose routes are hidden until their key is set (nothing listed, quoted or picked by Auto before that). */
-export const KEY_GATED_KINDS: ReadonlySet<string> = new Set<PlaceKind>(['sunra', 'kie']);
+export const KEY_GATED_KINDS: ReadonlySet<string> = new Set<PlaceKind>(['sunra', 'kie', 'runpod']); // RunPod: its key and its Endpoint ID
 /** The plugin that registers each place (for "the place-… plugin is off" details). */
-export const PLACE_PLUGIN: Record<PlaceKind, string> = { local: 'place-comfy-local', 'comfy-cloud': 'place-comfy-cloud', 'comfy-router': 'place-comfy-router', fal: 'place-fal', replicate: 'place-replicate', sunra: 'place-sunra', kie: 'place-kie', direct: 'place-direct', sample: 'place-sample' };
+export const PLACE_PLUGIN: Record<PlaceKind, string> = { local: 'place-comfy-local', 'comfy-cloud': 'place-comfy-cloud', 'comfy-router': 'place-comfy-router', fal: 'place-fal', replicate: 'place-replicate', sunra: 'place-sunra', kie: 'place-kie', runpod: 'place-runpod', direct: 'place-direct', sample: 'place-sample' };
 /** job.remote kind → place kind. */
-const REMOTE_PLACE: Record<RemoteHandle['kind'], PlaceKind> = { fal: 'fal', replicate: 'replicate', sunra: 'sunra', kie: 'kie', direct: 'direct', router: 'comfy-router', cloud: 'comfy-cloud' };
+const REMOTE_PLACE: Record<RemoteHandle['kind'], PlaceKind> = { fal: 'fal', replicate: 'replicate', sunra: 'sunra', kie: 'kie', runpod: 'runpod', direct: 'direct', router: 'comfy-router', cloud: 'comfy-cloud' };
 /** The built-in places for code that runs without booting (scripts, tests): services/placesBuiltin.ts fills it when routing/run.ts loads.
  *  Not imported here, so the routing modules that read ctx.places (routes.ts, select.ts) don't pull every runner in at import time. */
 const BUILT_IN = new Map<string, PlaceRunner>();

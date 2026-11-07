@@ -28,7 +28,7 @@ import { uploadToComfyStorage, uploadSeedanceAsset, CACHE_MS as COMFY_CACHE_MS }
 
 export type MediaKind = 'image' | 'video' | 'audio';
 export type HandOffForm = 'url' | 'data-uri' | 'base64';
-export type HandOffProvider = 'comfy-router' | 'fal' | 'replicate' | 'byteplus' | 'bfl' | 'minimax' | 'ltx' | 'google' | 'openai';
+export type HandOffProvider = 'comfy-router' | 'fal' | 'replicate' | 'byteplus' | 'bfl' | 'minimax' | 'ltx' | 'google' | 'openai' | 'runpod';
 export interface HandOffOpts {
   /** Forms the request field takes, from its schema (default: the provider's usual forms for that kind). */ accepts?: HandOffForm[];
   /** Content type (default: from the extension). */ mime?: string;
@@ -72,6 +72,10 @@ export const FAL_UPLOAD_TTL_S = 86_400; const FAL_REUSE_MS = (FAL_UPLOAD_TTL_S *
 export const REPLICATE_INLINE_MAX = 256_000;
 /** Comfy Router body cap 100 MiB; base64 adds 4/3 → about 75 MB of media per request (docs.comfy.org/development/comfy-router/limitations). */
 export const ROUTER_INLINE_MAX = 75_000_000;
+/** RunPod /run bodies are capped at 10 MB (docs.runpod.io/serverless/endpoints/send-requests); base64 adds 4/3, and the graph needs room:
+ *  about 7.3 MB of media per job. The words the quote and the runner say when it is over (providers/runpod.ts RUNPOD_TOO_BIG). */
+export const RUNPOD_MEDIA_MAX = 7_300_000;
+export const RUNPOD_TOO_BIG_LINE = 'This file is too big to send to RunPod (max 10 MB). Use a smaller file or another place.';
 
 let testFetch: typeof fetch | null = null;
 /** Tests: inject fetch for the fal / Replicate uploads (Comfy storage has its own: comfy/storage.ts setStorageFetch). */
@@ -137,6 +141,10 @@ export const HANDOFF_POLICY: Record<HandOffProvider, Policy> = {
   // OpenAI image edits: multipart image[] files, each under 50 MB
   openai: { name: 'OpenAI', accepts: { image: ['base64'], video: [], audio: [] }, inlineMax: {}, preferInlineMax: {}, maxBytes: { image: 50_000_000 },
     docs: ['https://platform.openai.com/docs/api-reference/images/createEdit (each image under 50 MB)'] },
+  // RunPod worker-comfyui (place-runpod): input.images[].image is base64; the whole /run body is capped at 10 MB, so the job's files together
+  // (base64 adds 4/3) must stay under it. mediaIssue checks the total; providers/runpod.ts measures the exact body before sending.
+  runpod: { name: 'RunPod', accepts: { image: ['base64'], video: ['base64'], audio: ['base64'] }, inlineMax: {} /* the cap is per body: mediaIssue sums the files */, preferInlineMax: {}, maxBytes: {},
+    docs: ['https://docs.runpod.io/serverless/endpoints/send-requests (/run payload up to 10 MB)', 'https://github.com/runpod-workers/worker-comfyui (input.images: name + base64 image)'] },
 };
 
 // ---------------------------------------------------------------- helpers
@@ -201,7 +209,7 @@ export async function handOffBytes(file: string, kind: MediaKind, provider: Hand
 // ---------------------------------------------------------------- route-level check (quote and submit)
 /** The provider a route hands media to (null: local graphs, Comfy Cloud graphs and routes with no media). */
 export function providerOfRoute(r: { kind?: string; vendor?: string; direct?: { provider?: string } }): HandOffProvider | null {
-  if (r.kind === 'fal' || r.kind === 'replicate' || r.kind === 'comfy-router') return r.kind;
+  if (r.kind === 'fal' || r.kind === 'replicate' || r.kind === 'comfy-router' || r.kind === 'runpod') return r.kind;
   const d = r.direct?.provider ?? r.vendor; return d && d in HANDOFF_POLICY ? (d as HandOffProvider) : null;
 }
 const list = (x: unknown): string[] => (Array.isArray(x) ? x.filter((p): p is string => typeof p === 'string' && !!p) : typeof x === 'string' && x ? [x] : []);
@@ -217,6 +225,7 @@ export function mediaFilesOf(i: Record<string, any>): { file: string; kind: Medi
  *  the submit say it before any call. Uses the provider's default field forms; a body that sends a stricter form re-checks at build. */
 export function mediaIssue(r: { kind?: string; vendor?: string; direct?: { provider?: string } }, i: Record<string, any>): string | null {
   const p = providerOfRoute(r); if (!p) return null;
+  if (p === 'runpod') { const total = mediaFilesOf(i).reduce((n, { file }) => n + Math.max(0, sizeOf(file)), 0); return total > RUNPOD_MEDIA_MAX ? RUNPOD_TOO_BIG_LINE : null; } // one body for all files
   for (const { file, kind } of mediaFilesOf(i)) { const bad = handOffIssue(file, kind, p); if (bad) return bad; }
   return null;
 }

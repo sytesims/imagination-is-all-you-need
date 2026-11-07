@@ -35,17 +35,18 @@ import { useHardware, setComfy } from '../../shared/hardware';
 import { ComfyConnect, useComfyConnect, type ComfyLook } from '../../shared/ComfyConnect';
 import { SecretInput } from '../../shared/SecretInput';
 
-type Prov = { id: string; name: string; envKey?: string; configured: boolean; mockedKey?: boolean; keysUrl?: string; docsUrl?: string; keySetAt?: string | null; keySource?: 'saved' | 'env' | 'mock' | null; keyEnvVar?: string | null; keyFormat?: 'ok' | 'unexpected' | 'unchecked' | null; disabledReason?: string | null };
+type Field = { id: string; label: string; value: string | null; placeholder: string; help: string };
+type Prov = { id: string; name: string; envKey?: string; fields?: Field[]; configured: boolean; mockedKey?: boolean; keysUrl?: string; docsUrl?: string; keySetAt?: string | null; keySource?: 'saved' | 'env' | 'mock' | null; keyEnvVar?: string | null; keyFormat?: 'ok' | 'unexpected' | 'unchecked' | null; disabledReason?: string | null };
 type ProvList = { providers: Prov[]; canStoreKeys: boolean; storeKeysNote?: string };
 /** Card names (the settings list names some providers by their API; Connections uses the account name). */
-const NAME: Record<string, string> = { local: LOCAL_LABEL, comfy: 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', sunra: 'Sunra', kie: 'kie.ai · reseller, may change without notice', bfl: 'Black Forest Labs', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google Gemini API', byteplus: 'BytePlus ModelArk', dashscope: 'Alibaba Cloud', luma: 'Luma AI', hf: 'Hugging Face' };
+const NAME: Record<string, string> = { local: LOCAL_LABEL, comfy: 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', sunra: 'Sunra', kie: 'kie.ai · reseller, may change without notice', runpod: 'RunPod', bfl: 'Black Forest Labs', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google Gemini API', byteplus: 'BytePlus ModelArk', dashscope: 'Alibaba Cloud', luma: 'Luma AI', hf: 'Hugging Face' };
 /** Billing id → run-on id (the models' runsOn rows). */
-const RUN_ON_OF: Record<string, string> = { local: 'local', comfy: 'comfy-cloud', fal: 'fal', replicate: 'replicate', sunra: 'sunra', kie: 'kie', bfl: 'bfl', minimax: 'minimax', ltx: 'ltx', openai: 'openai', google: 'google', byteplus: 'byteplus', dashscope: 'dashscope', luma: 'luma' };
+const RUN_ON_OF: Record<string, string> = { local: 'local', comfy: 'comfy-cloud', fal: 'fal', replicate: 'replicate', sunra: 'sunra', kie: 'kie', runpod: 'runpod', bfl: 'bfl', minimax: 'minimax', ltx: 'ltx', openai: 'openai', google: 'google', byteplus: 'byteplus', dashscope: 'dashscope', luma: 'luma' };
 /** Providers that are also model makers reuse the maker tile (web/src/shared/makers.ts); the rest get the tile's neutral glyph. */
 const MAKER_OF: Record<string, string> = { bfl: 'bfl', minimax: 'minimax', ltx: 'lightricks', openai: 'openai', google: 'google', byteplus: 'bytedance', luma: 'luma', comfy: 'comfy', fal: 'fal', dashscope: 'alibaba-qwen' };
 /** Places whose models stay hidden until their key is set (server services/places.ts KEY_GATED_KINDS): their card always shows, so the key can be added. */
-const KEY_GATED = ['sunra', 'kie'];
-const MAIN_DIRECT = ['fal', 'replicate', 'sunra', 'openai', 'google', 'byteplus', 'bfl', 'minimax', 'ltx']; const MORE_DIRECT = ['dashscope', 'luma', 'kie' /* installable: listed only when place-kie is on */];
+const KEY_GATED = ['sunra', 'kie', 'runpod'];
+const MAIN_DIRECT = ['fal', 'replicate', 'sunra', 'openai', 'google', 'byteplus', 'bfl', 'minimax', 'ltx']; const MORE_DIRECT = ['dashscope', 'luma', 'kie', 'runpod' /* installable: listed only when place-kie / place-runpod is on */];
 /** C7: one chip for the failed-run rule; the provider's own sentence is the tooltip. */
 const RULE_CHIP: Record<FailureRule, [string, 'ok' | 'warn' | 'calm']> = { 'not-charged': ['Failed runs: not charged', 'ok'], 'may-charge': ['Failed runs: may be charged', 'warn'], unknown: ['Failed runs: not published', 'calm'] };
 
@@ -96,7 +97,7 @@ export function Connections() {
   const showOther = !!rt?.global?.showOtherProviders; const needed = (id: string) => showOther || KEY_GATED.includes(id) || unlocks(tools, RUN_ON_OF[id]).n > 0 || (!!prov(id)?.configured && !prov(id)?.mockedKey);
   const hiddenDirect = tools.length ? [...MAIN_DIRECT, ...MORE_DIRECT].filter(id => prov(id) && !needed(id)) : [];
   const card = (id: string) => { const u = unlocks(tools, RUN_ON_OF[id]); // a key-gated place lists its models only once its key is set: say so instead of "nothing runs here"
-    return <KeyCard key={id} p={prov(id)} info={info(id)} acct={acct(id)} canStore={!!d?.canStoreKeys && !SAMPLE_SITE} unlock={u} onDone={after} hostedOff={owOnly} factsLine={KEY_GATED.includes(id) && !u.n ? 'Its models show up in Run on once your key is set' : undefined} />; };
+    return <KeyCard key={id} p={prov(id)} info={info(id)} acct={acct(id)} canStore={!!d?.canStoreKeys && !SAMPLE_SITE} unlock={u} onDone={after} hostedOff={owOnly} factsLine={KEY_GATED.includes(id) && !u.n ? (prov(id)?.fields?.length ? `Its models show up in Run on once your key and ${prov(id)!.fields!.map(f => f.label).join(' and ')} are set` : 'Its models show up in Run on once your key is set') : undefined} />; };
   return <section className="prov-settings conn set-sec" id="connections" data-testid="providers-settings" aria-labelledby="conn-h" aria-busy={!d || !rt}>
     <span id="providers" className="conn-anchor" aria-hidden />
     <h2 id="conn-h">Connections</h2>
@@ -351,7 +352,28 @@ function KeyCard({ p, info, acct, canStore, unlock, onDone, note, hostedOff, fac
       <span className="conn-links">{!real && p.keysUrl && !off && <a href={p.keysUrl} target="_blank" rel="noreferrer" className="conn-link" data-testid={`prov-connect-${id}`}>{token ? 'Create a read token ↗' : 'Get a key ↗'}</a>}{info?.billingUrl && <a href={info.billingUrl} target="_blank" rel="noreferrer" className="conn-link" data-testid={`prov-billing-${id}`}>{name} billing ↗</a>}</span>
     </div>}
     {real && canStore && p.keySource === 'env' && <p className="helper conn-help">Set in the server’s settings file or environment{p.keyEnvVar ? <> (<code>{p.keyEnvVar}</code>)</> : null}, so it can be replaced here but not removed.</p>}
+    {!off && p.fields?.map(f => <FieldRow key={f.id} prov={id} name={name} f={f} canStore={canStore} onDone={onDone} />)}
     {msg && <p className={msg.ok ? 'helper conn-ok' : 'inline-err'} role={msg.ok ? 'status' : 'alert'} data-testid={`conn-msg-${id}`}>{msg.t}</p>}
+  </div>;
+}
+/** A setting a connection needs besides its key (RunPod: Endpoint ID). Not a secret: its value is shown. Saved like a key (POST /api/settings/providers). */
+function FieldRow({ prov, name, f, canStore, onDone }: { prov: string; name: string; f: Field; canStore: boolean; onDone: () => void }) {
+  const [editing, setEditing] = useState(false); const [v, setV] = useState(''); const [busy, setBusy] = useState(false); const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
+  const tid = `${prov}-${f.id}`;
+  const save = async () => { const val = v.trim(); if (!val) return; setBusy(true); setMsg(null);
+    try { const r = await fetch('/api/settings/providers', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: prov, field: f.id, value: val }) }); const b = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(plainCopy(String(b?.error ?? `Couldn’t save it (HTTP ${r.status}).`))); setV(''); setEditing(false); setMsg({ ok: true, t: `${name} ${f.label} saved.` }); onDone(); }
+    catch (e) { setMsg({ ok: false, t: (e as Error).message }); } finally { setBusy(false); } };
+  return <div className="conn-field" data-testid={`conn-field-${tid}`}>
+    <div className="conn-facts"><span>{f.label} {f.value ? <b data-testid={`conn-field-value-${tid}`}>{f.value}</b> : <b>not set</b>}</span>
+      {canStore && !editing && <button type="button" className={`btn btn-sm ${f.value ? 'btn-ghost' : 'btn-primary'}`} onClick={() => setEditing(true)} aria-expanded={editing} data-testid={`conn-field-edit-${tid}`}>{f.value ? 'Change' : `Add ${f.label}`}</button>}</div>
+    {editing && canStore && <div className="conn-key">
+      <label className="sr-only" htmlFor={`conn-field-${tid}-input`}>{`${name} ${f.label}`}</label>
+      <input id={`conn-field-${tid}-input`} className="conn-input" placeholder={f.placeholder} value={v} onChange={e => setV(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && v.trim() && !busy) void save(); }} autoFocus spellCheck={false} autoComplete="off" data-testid={`conn-field-input-${tid}`} />
+      <button type="button" className="btn btn-sm btn-primary" onClick={() => void save()} disabled={!v.trim() || busy} aria-busy={busy} data-testid={`conn-field-save-${tid}`}>{busy ? 'Saving…' : 'Save'}</button>
+      <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setEditing(false); setV(''); }}>Cancel</button>
+      <small className="helper conn-key-help">{f.help}</small></div>}
+    {msg && <p className={msg.ok ? 'helper conn-ok' : 'inline-err'} role={msg.ok ? 'status' : 'alert'} data-testid={`conn-field-msg-${tid}`}>{msg.t}</p>}
   </div>;
 }
 

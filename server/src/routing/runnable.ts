@@ -28,6 +28,7 @@ export const NOT_WIRED_REASON = 'not ready in this app yet';
 export const notWiredSentence = (label: string) => `${label.replace(/\bComfy Router\b/g, 'Comfy Cloud')} isn’t ready yet. Pick another model.`;
 export function routeRunnable(r: Pick<RouteDef, 'kind' | 'routeId' | 'direct' | 'request' | 'routerOff'> & { cloudRun?: unknown }): boolean {
   if (r.kind === 'local' || (QUEUE_PLACES.has(r.kind) && !places.off(r.kind))) return true; // fal / Replicate run any route of theirs (the route is the model slug), when their place plugin is on
+  if (r.kind === 'runpod' && !places.off('runpod')) return true; // your RunPod endpoint runs any of its routes (our ComfyUI graphs, place-runpod)
   if (r.direct) return true; // official lab APIs (providers/direct.ts)
   if (r.cloudRun) return true; // 3D: a partner-node graph this route runs on Comfy Cloud itself (tools/threeD.ts)
   return CLOUD_RUNNER_ROUTES.has(r.routeId) || (ROUTER_RUNNER_ROUTES.has(r.routeId) && !r.routerOff); // + Comfy Router models (routing/routerModels.ts, routerRun.ts)
