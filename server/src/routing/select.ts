@@ -253,7 +253,7 @@ export const demoNotice = (o: RouteOption, toolId?: string) => ({ code: 'demo_pr
   message: `${DEMO_MESSAGE} ${o.kind === 'local' ? localRouteLine(toolId) : `No key is set for ${o.label}, so nothing is sent to the provider.`}` });
 /** Cloud providers that could serve this model (for the 'add an API key' prompt). */
 export function keyProviders(modelId: string, tool?: ToolDef | null, allow: string[] | null = null) {
-  const ids = new Set(routesIn(modelId, tool, allow).filter((r) => !r.comingSoon).map((r) => (r.kind === 'fal' || r.kind === 'replicate' || r.kind === 'sunra' || r.kind === 'kie' ? r.kind : r.kind === 'comfy-router' || r.kind === 'comfy-cloud' ? 'comfy' : r.kind === 'direct' ? providerSettings().find((p) => p.envKey === r.envKey)?.id : null)).filter((x): x is string => !!x));
+  const ids = new Set(routesIn(modelId, tool, allow).filter((r) => !r.comingSoon).map((r) => (r.kind === 'fal' || r.kind === 'replicate' || r.kind === 'sunra' || r.kind === 'kie' || r.kind === 'runpod' ? r.kind : r.kind === 'comfy-router' || r.kind === 'comfy-cloud' ? 'comfy' : r.kind === 'direct' ? providerSettings().find((p) => p.envKey === r.envKey)?.id : null)).filter((x): x is string => !!x));
   return providerSettings().filter((p) => ids.has(p.id)).map(({ id, name, envKey, keysUrl, docsUrl, configured }) => ({ id, name, envKey, keysUrl, docsUrl, configured }));
 }
 /** Calm structured state for "nothing is set up yet" (real mode, no keys): the UI shows a setup card, not an error. */

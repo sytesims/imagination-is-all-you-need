@@ -2,7 +2,7 @@
  * Boots the server as a plugin tree (plan §3.2): reads the profile (kernel/profile.ts), creates the Cordis context, mounts the kernel's
  * services (settings, db, keys, http, places, tools, workflows, and the money path: spend, pricing, jobs), then the profile's plugins in order,
  * then `legacy` (the server core), then the feature plugins (route groups, plugins-builtin/features.ts) in the profile's order, and only then
- * starts listening. The money guard (ctx.spend) is a kernel service: no profile can leave it out or list it as a plugin.
+ * starts listening. Your choices on the Plugins page (kernel/switchboard.ts) sit on top of the profile. The money guard (ctx.spend) is a kernel service: no profile can leave it out or list it as a plugin.
  */
 import { createRoot, mount, type Context, type PluginDef } from './kernel/index.js';
 import { readProfile, type Profile } from './kernel/profile.js';
@@ -27,6 +27,8 @@ export const BUILTIN_PLUGINS: Record<string, () => Promise<{ default: PluginDef<
   'place-sunra': () => import('./plugins-builtin/place-sunra.js'),
   /** Installable: not in profiles/desktop.yml; add `- place-kie` to your profile to turn it on (docs/PROVIDERS-AND-MODELS.md). */
   'place-kie': () => import('./plugins-builtin/place-kie.js'),
+  /** Installable: not in profiles/desktop.yml; add `- place-runpod` to your profile to run our ComfyUI workflows on your RunPod endpoint (docs/PROVIDERS-AND-MODELS.md). */
+  'place-runpod': () => import('./plugins-builtin/place-runpod.js'),
   'place-direct': () => import('./plugins-builtin/place-direct.js'),
   'place-sample': () => import('./plugins-builtin/place-sample.js'),
   ...Object.fromEntries((['studio-video', 'studio-image', 'studio-audio', 'studio-3d', 'studio-edit', 'apps-gallery'] as const)
@@ -59,10 +61,15 @@ export async function boot(profile: Profile = readProfile(), o: { legacy?: boole
   await mount(ctx, KeysService); await mount(ctx, HttpService); await mount(ctx, PlacesService);
   await mount(ctx, ToolsService); await mount(ctx, WorkflowsService);
   await mount(ctx, SpendService); await mount(ctx, PricingService); await mount(ctx, JobsService); // the money path (plan Phase 4): the guard is never a profile plugin
-  for (const id of profile.plugins) if (id !== 'legacy' && !FEATURE_IDS.includes(id)) await mount(ctx, (await BUILTIN_PLUGINS[id]()).default);
+  // The Plugins page's choices sit on top of the profile (kernel/switchboard.ts): what you turned off doesn't start, what you installed does.
+  const SB = await import('./kernel/switchboard.js'); const { setKv } = await import('./db.js');
+  SB.initSwitchboard({ ctx, profile, loaders: BUILTIN_PLUGINS, kv: { get: getKv, set: setKv } });
+  const plan = SB.bootPlan(profile, { features: FEATURE_IDS });
+  for (const id of plan.before) await SB.start(id); // a plugin that throws is marked failed (Plugins page), the app keeps going
   if (o.legacy === false) return ctx; // no server: no routes to add, nothing listens
+  (await import('./routesPlugins.js')).registerPluginRoutes(ctx.http.server); // GET /api/plugins, /api/ui: the kernel's, always on
   await mount(ctx, (await BUILTIN_PLUGINS.legacy()).default);
-  for (const id of profile.plugins) if (FEATURE_IDS.includes(id)) await mount(ctx, (await BUILTIN_PLUGINS[id]()).default); // the route groups: after the core, before listen
+  for (const id of plan.after) await SB.start(id); // the route groups: after the core, before listen
   await (await import('./legacy.js')).listen();
   return ctx;
 }

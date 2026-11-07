@@ -5,7 +5,7 @@
  *
  * Off (left out of the profile, or disposed): its routes answer exactly like an unknown route (404 {errorType: 'not_found'} under /api/, the
  * same as a path that never existed), and any hook it added does nothing. The other features and the rest of the app keep working. Exceptions,
- * kept as they were promised: workflow-folders (its own plugin) keeps /api/plugins and the workflow import routes answering that folders are
+ * kept as they were promised: workflow-folders (its own plugin) keeps /api/workflow-folders and the workflow import routes answering that folders are
  * off; web-static off makes / and deep links a plain 404 'Not found' (no page).
  *
  * They mount after `legacy` (the server core: security, CORS, uploads, /files/, the job routes) and before the server listens (boot.ts), in the

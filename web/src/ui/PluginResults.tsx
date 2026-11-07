@@ -37,7 +37,7 @@ export default function PluginResults({ tool, mv = 'canvas', setMv }: { tool: To
           <span className="plr-empty-ic" aria-hidden><ToolIconFor id={tool.id} ui={tool.ui} size={26} /></span>
           <b>Your results will show here</b>
           <p>Add {takes}, then press Generate. It runs on your own ComfyUI; anywhere else you get a sample and the exact workflow a real run would send.</p>
-          <span className="plr-empty-a">{onStart && <button type="button" className="btn btn-sm m-only" onClick={onStart}>Start</button>}<Link to="/plugins" className="plr-link">Your workflows</Link></span>
+          <span className="plr-empty-a">{onStart && <button type="button" className="btn btn-sm m-only" onClick={onStart}>Start</button>}<Link to="/workflows/yours" className="plr-link">Your workflows</Link></span>
         </div>
       : <div className="plr-grid" data-testid="plugin-results-grid">{jobs.map(j => active(j) ? <GenTile key={j.id} job={j} className="plr-cell" />
           : <Link key={j.id} to={`/jobs/${j.id}`} className={`plr-cell plr-${j.status}`} data-testid={`plugin-result-${j.id}`} aria-label={`${tool.name}: ${STATE_LABELS[j.state ?? j.status] ?? j.status}`}>

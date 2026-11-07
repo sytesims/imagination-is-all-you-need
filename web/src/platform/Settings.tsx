@@ -16,7 +16,7 @@ import { useOwnAccounts } from '../shared/billing';
 import { Link } from './router';
 import GpuModels from './GpuModels';
 import { REPO_URL } from '../shared/brand';
-import { UserIcon, DocsIcon } from '../ui/Icons';
+import { UserIcon, DocsIcon, PuzzleIcon } from '../ui/Icons';
 import './settings.css';
 import { useProfile, nameOf, UserAvatar } from '../shared/profile';
 /**
@@ -85,6 +85,7 @@ export default function Settings() {
           <span className="group-label st-group-l" id={`st-g-${gi}`}>{g}</span>
           {ts.map(t => <a key={t} href={`#${t}`} className="st-tab" aria-current={tab === t ? 'page' : undefined} data-testid={`settings-tab-${t}`} onClick={pick(t)}>{ICON[t]}<span>{TABS.find(([x]) => x === t)![1]}</span></a>)}
           {gi === 0 && <Link to="/spend" className="st-tab st-tab-out" data-testid="settings-tab-spend"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M4 16V9M10 16V4M16 16v-5" /></svg><span>{own === false ? 'Usage' : 'Spend'}</span><i aria-hidden>›</i></Link>}
+          {gi === GROUPS.length - 1 && <Link to="/plugins" className="st-tab st-tab-out" data-testid="settings-tab-plugins"><PuzzleIcon size={16} strokeWidth={1.6} /><span>Plugins</span><i aria-hidden>›</i></Link>/* step 7: Plugins opens its own page, like Spend */}
         </div>)}
       </nav>
       </div>

@@ -19,6 +19,8 @@ npx tsx test/bh10.e2e.ts
 
 You see its `ok …` lines and `ALL OK …` at the end. The exit code is 0 when it passed.
 
+Tests run with the full edition: `npm test` sets `OPENHIGGSFIELD_PLUGIN_CHOICES=ignore`, so every plugin in `server/profiles/desktop.yml` is on, including the ones the Plugins page starts off, and no saved on/off choice applies. To run one file the same way: `OPENHIGGSFIELD_PLUGIN_CHOICES=ignore npx tsx test/<file>.ts` (`plugins-ui.e2e.ts` tests the choices themselves and clears it).
+
 ## Run the tests your change touches
 
 ```bash

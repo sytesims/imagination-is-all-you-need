@@ -2,6 +2,7 @@
 # The places, tools, workflows, spend (the money guard), pricing and jobs services are part of the kernel and always on. `legacy` (the server core)
 # starts after the plugins above it; the feature plugins below it (route groups) mount after it, then the server starts listening.
 name: desktop
+# Plugins page: your on/off choices are saved in the app and applied on top of this list (kernel/switchboard.ts).
 plugins:
   - comfy-featured    # official Comfy templates as models (Gemini Omni, FLUX 3 Max, Kling 4.0, Topaz Bloom 2, Wan Animate 2); first, before anything reads the model tables
   - place-comfy-local   # Your computer (your ComfyUI, built-in tools)
@@ -11,6 +12,7 @@ plugins:
   - place-replicate     # Replicate (your Replicate token)
   - place-sunra         # Sunra (your Sunra key; its models stay hidden until the key is set)
   # place-kie is installable and off here: add a line `- place-kie` above legacy to use kie.ai (a reseller; docs/PROVIDERS-AND-MODELS.md)
+  # place-runpod is installable and off here: add a line `- place-runpod` above legacy to run our image workflows on your RunPod endpoint (docs/PROVIDERS-AND-MODELS.md)
   - place-direct        # the labs' own APIs: BFL, Google, OpenAI, BytePlus, MiniMax, LTX (their keys)
   - place-sample        # free samples, and samples on the mock backend
   - studio-video      # the Video tab: create, extend, Camera Moves, Swap & Motion, Re-shoot
@@ -46,3 +48,10 @@ plugins:
   - open-models       # Open models only (setting + quote check)
   - openapi           # /api/openapi.json and /api/docs
   - web-static        # the web build at / (npm start)
+# In this edition but off until you switch them on in Plugins (rarely needed).
+off:
+  - canvas-demo
+  - comfy-deploy
+  - webhooks
+  - billing-team-mode
+  - hosted-grant

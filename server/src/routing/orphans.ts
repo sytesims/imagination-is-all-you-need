@@ -29,7 +29,7 @@ export async function cancelOrphan(j: Job, why = 'The server restarted while thi
   const a = j.routeAttempts?.[j.routeAttempts.length - 1];
   if (a && a.status === 'running') { a.status = 'failed'; a.endedAt = Date.now(); a.error = why; }
   const h = j.remote; j.remote = null;
-  if (h && (h.kind === 'fal' || h.kind === 'replicate' || h.kind === 'sunra' || h.kind === 'kie' || h.kind === 'direct')) { // fal / Replicate: their own cancel call (best effort); a lab API has none
+  if (h && (h.kind === 'fal' || h.kind === 'replicate' || h.kind === 'sunra' || h.kind === 'kie' || h.kind === 'runpod' || h.kind === 'direct')) { // fal / Replicate: their own cancel call (best effort); a lab API has none
     let ok: boolean | null = null; try { ok = testCancel ? await testCancel(h.id) : await (await import('./reattach.js')).cancelRemote(h); } catch { ok = false; }
     if (a) (a as any).remoteCanceled = ok === true; (j as any).orphanCanceled = { requestId: h.id, kind: h.kind, ok: ok === true, at: Date.now() }; try { persistJob(j); } catch { /* best effort */ }
     console.log(`[openhiggsfield] orphan ${j.id}: ${h.kind} request ${ok === true ? 'cancelled' : ok === null ? 'has no cancel call' : 'cancel not confirmed'}`); return ok === true; }

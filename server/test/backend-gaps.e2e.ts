@@ -112,10 +112,10 @@ try {
     for (let i = 0; i < 20 && !got.length; i++) await new Promise((r) => setTimeout(r, 500));
     assert.equal(got[0].id, `${j.body.id}:done`); assert.equal(got[0].body.status, 'done'); const ws = await get(`/api/jobs/${j.body.id}/webhook`); assert.deepEqual(ws.delivered, ['done']); rx.close();
     console.log('ok webhookUrl on submit → delivered once (X-Webhook-Id', got[0].id + ')');
-    const pl = await get('/api/plugins'); const pid = pl[0].id; const tid = pl[0].toolId; assert.equal(pl[0].enabled, true);
-    const off = await (await fetch(`${B}/api/plugins/${pid}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: false }) })).json(); assert.equal(off.enabled, false);
-    assert.ok(!(await get('/api/tools')).some((t: any) => t.id === tid)); assert.equal((await post(tid, { ...R })).status, 404); assert.equal((await get('/api/plugins'))[0].enabled, false);
-    await fetch(`${B}/api/plugins/${pid}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: true }) }); assert.ok((await get('/api/tools')).some((t: any) => t.id === tid));
+    const pl = await get('/api/workflow-folders'); const pid = pl[0].id; const tid = pl[0].toolId; assert.equal(pl[0].enabled, true);
+    const off = await (await fetch(`${B}/api/workflow-folders/${pid}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: false }) })).json(); assert.equal(off.enabled, false);
+    assert.ok(!(await get('/api/tools')).some((t: any) => t.id === tid)); assert.equal((await post(tid, { ...R })).status, 404); assert.equal((await get('/api/workflow-folders'))[0].enabled, false);
+    await fetch(`${B}/api/workflow-folders/${pid}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: true }) }); assert.ok((await get('/api/tools')).some((t: any) => t.id === tid));
     console.log(`ok plugin ${pid} off → tool hidden + submit 404, on → back`); }
   // Design Planner queue: seconds on quote + submit (one resolver), share page (no report form), model releasedAt/badges, zero-filled usage
   { const q = await get('/api/tools/object-swap/price?seconds=5&resolution=720p&provider=router-kling-edit'); assert.ok(q.credits > 0, JSON.stringify(q)); assert.equal(q.credits, Math.ceil(q.exactUsd * 100 - 1e-9), 'rounded up from the exact price');

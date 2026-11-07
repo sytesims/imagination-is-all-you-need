@@ -24,6 +24,7 @@ import { startAgentBridge, nameOf as cardNameOf, type FeedEntry, type Proposal, 
 import { handAtom, handOf, fx, setAgentName, reducedMotion } from './agentHand';
 import { flowById, flowInfo } from '../shared/genFlows';
 import { LOCAL_FREE } from '../../../server/src/shared/modelIds';
+import { usePluginOn } from '../shared/plugins';
 import { repricePairs, hiddenByReprice, repriceRows, isPriceStop } from './proposalMerge';
 import { usdPrice, fmtUsd } from '../shared/billing';
 import { FlowIcon } from './GenCardShape';
@@ -322,6 +323,7 @@ type AgentPresence = { connected: boolean; listening?: boolean; /** a canvas_* c
 export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoard, ask = '' }: { /** words to send once (Explore's Ask an agent, /canvas?ask=) */ ask?: string; boardId: string; open: boolean; onClose: () => void; onBusy?: (busy: boolean) => void;
   /** the board list changed (made, renamed, deleted) */ onBoards?: () => void; /** your agent wants this board shown */ onOpenBoard?: (boardId: string, name: string, by: string) => void }) {
   const board = useBoardReady(); useCatalog(); const toast = useToast();
+  const demoOn = usePluginOn('canvas-demo'); /* the built-in demo agent is a plugin (Plugins page): off = no starters, typed words need your own agent */
   const [config, setConfig] = useState<any>(null);
   const [agent, setAgent] = useState<AgentPresence>({ connected: false, listening: false, lastAgentAt: null, agentName: null, sessions: [] });
   const [connection, setConnection] = useState(true);
@@ -366,7 +368,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   const agentWorking = !agentListening && !!agent.working; /* building over MCP with no wait loop: "working on this board", not "isn't reading it" */
   const state = dockState({ connected: agentConnected || agentWorking, listening: agentListening, working: agentWorking });
   const agentLabel = agent.agentName || 'Your AI';
-  const connectedLine = dockStatusLine(state, agentLabel, { sessions: sessions.length, via: agent.listenVia ?? null });
+  const connectedLine = state === 'off' && !demoOn ? 'No agent connected' : dockStatusLine(state, agentLabel, { sessions: sessions.length, via: agent.listenVia ?? null });
   const sessionNames = sessions.map((x) => x.name).join(', ');
   const onBoardsRef = useRef(onBoards); onBoardsRef.current = onBoards; const onOpenRef = useRef(onOpenBoard); onOpenRef.current = onOpenBoard;
   void tick;
@@ -469,6 +471,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
       const ids = [...selected, ...pictures.map((p) => p.card_id).filter((id) => !selected.includes(id as any))].slice(0, 50);
       const selection = agentConnected && board ? ids.map((id) => { const s: any = board.getNode(id as any); return { id, name: cardNameOf(board, id as any) ?? null, type: s?.type ?? (board.getLink(id) ? 'arrow' : null), workflow: s?.props?.flow ?? null, status: s?.props?.status ?? null }; }) : [];
       /* no agent reads the dock: the pictures are on the board, and only typed words go on to the demo */
+      if (route !== 'messages' && !demoOn && body) throw new Error('The Canvas demo is off. Connect your AI assistant, or turn the demo on in Plugins.');
       if (!body && (!agentConnected || route !== 'messages')) { toast(pictures.length === 1 ? 'Added the picture to the board.' : `Added ${pictures.length} pictures to the board.`); return; }
       const r = route === 'messages'
         ? await fetch(`${base}/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: body, ...(confirmId ? { confirm_id: confirmId } : {}), ...(selection.length ? { selection } : {}), ...(agentConnected && pictures.length ? { pictures } : {}) }) })
@@ -602,8 +605,8 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
             <h2>What would you like to make?</h2>
             {agentConnected ? <p data-testid="agent-hello-connected">{agentListening ? `${agentLabel} is listening.` : `${agentLabel} is connected.`} Tell it what to make; select cards first to point at them. Every paid step waits for your OK.</p>
               : SAMPLE_SITE ? <SampleSiteNote testId="agent-sample-note">{AGENT_NOTE}</SampleSiteNote>
-              : <><p>Pick a demo to watch the board build, or connect Claude to talk about your board. Every paid step waits for your OK.</p>
-                <Starters onPick={pickStarter} disabled={sending || demo.running} />
+              : <><p>{demoOn ? 'Pick a demo to watch the board build, or connect Claude to talk about your board.' : 'Connect Claude to talk about your board.'} Every paid step waits for your OK.</p>
+                {demoOn && <Starters onPick={pickStarter} disabled={sending || demo.running} />}
                 <button type="button" className="ap-connect" data-testid="agent-connect-offer" onClick={() => setSheet(true)}><ApiPlugIcon size={15} /><span><b>Connect your agent</b><small>Claude Code, Claude Desktop or any MCP client becomes the brain here</small></span></button></>}
           </div> : shown.map((e) => {
             if (e.type === 'message') {
@@ -629,7 +632,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
         <form className="ap-compose" onSubmit={(ev) => { ev.preventDefault(); void send(text); }}>
           {state === 'connected' && <ListenHint boardId={boardId} name={agentLabel} onSetup={() => setSheet(true)} />}
           {state === 'working' && <p className="ap-working" data-testid="agent-working-note" aria-live="polite"><i aria-hidden /><span><b>{workingLine(agentLabel)}.</b> What you type waits until it listens.</span></p>}
-          {!SAMPLE_SITE && !empty && !demo.running && !agentConnected && <div className="ap-chips" aria-label="Starters">{(chipsOpen ? STARTERS : STARTERS.slice(0, CHIPS_SHOWN)).map((s) => <button key={s.id} type="button" className="ap-chip" disabled={sending} onClick={() => pickStarter(s.id)} data-testid={`agent-chip-${s.id}`}>{s.label}</button>)}
+          {!SAMPLE_SITE && demoOn && !empty && !demo.running && !agentConnected && <div className="ap-chips" aria-label="Starters">{(chipsOpen ? STARTERS : STARTERS.slice(0, CHIPS_SHOWN)).map((s) => <button key={s.id} type="button" className="ap-chip" disabled={sending} onClick={() => pickStarter(s.id)} data-testid={`agent-chip-${s.id}`}>{s.label}</button>)}
             {!chipsOpen && STARTERS.length > CHIPS_SHOWN && <button type="button" className="ap-chip ap-chip-more" onClick={() => setChipsOpen(true)} aria-expanded={false} data-testid="agent-chips-more">{STARTERS.length - CHIPS_SHOWN} more</button>}</div>}
           {pics.length > 0 && <div className="ap-atts" role="list" aria-label="Pictures to send" data-testid="agent-attachments">{pics.map((x) => <span key={x.key} role="listitem" className="ap-att" title={x.file.name}>
             <img src={x.preview} alt={pictureName(x.file.name)} draggable={false} /><button type="button" className="ap-att-x" onClick={() => dropPic(x.key)} aria-label={`Remove ${pictureName(x.file.name)}`} data-testid="agent-attachment-remove"><CloseIcon size={11} /></button></span>)}</div>}
@@ -638,13 +641,13 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
             {!SAMPLE_SITE && <button type="button" className="ap-attach" onClick={() => fileIn.current?.click()} disabled={sending || pics.length >= MAX_DOCK_PICTURES} aria-label="Add pictures" {...tip(pics.length >= MAX_DOCK_PICTURES ? `Up to ${MAX_DOCK_PICTURES} pictures per message` : 'Add pictures')} data-testid="agent-attach"><PaperclipIcon size={16} /></button>}
             <textarea ref={ta} value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={4000} disabled={SAMPLE_SITE}
               onPaste={(e) => { const files = [...e.clipboardData.files]; if (!files.length) return; e.preventDefault(); e.stopPropagation(); /* the board never also gets it */ addPics(files); }}
-              placeholder={confirm ? 'What should change? Or press Looks good.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : SAMPLE_SITE ? 'The agent runs in the app on your computer' : 'Pick a demo, or connect Claude to chat'} aria-label="Message the agent" data-testid="agent-reply"
+              placeholder={confirm ? 'What should change? Or press Looks good.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : SAMPLE_SITE ? 'The agent runs in the app on your computer' : (demoOn ? 'Pick a demo, or connect Claude to chat' : 'Connect Claude to chat')} aria-label="Message the agent" data-testid="agent-reply"
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(text); } }} />
             {demo.running && !agentConnected && !text.trim() && !pics.length
               ? <button type="button" className="ap-send stop" onClick={() => void stop()} aria-label="Stop the agent" {...tip('Stop. Cards already on the board stay')} data-testid="agent-stop"><StopIcon size={15} /></button>
               : <button type="submit" className="ap-send" disabled={(!text.trim() && !pics.length) || sending} aria-label="Send" data-testid="agent-send"><SendIcon size={16} /></button>}
           </div>
-          <p className="ap-hint">{agentListening ? `Goes straight to ${agentLabel}. Canvas proposals wait for your Go.` : agentConnected ? `Waits here until ${agentLabel} reads it. Canvas proposals wait for your Go.` : SAMPLE_SITE ? 'Add cards by hand and press Go for a sample.' : 'Demos build drafts on this board. Every run waits for your Go.'}</p>
+          <p className="ap-hint">{agentListening ? `Goes straight to ${agentLabel}. Canvas proposals wait for your Go.` : agentConnected ? `Waits here until ${agentLabel} reads it. Canvas proposals wait for your Go.` : SAMPLE_SITE ? 'Add cards by hand and press Go for a sample.' : (demoOn ? 'Demos build drafts on this board. Every run waits for your Go.' : 'Every run waits for your Go.')}</p>
         </form>
       </div>
       {dropOver && <div className="ap-dropzone" data-testid="agent-dropzone" aria-hidden><span><PaperclipIcon size={18} />Drop pictures to add them</span></div>}

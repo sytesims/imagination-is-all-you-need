@@ -16,8 +16,8 @@ Object.assign(process.env, { OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_DATA
 for (const k of Object.keys(process.env)) if (/(_KEY|_TOKEN)$|^COMFY_(BASE|DEPLOY|RUNNER)_URL$/.test(k) && k !== 'OPENHIGGSFIELD_MOCK_KEYS') delete process.env[k];
 const ALL = ['place-comfy-local', 'place-comfy-cloud', 'place-comfy-router', 'place-fal', 'place-replicate', 'place-sunra', 'place-direct', 'place-sample'];
 const TOOLS = ['studio-video', 'studio-image', 'studio-audio', 'studio-3d', 'studio-edit', 'apps-gallery', 'workflow-folders', 'spend-cap', 'agent-budgets', 'billing-team-mode', 'hosted-grant', 'eta-learning', 'webhooks']; // the studios and workflow folders (Phase 3) + the money plugins (Phase 4)
-/** Installable places: shipped, not in the desktop profile (place-kie). */
-const INSTALLABLE = ['place-kie'];
+/** Installable places: shipped, not in the desktop profile (place-kie, place-runpod). */
+const INSTALLABLE = ['place-kie', 'place-runpod'];
 const KIND: Record<string, string> = { 'place-comfy-local': 'local', 'place-comfy-cloud': 'comfy-cloud', 'place-comfy-router': 'comfy-router', 'place-fal': 'fal', 'place-replicate': 'replicate', 'place-direct': 'direct' };
 
 const { readProfile } = await import('../src/kernel/profile.js');
@@ -34,7 +34,7 @@ const routes = [...seen.values()]; const decl: Record<string, string[]> = {};
 for (const id of [...ALL, ...INSTALLABLE]) decl[id] = (await BUILTIN_PLUGINS[id]()).default.keys as string[];
 for (const r of routes) {
   const runner = places.runnerOf(r); const names = [r.envKey, ...(r.envAliases ?? [])].filter(Boolean) as string[];
-  if (!runner && r.kind === 'kie') { for (const k of names) assert.ok(decl['place-kie'].includes(k), `${r.routeId}: ${k} is declared by place-kie`); continue; } // installable: off without its plugin
+  if (!runner && (r.kind === 'kie' || r.kind === 'runpod')) { const pl = PLACE_PLUGIN[r.kind]; for (const k of names) assert.ok(decl[pl].includes(k), `${r.routeId}: ${k} is declared by ${pl}`); continue; } // installable: off without its plugin
   if (!runner) { assert.equal(r.kind, 'direct', `${r.routeId}: only 'direct' routes without a lab connection run outside a place`); assert.ok(!r.direct); continue; }
   for (const k of names) assert.ok(decl[PLACE_PLUGIN[r.kind as keyof typeof PLACE_PLUGIN]].includes(k), `${r.routeId}: ${k} is declared by ${PLACE_PLUGIN[r.kind as keyof typeof PLACE_PLUGIN]}`);
 }
