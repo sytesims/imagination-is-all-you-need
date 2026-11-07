@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Popover } from '../../shared/Popover';
 import { Link, navigate } from '../../platform/router';
-import { usePluginList, refreshPluginList, setSafeMode, needsYou, connectionsHref, type PluginRow } from '../../shared/plugins';
+import { usePluginList, refreshPluginList, setSafeMode, needsYou, isProblem, connectionsHref, type PluginRow } from '../../shared/plugins';
 import { useToast } from '../../shared/Toast';
 import { tip } from '../../shared/Tooltip';
 import { PuzzleIcon, ShieldIcon, LaptopIcon, LockIcon, ChevronRightIcon, ChevronDownIcon, PlusIcon, KeyIcon, DownloadIcon } from '../Icons';
@@ -22,14 +22,14 @@ const GUARD = <><b>Spend guard</b> is always on: every paid run shows its price 
 export function PluginsButton({ path }: { path: string }) {
   const btn = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false);
   const { data } = usePluginList();
-  const dot = !!data?.plugins.some(needsYou);
+  const dot = !!data?.plugins.some(isProblem); /* only real problems (owner, 2026-11-07): a missing key is not news */
   const on = path === '/plugins' || path.startsWith('/plugins/');
   return <>
     {/* safe mode shows as an amber puzzle icon (the button keeps its size, so Assets never moves) */}
     <button ref={btn} type="button" className={`tn-btn tn-assets tn-plugins${on ? ' on' : ''}${open ? ' open' : ''}${data?.safeMode ? ' safe' : ''}`} aria-haspopup="dialog" aria-expanded={open} data-testid="nav-plugins" onClick={() => setOpen((o) => !o)}
       {...tip(data?.safeMode ? 'Plugins · safe mode is on' : 'Plugins')}>
       <PuzzleIcon size={15} /><span className="tn-assets-l">Plugins{data?.safeMode && <span className="sr-only"> (safe mode on)</span>}</span>
-      {dot && <b className="tn-dot" aria-label="Something needs you" />}
+      {dot && <b className="tn-dot" aria-label="A plugin has a problem" />}
     </button>
     <Popover open={open} anchor={btn} onClose={() => setOpen(false)} label="Plugins" placement="bottom" align="end" width={404} className="bp pgx-pop" testId="plugins-menu">
       {data ? <QuickMenu close={() => setOpen(false)} /> : <p className="pgx-qm-empty">Loading plugins…</p>}
@@ -57,7 +57,7 @@ function QuickMenu({ close }: { close: () => void }) {
   const need = pick(groups.need), off = pick(groups.off), ready = pick(groups.ready);
   /* one right-hand control for the row's current state, whatever group it sits in */
   const right = (p: PluginRow) => p.state === 'not-installed' ? <button type="button" className="btn btn-sm btn-ghost pgx-install" disabled={busy === p.id} onClick={() => install(p)} data-testid={`plugins-install-${p.id}`}><DownloadIcon size={13} />Install</button>
-    : p.state === 'needs-key' && p.key ? <Link to={connectionsHref(p.key.connection)} className="pgx-key-link" onClick={close} data-testid={`plugins-add-key-${p.id}`}><KeyIcon size={13} />{p.key.set ? 'Add Endpoint ID' : `Add ${p.key.label}`}<ChevronRightIcon size={12} /></Link>
+    : p.state === 'needs-key' && p.key ? <Link to={connectionsHref(p.key.connection)} className="pgx-key-link" onClick={close} data-testid={`plugins-add-key-${p.id}`}><KeyIcon size={13} />{p.key.rejected ? `Check ${p.key.label}` : p.key.set ? 'Add Endpoint ID' : `Add ${p.key.label}`}<ChevronRightIcon size={12} /></Link>
     : p.state === 'failed' ? <button type="button" className="btn btn-sm btn-ghost" disabled={busy === p.id} onClick={() => toggle(p, false)}>Turn off</button>
     : <PluginSwitch p={p} busy={busy === p.id} onToggle={(v) => toggle(p, v)} />;
   const sub = (p: PluginRow) => (p.state === 'needs-key' || p.state === 'failed' ? p.reason : p.description);

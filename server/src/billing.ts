@@ -378,6 +378,8 @@ async function account(id: string, refresh: boolean): Promise<AccountView> {
     v = { ...base, connected: true, fetchedAt: new Date().toISOString(), source: 'unavailable', note: why, keyCheck }; }
   cache.set(id, { at: Date.now(), v }); return v;
 }
+/** Did the provider refuse this key on the last balance read? Cached reads only: never calls the provider (Plugins page: the orange dot). */
+export const keyRejected = (id: string): boolean => cache.get(id)?.v.keyCheck === 'rejected';
 export const accounts = (refresh = false) => Promise.all(PROVIDER_BILLING.filter((p) => p.id !== 'local').map((p) => account(p.id, refresh)));
 
 // ---------- HTTP ----------

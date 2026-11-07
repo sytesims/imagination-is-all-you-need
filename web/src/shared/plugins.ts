@@ -40,8 +40,10 @@ export function usePluginList(): { data: PluginsAnswer | null; error: boolean; r
   return { data, error, reload: refreshAll };
 }
 
-/** Something needs you: a plugin that failed, or one that is on and waits for its key (the orange dot). */
+/** Something needs you: a plugin that failed, or one that is on and waits for its key (the quick menu's "Needs you"). */
 export const needsYou = (p: PluginRow) => p.state === 'failed' || p.state === 'needs-key';
+/** A real problem (the orange dot): a plugin that didn't start, or a key the provider refused. A place with no key yet is not one. */
+export const isProblem = (p: PluginRow) => p.state === 'failed' || !!p.key?.rejected;
 
 type Answer = { ok?: boolean; restartNeeded?: string[]; code?: string; error?: string; alsoOff?: { id: string; name: string; on: boolean }[]; alsoOn?: { id: string; name: string; on: boolean }[] };
 async function post(url: string, body: unknown, method = 'POST'): Promise<{ status: number; body: Answer }> {

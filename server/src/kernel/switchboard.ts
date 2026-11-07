@@ -140,12 +140,13 @@ function editions() {
 }
 
 /** The key a plugin runs with: is it set? (RunPod also needs its Endpoint ID.) */
-async function keyState(id: string): Promise<{ set: boolean; extra?: string }> {
+async function keyState(id: string, connection: string): Promise<{ set: boolean; rejected: boolean; extra?: string }> {
   let vars: string[] = [];
   try { const k = (await loaders[id]?.())?.default.keys; vars = Array.isArray(k) ? [...k] : []; } catch { /* unknown: treat as not set */ }
   const set = vars.length > 0 && keyConfigured(vars[0], vars.slice(1));
-  if (id === 'place-runpod') { const { runpodEndpoint } = await import('../routing/runpodRoutes.js'); if (!runpodEndpoint()) return { set, extra: 'Endpoint ID' }; }
-  return { set };
+  const rejected = set && (await import('../billing.js')).keyRejected(connection); // the last balance read (cached; never a new call)
+  if (id === 'place-runpod') { const { runpodEndpoint } = await import('../routing/runpodRoutes.js'); if (!runpodEndpoint()) return { set, rejected, extra: 'Endpoint ID' }; }
+  return { set, rejected };
 }
 
 async function row(id: string, c: Choices): Promise<PluginRow> {
@@ -155,8 +156,8 @@ async function row(id: string, c: Choices): Promise<PluginRow> {
     canSpend: core || !!e?.canSpend, tag: e?.tag ?? null, settings: e?.settings ?? [], licence: o ? 'See its page' : 'AGPL-3.0-or-later' };
   if (core) return { ...base, state: 'on', reason: 'Always on', wanted: true, installed: true, restartNeeded: false, key: null };
   const want = wanted(id, c); const run = running(id); const installed = !e?.installable || c.on[id] !== undefined || profile.plugins.includes(id);
-  const ks = e?.key ? await keyState(id) : null;
-  const key = e?.key && ks ? { ...e.key, set: ks.set } : null;
+  const ks = e?.key ? await keyState(id, e.key.connection) : null;
+  const key = e?.key && ks ? { ...e.key, set: ks.set, ...(ks.rejected ? { rejected: true } : {}) } : null;
   const missing = needsMissing(id, c).map((n) => catalogEntry(n)?.name ?? n);
   let state: PluginRow['state'] = 'off'; let reason = 'Off'; let restartNeeded = false;
   if (failed.has(id) && want) { state = 'failed'; reason = failed.get(id)!; }
@@ -164,6 +165,7 @@ async function row(id: string, c: Choices): Promise<PluginRow> {
   else if (want && c.safeMode && !isOurs(id) && !choicesIgnored()) { state = 'paused'; reason = 'Paused by safe mode'; }
   else if (want && missing.length) { state = 'off'; reason = `Needs ${missing.join(', ')}`; }
   else if (want !== run) { restartNeeded = true; state = run ? 'on' : 'off'; reason = want ? 'Turns on after a restart' : 'Turns off after a restart'; }
+  else if (run && key?.rejected) { state = 'needs-key'; reason = `Your ${key.label} wasn’t accepted. Check it in Connections`; }
   else if (run && key && (!key.set || ks?.extra)) {
     state = 'needs-key';
     reason = !key.set && ks?.extra ? `Add your ${key.label} and ${ks.extra} to start using it` : !key.set ? 'Add a key to start using it' : `Add your ${ks!.extra} to start using it`;

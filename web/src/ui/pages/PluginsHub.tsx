@@ -47,7 +47,7 @@ export function PluginsHub() {
         {hits.length ? <div className="pgx-list">{hits.map(row)}</div> : <p className="pgx-note">No plugin matches “{q.trim()}”.</p>}
         <p className="pgx-note">Not here? <button type="button" className="pgx-link-btn" onClick={() => { setQ(''); requestAnimationFrame(() => document.getElementById('pgx-places')?.scrollIntoView({ block: 'start' })); }}>Browse plugins to install</button></p></section>
       : data && <>
-        <section className="pgx-sec"><div className="pgx-sech"><h2>{MADE_BY_US}</h2><small>{ours.length}</small></div>
+        <section className="pgx-sec"><div className="pgx-sech"><h2>{MADE_BY_US}</h2></div>
           {PLUGIN_GROUPS.map((g) => { const rows = ours.filter((p) => p.group === g.id); return rows.length ? <div key={g.id} id={`pgx-${g.id}`} className="pgx-grp"><h3 className="pgx-gl">{g.label}</h3><div className="pgx-list">{rows.map(row)}</div></div> : null; })}
         </section>
         <section className="pgx-sec" id="pgx-community"><div className="pgx-sech"><h2>Community</h2></div>
@@ -80,7 +80,7 @@ function Row({ p, q, sel, busy, onPick, onToggle, onInstall }: { p: PluginRow; q
   let right: ReactNode;
   if (p.state === 'not-installed') right = <button type="button" className="btn btn-sm btn-ghost pgx-install" disabled={busy} onClick={(e) => { e.stopPropagation(); onInstall(); }} data-testid={`plugin-install-${p.id}`}><DownloadIcon size={13} />Install</button>;
   else if (err) right = <StateTag p={p} />;
-  else right = <>{p.state === 'needs-key' && p.key ? <Link to={connectionsHref(p.key.connection)} className="pgx-key-link" onClick={(e) => e.stopPropagation()}><KeyIcon size={13} />{p.key.set ? 'Add Endpoint ID' : `Add ${p.key.label}`}<ChevronRightIcon size={12} /></Link>
+  else right = <>{p.state === 'needs-key' && p.key ? <Link to={connectionsHref(p.key.connection)} className="pgx-key-link" onClick={(e) => e.stopPropagation()}><KeyIcon size={13} />{p.key.rejected ? `Check ${p.key.label}` : p.key.set ? 'Add Endpoint ID' : `Add ${p.key.label}`}<ChevronRightIcon size={12} /></Link>
     : (p.core || p.state !== 'on' || p.restartNeeded) && <StateTag p={p} />}{!p.core && <PluginSwitch p={p} busy={busy} onToggle={onToggle} />}</>;
   return <div className={`pgx-prow${sel ? ' sel' : ''}${err ? ' err' : ''}`} role="button" tabIndex={0} aria-pressed={sel} data-testid={`plugin-row-${p.id}`} onClick={onPick} onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); onPick(); } }}>
     <PluginTile id={p.id} />
@@ -106,7 +106,7 @@ function Details({ p, busy, nameOf, onClose, onToggle, onInstall }: { p: PluginR
     {/* the switch first: the notes below it come and go as you switch, and must never move it */}
     <div className="pgx-kvs">{p.core ? <KV k="Turned on">Always on</KV> : p.state === 'not-installed' ? <KV k="Installed"><button type="button" className="btn btn-sm btn-ghost pgx-install" disabled={busy} onClick={onInstall}><DownloadIcon size={13} />Install</button></KV>
       : <div className="pgx-kv"><span id="pgx-det-on">Turned on</span><PluginSwitch p={p} busy={busy} onToggle={onToggle} /></div>}</div>
-    {p.state === 'needs-key' && p.key && <div className="pgx-call"><span className="pgx-rt"><b>{p.key.set ? 'Add its Endpoint ID to use it' : `Add your ${p.key.label} to use it`}</b><small>Until then its models show as “needs a key” and won’t run. Keys stay on this computer.</small></span>
+    {p.state === 'needs-key' && p.key && <div className="pgx-call"><span className="pgx-rt"><b>{p.key.rejected ? `Your ${p.key.label} wasn’t accepted` : p.key.set ? 'Add its Endpoint ID to use it' : `Add your ${p.key.label} to use it`}</b><small>Until then its models show as “needs a key” and won’t run. Keys stay on this computer.</small></span>
       <button type="button" className="btn btn-sm pgx-pri" onClick={() => navigate(connectionsHref(p.key!.connection))}>Open Connections</button></div>}
     {p.state === 'failed' && <div className="pgx-call pgx-call-err"><span className="pgx-rt"><b>It didn’t start</b><small>{p.reason}</small></span><button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={() => onToggle(false)}>Turn off</button></div>}
     {p.core && <div className="pgx-call" data-testid="plugin-core-note"><span className="pgx-rt"><b>Always on</b><small>It is part of the app and can’t be turned off: every paid run shows its price and waits for your OK.</small></span></div>}

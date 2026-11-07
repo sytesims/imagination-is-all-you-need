@@ -49,7 +49,7 @@ export const PLUGIN_CATALOG: CatalogEntry[] = [
   { id: 'studio-video', name: 'Video', group: 'studios', description: 'Make clips from words or pictures' },
   { id: 'studio-audio', name: 'Audio', group: 'studios', description: 'Music, voices and sound effects' },
   { id: 'studio-3d', name: '3D', group: 'studios', description: 'Turn a picture into a 3D model' },
-  { id: 'studio-edit', name: 'Edit', group: 'studios', description: 'Trim, join and touch up results' },
+  { id: 'studio-edit', name: 'Edit', group: 'studios', description: 'Reframe, clean up and polish your videos' },
   { id: 'apps-gallery', name: 'Apps gallery', group: 'studios', description: 'Ready-made apps where we write the prompt' },
   { id: 'workflow-folders', name: 'Workflow folders', group: 'studios', description: 'Load your own ComfyUI workflows from a folder', settings: [{ label: 'Your workflows', to: '/workflows/yours' }] },
 
@@ -109,7 +109,8 @@ export interface PluginRow {
   canTurnOff: boolean; core: boolean; installable: boolean; installed: boolean;
   needs: string[]; neededBy: string[];
   /** your choice is saved but applies after a restart */ restartNeeded: boolean; restartOnly: boolean;
-  key: { connection: string; label: string; set: boolean } | null;
+  /** rejected: the provider refused the key on its last check (a real problem: the orange dot) */
+  key: { connection: string; label: string; set: boolean; rejected?: boolean } | null;
   canSpend: boolean; tag: string | null; settings: { label: string; to: string }[];
   licence: string;
 }
