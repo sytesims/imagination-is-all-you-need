@@ -102,7 +102,7 @@ async function quoteOne(tool_id: string, params: Record<string, string | number 
     free: !!q.free || credits === 0, local, localFree: !!cfg?.localFree, basis, billedTo: q.cost?.billedToName ?? null, runnable: q.runnable !== false, blockedReason: q.runnable === false ? q.blockedReason ?? null : null,
     estimated: typeof q.estimated === 'boolean' ? q.estimated : !(basis === 'hosted' || basis === 'open-weights'),
     modelKey: q.modelKey ?? null, runOn: q.runOn ?? null, route: q.route ?? null, draftCredits: q.draftCredits ?? null, breakdown: (q.breakdown ?? []).map((b: any) => b.label), ...(q.resolutionMapped ? { resolution: q.resolutionMapped.to, resolutionMapped: q.resolutionMapped } : {}),
-    ...(q.agentBudget ? { agentBudget: q.agentBudget } : {}), raw: q };
+    ...(q.agentBudget ? { agentBudget: q.agentBudget } : {}), ...(q.promptDependent === true ? { promptDependent: true as const, promptNote: String(q.promptNote ?? 'From this price: a longer prompt adds a little.') } : {}), raw: q };
 }
 const money = (n: number | null | undefined) => (n == null ? '-' : `$${n.toFixed(2)}`);
 /** The receipt as a short plain-text table (what agents show the user). */
@@ -359,7 +359,7 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
   // ---- core toolset: ten tools driven by the server's own catalogue (catalog.ts). New tools, models and workflows show up in
   //      search_capabilities / describe and run through run with no new MCP tool. Other toolsets: library, admin, canvas, legacy (toolsets.ts). ----
   const quoteBrief = (q: Awaited<ReturnType<typeof quoteOne>>) => ({ priceUsd: q.priceUsd, priceLabel: q.priceLabel, credits: q.credits, usd: q.costUsd ?? q.usd, free: q.free, local: q.local, billedTo: q.local ? 'nobody (Local, free)' : q.billedTo, modelKey: q.modelKey, runOn: q.runOn, route: q.route, estimated: q.estimated, runnable: q.runnable,
-    ...(q.blockedReason ? { blockedReason: q.blockedReason } : {}), ...(q.breakdown?.length ? { breakdown: q.breakdown } : {}), ...(q.resolutionMapped ? { resolutionMapped: q.resolutionMapped } : {}), ...(q.agentBudget ? { agentBudget: q.agentBudget } : {}) });
+    ...(q.blockedReason ? { blockedReason: q.blockedReason } : {}), ...(q.breakdown?.length ? { breakdown: q.breakdown } : {}), ...(q.resolutionMapped ? { resolutionMapped: q.resolutionMapped } : {}), ...(q.agentBudget ? { agentBudget: q.agentBudget } : {}), ...(q.promptDependent ? { promptDependent: true, promptNote: q.promptNote } : {}) });
   /** Job fields → price query params (arrays as JSON, actual media counts, and the same explicit option precedence as submit). */
   const priceParams = (fields: Record<string, unknown>, media: Record<string, string[]>, model?: string, run_on?: string, draft?: boolean, videoRef?: string, toolId?: string) => {
     const p: Record<string, string> = {};
@@ -374,6 +374,9 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
     }
     if (toolId === 'h3-video' && mode === 'r2v') p.refs = String((media.image?.length ?? 0) + (media.presenterImage?.length ?? 0) + (media.refs?.length ?? 0));
     if (videoRef && /^\/(files|samples)\//.test(videoRef)) p.videoPath = videoRef; // the app prices a per-second video tool from the clip's real length
+    // The prompt goes with the quote (GPT Image bills prompt text, quote = charge). One too long for a query string goes as its length instead
+    // (promptBytes; bytes / chars for script-priced voices), which the app prices the same way.
+    if (typeof fields.prompt === 'string' && Buffer.byteLength(fields.prompt) > 4000) { const s0 = fields.prompt; delete p.prompt; p.promptBytes = String(Buffer.byteLength(s0)); if (!p.text) { p.bytes ??= String(Buffer.byteLength(s0)); p.chars ??= String(s0.length); } }
     if (model) p.model = model; if (run_on) p.runOn = run_on; if (draft !== undefined) p.draft = draft ? '1' : '0'; return p;
   };
   /** Split fields into form values and media (by the tool's own input kinds); note names the tool doesn't list (still sent: e.g. loop, videoPreset). */
@@ -495,7 +498,7 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
     return { t, form, media, unlisted, params, hash: requestHash({ toolId: t.id, form, media, model: a.model, run_on: a.run_on, draft: a.draft, ...(a.route ? { route: a.route } : {}) }) };
   };
 
-  s.registerTool('quote', { title: 'Quote', description: 'Price a run before starting it, with the same request as run: priceUsd and priceLabel (the dollars to show the user; priceDetail has the provider\'s own units), credits (internal unit, 1 = $0.01), USD, free or local, where it is billed, whether it can run now (and why not), the agent budget fit, and a quote_id. A paid run needs that quote_id (valid 15 min, for this exact request): tell the user the price first. compare:true prices the same run on every model of the tool (or the models you list), cheapest first, to pick the cheapest model or a free local one (then quote the one you pick). Spends nothing. For a multi-step plan use budget {action:"plan"}.', inputSchema: {
+  s.registerTool('quote', { title: 'Quote', description: 'Price a run before starting it, with the same request as run: priceUsd and priceLabel (the dollars to show the user; priceDetail has the provider\'s own units), credits (internal unit, 1 = $0.01), USD, free or local, where it is billed, whether it can run now (and why not), the agent budget fit, and a quote_id. Send the prompt in fields: some models bill prompt text, and a quote without it says promptDependent:true (a starting price). A run that ends up a little dearer than its quote (up to 10% or $0.05, whichever is bigger) still goes through. A paid run needs that quote_id (valid 15 min, for this exact request): tell the user the price first. compare:true prices the same run on every model of the tool (or the models you list), cheapest first, to pick the cheapest model or a free local one (then quote the one you pick). Spends nothing. For a multi-step plan use budget {action:"plan"}.', inputSchema: {
     ...runRequest, compare: z.boolean().default(false), models: z.array(z.string()).max(40).optional().describe('With compare: only these model keys') } },
     async (a) => withBudget(a.budget_id, async () => {
       try {
