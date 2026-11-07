@@ -1,0 +1,20 @@
+/* Layers result (VideoLayers.tsx): the video version of the image layer stack (shared/layerStack.css): synced clips on the stage, a scrub bar,
+   view tabs and solo buttons in the list. Brand tokens only. */
+html body .vly-stage{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;height:100%;min-height:0;container-type:size}
+html body .vly-canvas{flex:0 1 auto}
+html body .vly-canvas>video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .15s}
+html body .vly-canvas>video.ly-off{opacity:0}
+html body .vly-scrub{display:flex;align-items:center;gap:8px;width:min(100%,720px);flex:none}
+html body .vly-scrub input[type=range]{flex:1;accent-color:var(--accent,#FF7A1A)}
+html body .vly-time{font:500 12px/1 var(--font-mono,ui-monospace,monospace);color:var(--text-2,#a3a3a3);white-space:nowrap}
+html body .vly-modes{display:flex;gap:4px;padding:3px;border-radius:10px;background:rgba(255,255,255,.04);margin:0 0 6px}
+html body .vly-mode{all:unset;box-sizing:border-box;cursor:pointer;flex:1;text-align:center;height:30px;line-height:30px;border-radius:8px;font:500 12.5px/30px var(--font-ui);color:var(--text-2,#a3a3a3)}
+html body .vly-mode:hover{color:#fff}
+html body .vly-mode.on{background:rgba(255,255,255,.1);color:#fff}
+html body .vly-mode:focus-visible{outline:2px solid #fff;outline-offset:1px}
+html body .vly-solo.on{color:var(--accent,#FF7A1A);background:var(--accent-faint,rgba(255,122,26,.12))}
+html body .vly-solo-gap{flex:0 0 32px}
+html body .vly-thumb{flex:0 0 auto;width:44px;height:44px;border-radius:6px;object-fit:cover;background:#000}
+html body .vly-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+html body .vly-alls{grid-template-columns:1fr}
+html body .vly-note,html body .vly-models{margin:6px 0 0}

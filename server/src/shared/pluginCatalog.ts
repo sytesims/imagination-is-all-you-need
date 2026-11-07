@@ -65,6 +65,7 @@ export const PLUGIN_CATALOG: CatalogEntry[] = [
   { id: 'discover', name: 'Discover', group: 'features', description: 'The examples and feeds on Explore' },
   { id: 'hub', name: 'Hub', group: 'features', description: 'Browse and add shared workflows' },
   { id: 'share', name: 'Share', group: 'features', description: 'Share cards, logo and text on results' },
+  { id: 'layers', name: 'Layers', group: 'features', description: 'Split a video into separate layers', canSpend: true },
   { id: 'captions', name: 'Captions', group: 'features', description: 'Subtitles made on your computer, burned in or as a file' },
   { id: 'backup', name: 'Backup', group: 'features', description: 'Save and restore your whole library', settings: [{ label: 'Backup & data', to: '/settings#backup' }] },
   { id: 'brand-kits', name: 'Brand kits', group: 'features', description: 'Your colours, fonts and mood on every result', settings: [{ label: 'Brands', to: '/assets/brands' }] },

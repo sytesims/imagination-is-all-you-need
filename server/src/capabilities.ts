@@ -33,6 +33,7 @@ export const KEYWORDS: Record<string, string[]> = {
   'video/restyle': ['video swap', 'style transfer', 'cartoonify', 'anime', 'restyle video', 'change setting', 'new location'],
   'object-swap': ['video swap', 'person swap', 'replace'], 'motion-transfer': ['video swap', 'motion control', 'dance'], restyle: ['video swap', 'style transfer'],
   'explore/swap-local': ['video swap', 'local swap', 'wan animate'],
+  'video/layers': ['split a video into layers', 'video layers', 'split into layers', 'layers', 'rotoscope', 'roto', 'matte', 'alpha matte', 'cut out objects', 'separate objects', 'depth pass', 'clean plate', 'prores 4444', 'compositing'],
   // Loop / Morph / Transitions / Extend
   'video/loop': ['seamless loop', 'loop', 'looping', 'endless', 'infinite', 'cinemagraph', 'boomerang', 'spotify canvas', 'wallpaper', 'last frame equals first frame'],
   'video/morph': ['morph', 'transform', 'turn into', 'metamorphosis', 'transition', 'start and end frame'],

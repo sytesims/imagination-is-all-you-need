@@ -58,6 +58,7 @@ import { useReshootExtra } from './barExtras/ReshootExtra';
 import { useVideoFit } from './barExtras/VideoFit';
 import { useMotionControlExtra } from './barExtras/MotionControlExtra';
 import { useTalkingExtra } from './barExtras/TalkingExtra';
+import { useLayersExtra } from './barExtras/LayersExtra';
 import '../next/workflowBar.css';
 import '../next/createBar.css';
 import './videoPanel.css';
@@ -78,7 +79,7 @@ import { clampTrim, swapRangeSeconds } from '../../../../server/src/shared/cloud
 const ICONS: Record<string, (p: IconProps) => ReactNode> = { edit: TextIcon, gallery: ImageIcon, music: AudioIcon, clock: ClockIcon, resolution: ResolutionIcon, aspect: AspectIcon, quality: QualityIcon, extend: ExtendIcon, hdr: HdrIcon, fps: FpsIcon, depth: DepthIcon,
   cutout: CutoutIcon, upscale: UpscaleIcon, palette: PaletteIcon, transition: TransitionIcon, orbit: OrbitIcon, camera: CameraMovesIcon, fx: PhotoFxIcon, swap: ObjectSwapIcon, layers: LayersIcon, person: UserIcon, spark: SparkleIcon, select: SelectIcon, reshoot: ReshootIcon };
 /** The extra step of the workflows a recipe can't say alone (ui/video/barExtras/): one chip + popover in this bar. */
-const EXTRAS: Record<string, UseBarExtra> = { extend: useExtendExtra, 'object-swap': useObjectSwapExtra, reshoot: useReshootExtra, 'motion-control': useMotionControlExtra, 'lip-sync': useTalkingExtra };
+const EXTRAS: Record<string, UseBarExtra> = { extend: useExtendExtra, 'object-swap': useObjectSwapExtra, reshoot: useReshootExtra, 'motion-control': useMotionControlExtra, 'lip-sync': useTalkingExtra, layers: useLayersExtra };
 const useNoExtra: UseBarExtra = () => ({});
 const GIcon = ({ name, size = 14 }: { name: string; size?: number }) => { const I = ICONS[name] ?? QualityIcon; return <I size={size} />; };
 const acceptOf = (s: VBarSlot) => s.altImage ? `${ACCEPT[s.kind]},${IMAGE_ACCEPT}` : ACCEPT[s.kind]; /* one list per kind: shared/mediaAccept */

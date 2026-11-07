@@ -45,6 +45,7 @@ plugins:
   - hub               # the workflow hub
   - share             # share cards, Add logo and text, branded export
   - captions          # captions + SRT / VTT, burn-in
+  - layers            # Layers: split a video into separate layers (Edit Video)
   - open-models       # Open models only (setting + quote check)
   - openapi           # /api/openapi.json and /api/docs
   - web-static        # the web build at / (npm start)

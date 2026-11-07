@@ -77,11 +77,14 @@ export type Post =
   | { kind: 'extend'; plan: ExtendPlan; label: string; /** the clip to join onto (default input.videoPath; H3 Extend · Comfy Cloud: its conformed copy) */ source?: string; /** keep at most this many frames of the render (H3's grid rounds up) */ maxGenFrames?: number }
   /** Voice tools (comfy/dubMix.ts): the voice pass's output mixed over beds (separated background, or the ducked original) into one track. */
   | { kind: 'voiceMix'; pass: number; beds: MixBed[]; /** Translate: the pass made one file per line (job.input.dubLines), each placed at its line's start and sped up to fit (comfy/dubMix.ts fitLines) */ lines?: boolean; maxSpeed?: number }
-  | { kind: 'splice'; ranges: { start: number; end: number }[]; extraEach: number; fps: number; width: number; height: number };
+  | { kind: 'splice'; ranges: { start: number; end: number }[]; extraEach: number; fps: number; width: number; height: number }
+  /** A plugin's own finish step (Layers: mattes, depth and the clean background assembled on this computer): it gets every pass's files and returns the results. */
+  | { kind: 'custom'; run: (job: Job, outs: string[][], labels: string[][]) => Promise<{ label: string; file: string; ready?: boolean }[]> };
 export interface Plan { tool: string; passes: Pass[]; post: Post; outKind: 'video' | 'image' | 'audio'; muxSourceAudio: boolean; labels?: string[]; notes: string[]; /** final ffmpeg fps resample */ postFps?: number; /** audio outputs muxed onto this video (replace or duck the original) */ muxOnto?: { video: string; mix: 'replace' | 'blend' };
   /** music for a clip (2026-11-02): the clip's seconds. runNative trims the track to it, fades it out and limits peaks under −1 dBTP (shared/audioLengths.ts bedFilter) */
   musicBed?: number;
-  /** Voice tools: the plan splits voice from background first (comfy/separation.ts); kept on the job so a rebuild (Get workflow) matches the run. */ separation?: boolean }
+  /** Voice tools: the plan splits voice from background first (comfy/separation.ts); kept on the job so a rebuild (Get workflow) matches the run. */ separation?: boolean;
+  /** keep every picture of a SaveImage batch (one file per frame) even when the plan's result is a video (Layers' per-frame mattes) */ imageBatches?: boolean }
 
 const wf = (f: string) => JSON.parse(readFileSync(path.isAbsolute(f) ? f : path.join(WORKFLOWS_DIR, f), 'utf8'));
 const nm = (name: string) => JSON.parse(readFileSync(path.join(WORKFLOWS_DIR, 'node-maps', `${name}.json`), 'utf8'));
@@ -660,7 +663,14 @@ const BUILDERS: Record<string, (j: Job, o: { srcFps?: number; separation?: boole
 };
 const baseOf = (j: Job) => (BUILDERS[j.toolId] ? j.toolId : j.input.baseTool && BUILDERS[j.input.baseTool] ? j.input.baseTool : /^app-(transition|ugc-ad)$/.test(j.toolId) ? 'h3-video' : null);
 /** null = this tool/provider has no local workflow (stays on mock or its hosted provider). */
+/** Plans a plugin adds (Layers): owns(job) says the job is theirs, build makes its plan. Registered by the plugin, removed when it is turned off. */
+export interface PlanOwner { id: string; owns: (j: Job) => boolean; build: (j: Job, o: { srcFps?: number }) => Plan }
+const PLAN_OWNERS = new Map<string, PlanOwner>();
+/** Add a plugin's plans; returns the undo. */
+export function registerPlanOwner(o: PlanOwner): () => void { PLAN_OWNERS.set(o.id, o); return () => { if (PLAN_OWNERS.get(o.id) === o) PLAN_OWNERS.delete(o.id); }; }
+const ownerOf = (j: Job) => [...PLAN_OWNERS.values()].find((o) => o.owns(j));
 export function hasPlan(j: Job) {
+  if (ownerOf(j)) return true; // a plugin's own plan (registerPlanOwner)
   if (h3Owns(j)) return true; // H3 additions (tools/h3/plan.ts)
   if (pluginSpec(j.toolId)) return j.provider === 'comfy-open'; // plugins with a node map run on your own ComfyUI (Comfy Cloud: not yet)
   const b = baseOf(j); if (!b) return false;
@@ -691,5 +701,5 @@ export function hasPlan(j: Job) {
 let planModelKey = (j: { toolId: string; provider: string; input?: Record<string, any> | null }): string | null => engineModelKey(j.toolId, j.provider, j.input?.baseTool);
 export const setPlanModelKey = (f: typeof planModelKey) => { planModelKey = f; };
 export const planModelKeyOf = (j: Parameters<typeof planModelKey>[0]) => planModelKey(j);
-export function buildPlan(j0: Job, o: { srcFps?: number; separation?: boolean } = {}): Plan { const j = { ...j0, input: withRefGrammar(j0.input, planModelKey(j0), 'local') } as Job; /* prompt grammar: the model key the runners use (routing/jobRefs.ts) */ if (h3Owns(j)) return h3BuildPlan(j); if (pluginSpec(j.toolId)) return pluginPlan(j); const b = baseOf(j); if (!b) throw new Error(`no ComfyUI plan for ${j.toolId}`); return BUILDERS[b](j, o); }
+export function buildPlan(j0: Job, o: { srcFps?: number; separation?: boolean } = {}): Plan { const j = { ...j0, input: withRefGrammar(j0.input, planModelKey(j0), 'local') } as Job; /* prompt grammar: the model key the runners use (routing/jobRefs.ts) */ if (h3Owns(j)) return h3BuildPlan(j); const own = ownerOf(j); if (own) return own.build(j, o); if (pluginSpec(j.toolId)) return pluginPlan(j); const b = baseOf(j); if (!b) throw new Error(`no ComfyUI plan for ${j.toolId}`); return BUILDERS[b](j, o); }
 export { LENGTH_VARIANTS };

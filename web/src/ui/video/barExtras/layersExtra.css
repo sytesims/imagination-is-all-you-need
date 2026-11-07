@@ -1,0 +1,8 @@
+/* Layers: the "What to split out" chip and its popover (LayersExtra.tsx). Brand tokens only. */
+.lyx-sum{display:inline-flex;gap:8px;align-items:center;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.lyx-dot-name{display:inline-flex;align-items:center;gap:4px}
+.lyx-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+:is(.apop.bp,.bp-host) .lyx-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;padding:0;list-style:none}
+:is(.apop.bp,.bp-host) .lyx-chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 4px 0 10px;border-radius:999px;border:1px solid var(--border-strong,rgba(255,255,255,.12));background:var(--surface-2,rgba(255,255,255,.04));color:var(--text-1,#f7f7f8);font:500 12.5px/1 Inter,system-ui,sans-serif}
+:is(.apop.bp,.bp-host) .lyx-x{display:grid;place-items:center;width:20px;height:20px;border:0;border-radius:50%;background:none;color:var(--text-2,#c9cacc);cursor:pointer}
+:is(.apop.bp,.bp-host) .lyx-x:hover{background:var(--surface-3,rgba(255,255,255,.08));color:var(--text-1,#f7f7f8)}
