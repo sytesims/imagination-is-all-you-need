@@ -7,7 +7,7 @@
 //  5. layers.json: order, colours, the background note, export file names.
 //  6. export: the ProRes 4444 command; the streaming ZIP opens (central directory, names, sizes).
 //  7. registration: the tool, its two places (your computer, Comfy Cloud twin), the Cloud workflow route, the unmeasured price row, the bill seconds.
-//  8. the plan: analysis pass + the Vanish pass, custom finish, image batches kept.
+//  8. the plan: analysis pass (+ Vanish on your computer only), custom finish, image batches kept; the 2-second pieces joined with a crossfade.
 //  9. the unmeasured-price gate: with OPENHIGGSFIELD_ALLOW_UNMEASURED_CLOUD=0 a Comfy Cloud run is refused before anything is sent.
 // Run: npx tsx test/layers.test.ts
 import assert from 'node:assert/strict'; import { execFileSync } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
@@ -36,7 +36,7 @@ const Z = await import('../src/layers/zipStream.ts');
 }
 // ---------------- 2. graph ----------------
 {
-  const g = G.layersGraph({ source: '/x/src.mp4', objects: ['woman', 'steam'], edges: true, depth: true });
+  const g = G.layersGraph({ source: '/x/src.mp4', objects: ['woman', 'steam'], edges: true, depth: true, frames: 48 });
   assert.deepEqual(g['1'].inputs.file, { __file: '/x/src.mp4' });
   // exactly the SAM part of Swap Two People (proven on Comfy Cloud): one SAM3_Detect per name on frame 0 → batched → ONE tracker seeded with them
   for (const [k, name] of ['woman', 'steam'].entries()) {
@@ -53,13 +53,26 @@ const Z = await import('../src/layers/zipStream.ts');
   const two = JSON.parse(fs.readFileSync(new URL('../../workflows/cloud/h3-two-person-swap-api.json', import.meta.url), 'utf8'));
   for (const [ours, theirs] of [['101', '143'], ['152', '170'], ['151', '163']]) for (const k of Object.keys(two[theirs].inputs)) if (!Array.isArray(two[theirs].inputs[k]) && k !== 'max_objects')
     assert.deepEqual(g[ours].inputs[k], two[theirs].inputs[k], `${ours}.${k} as Swap Two People ${theirs}`);
-  assert.deepEqual(G.outputNodes({ objects: ['a', 'b'], edges: true, depth: true }).map((o) => o.role), ['mask0', 'mask1', 'edges', 'depth']);
-  const bare = G.layersGraph({ source: 's', objects: ['a'], edges: false, depth: false });
+  assert.deepEqual(G.outputNodes({ objects: ['a', 'b'], edges: true, depth: true, frames: 48 }).map((o) => o.role), ['mask0p0', 'mask1p0', 'edges', 'depth']);
+  const bare = G.layersGraph({ source: 's', objects: ['a'], edges: false, depth: false, frames: 48 });
   assert.ok(!bare['300'] && !bare['400'] && !bare[G.EDGES_NODE] && !bare[G.DEPTH_NODE]);
-  assert.throws(() => G.layersGraph({ source: 's', objects: [], edges: true, depth: true }));
-  assert.throws(() => G.layersGraph({ source: 's', objects: ['a', 'b', 'c', 'd', 'e'], edges: true, depth: true }));
+  assert.throws(() => G.layersGraph({ source: 's', objects: [], edges: true, depth: true, frames: 48 }));
+  assert.throws(() => G.layersGraph({ source: 's', objects: ['a', 'b', 'c', 'd', 'e'], edges: true, depth: true, frames: 48 }));
   // every link points at a node that exists
-  const full = G.layersGraph({ source: 's', objects: ['a', 'b', 'c', 'd'], edges: true, depth: true });
+  const full = G.layersGraph({ source: 's', objects: ['a', 'b', 'c', 'd'], edges: true, depth: true, frames: 120 });
+  // 2-second pieces: 120 frames = 3 pieces of 48 / 48 / 32 frames starting at 0 / 44 / 88, each its own frames, first frame, detects and tracker
+  assert.deepEqual(G.pieces(120), [{ start: 0, length: 48 }, { start: 44, length: 48 }, { start: 88, length: 32 }]);
+  assert.deepEqual(G.pieces(48), [{ start: 0, length: 48 }]); assert.deepEqual(G.pieces(10), [{ start: 0, length: 10 }]);
+  assert.deepEqual(G.pieces(92), [{ start: 0, length: 48 }, { start: 44, length: 48 }]); assert.deepEqual(G.pieces(94).at(-1), { start: 88, length: 6 }, 'a short tail gets its own piece');
+  assert.equal(G.pieces(360).length, 9, '15 s at 24 fps: 9 pieces');
+  for (const [p, pc] of G.pieces(120).entries()) { const o = p * 1000;
+    assert.deepEqual([full[String(o + 5)].inputs.batch_index, full[String(o + 5)].inputs.length], [pc.start, pc.length]);
+    assert.deepEqual(full[String(o + 4)].inputs.image, [String(o + 5), 0], 'the piece’s own first frame');
+    assert.deepEqual(full[String(o + 101)].inputs.image, [String(o + 4), 0]); assert.deepEqual(full[String(o + 101)].inputs.model, ['3', 0], 'one SAM 3.1 for every piece');
+    assert.deepEqual(full[String(o + 152)].inputs.images, [String(o + 5), 0]); assert.equal(full[String(o + 152)].inputs.max_objects, 4);
+    assert.equal(full[String(o + 230)].inputs.object_indices, '3', 'name i = track i in every piece');
+    assert.equal(full[G.maskNode(3, p)].inputs.filename_prefix, `layers/mask3_p${p}`); }
+  assert.deepEqual(G.outputNodes({ objects: ['a'], edges: false, depth: false, frames: 120 }).map((o) => o.node), ['202', '1202', '2202']);
   for (const [id, n] of Object.entries<any>(full)) for (const v of Object.values<any>(n.inputs)) if (Array.isArray(v) && typeof v[0] === 'string') assert.ok(full[v[0]], `${id} → ${v[0]}`);
   // SAM classes and inputs as Comfy Cloud lists them (object_info 2026-10-26)
   const oi = JSON.parse(fs.readFileSync(new URL('./fixtures/object-info-comfy-cloud-2026-10-26.json', import.meta.url), 'utf8'));
@@ -147,9 +160,12 @@ let man: any;
   assert.ok(isStandalone(w) && w.target === 'cloud' && w.graphs.includes(K.LAYERS_WORKFLOW));
   const { CLOUD_RUNNER_ROUTES } = await import('../src/routing/runnable.ts'); assert.ok(CLOUD_RUNNER_ROUTES.has(K.LAYERS_CLOUD_ROUTE));
   const { layersBillSeconds } = await import('../src/layers/register.ts');
-  assert.equal(layersBillSeconds({ duration: 5, types: 'split' }), 5); assert.equal(layersBillSeconds({ duration: 5, types: ['with-plate'] }), 16.25);
-  assert.equal(layersBillSeconds({ duration: 12, background: false }), 12); assert.equal(layersBillSeconds({ duration: 40 }), 15 + 11.25, 'capped at 15 s, plate at 5 s');
-  assert.equal(cloud.priceInput!({ duration: 5, types: 'split' }).duration, 5, 'the twin route bills the same seconds');
+  // quote = pieces × 18 GPU-s (measured: one 48-frame piece) + 2 GPU-s per second (BiRefNet, depth); no clean background on Comfy Cloud
+  assert.equal(layersBillSeconds({ duration: 5 }), 3 * 18 + 10, '5 s = 120 frames = 3 pieces'); assert.equal(layersBillSeconds({ duration: 2 }), 18 + 4);
+  assert.equal(layersBillSeconds({ duration: 5, types: ['with-plate'] }), layersBillSeconds({ duration: 5, types: 'split' }), 'Clean background doesn’t change the Cloud price');
+  assert.equal(layersBillSeconds({ duration: 40 }), 9 * 18 + 30, 'capped at 15 s'); assert.equal(layersBillSeconds({ duration: 5, frames: 48 }), 18 + 10, 'a job knows its frames');
+  assert.equal(cloud.priceInput!({ duration: 5 }).duration, 64, 'the twin route bills the same GPU-seconds');
+  assert.equal(HOSTED_BY_ID[K.LAYERS_CLOUD].usd, 0.002, 'per GPU-second (0.39 credits)');
   const { PLUGIN_CATALOG } = await import('../src/shared/pluginCatalog.ts'); const row = PLUGIN_CATALOG.find((e) => e.id === 'layers');
   assert.equal(row?.group, 'features'); assert.equal(row?.description, 'Split a video into separate layers');
   const { readProfile } = await import('../src/kernel/profile.ts'); assert.ok(readProfile('desktop').plugins.includes('layers'), 'on in the desktop edition');
@@ -164,10 +180,28 @@ let man: any;
   assert.equal(p.passes.length, 1); assert.equal(p.passes[0].output, G.maskNode(0)); assert.deepEqual(p.passes[0].extraOutputs, [{ node: G.EDGES_NODE, label: 'edges' }]);
   assert.equal(p.post.kind, 'custom'); assert.equal(p.imageBatches, true); assert.equal(p.outKind, 'video');
   assert.throws(() => layersPlan({ id: 'j', toolId: 'layers', provider: K.LAYERS_LOCAL, input: {} }, 'local'), /not prepared/);
-  const c = layersPlan({ id: 'j', toolId: 'layers', provider: K.LAYERS_LOCAL, input: { ...i, depth: true } }, 'cloud');
+  const plate = { footageFx: { plan: { seconds: 2 } } };
+  const c = layersPlan({ id: 'j', toolId: 'layers', provider: K.LAYERS_LOCAL, input: { ...i, depth: true, background: true, plate } }, 'cloud');
+  assert.equal(c.passes.length, 1, 'Comfy Cloud: no clean background pass yet'); assert.ok(c.notes.includes(K.CLOUD_PLATE_NOTE));
   assert.equal(c.passes[0].graph['400'].inputs.model_name, G.DA3_CLOUD_MODEL, 'Comfy Cloud: the depth template default (Mono-Large)');
   assert.equal(p.passes[0].graph['400'], undefined);
-  ok('plan: one analysis pass (mattes + edges), custom finish on this computer, every frame kept; Mono-Large depth on Comfy Cloud');
+  ok('plan: one analysis pass (mattes + edges), custom finish on this computer, every frame kept; Comfy Cloud: Mono-Large depth, no clean background');
+}
+// ---------------- 8b. joining the pieces ----------------
+{
+  const S = await import('../src/layers/stitch.ts');
+  const src = S.frameSources(G.pieces(120)); assert.equal(src.length, 120);
+  assert.deepEqual(src[43], { from: [0, 43] }); assert.deepEqual(src[44], { from: [0, 44], fade: { with: [1, 0], w: 0.2 } });
+  assert.deepEqual(src[47].fade, { with: [1, 3], w: 0.8 }); assert.deepEqual(src[48], { from: [1, 4] }); assert.deepEqual(src[119], { from: [2, 31] });
+  assert.match(S.fadeArgs('a', 'b', 0.25, 'o').join(' '), /blend=all_expr='A\*0\.7500\+B\*0\.2500'/);
+  // real frames: piece 1 white, piece 2 black from frame 44 → the overlap fades 255 → 0; piece 2 starts empty → reported
+  const mk = (d: string, n: number, c: string) => { fs.mkdirSync(d, { recursive: true }); execFileSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', `color=${c}:s=16x16:r=24`, '-frames:v', String(n), '-pix_fmt', 'gray', M.seq(d)]); };
+  const a = path.join(D, 'pa'), b = path.join(D, 'pb'), o = path.join(D, 'po'); mk(a, 48, 'white'); mk(b, 48, 'black');
+  const missing = await S.stitchPieces([a, b], G.pieces(92), o); assert.deepEqual(missing, [44]);
+  const vals = [43, 44, 47, 48].map((f) => execFileSync('ffmpeg', ['-v', 'error', '-i', path.join(o, `${String(f + 1).padStart(5, '0')}.png`), '-f', 'rawvideo', '-pix_fmt', 'gray', '-'])[0]);
+  assert.equal(vals[0], 255); assert.ok(vals[1] > 190 && vals[1] < 215, `fade 1/5 (${vals[1]})`); assert.ok(vals[2] < 65, `fade 4/5 (${vals[2]})`); assert.equal(vals[3], 0);
+  assert.equal(fs.readdirSync(o).length, 92);
+  ok('pieces joined: own frames outside the overlap, a 4-frame crossfade inside, a piece starting without the name reported');
 }
 // ---------------- 9. the unmeasured-price gate ----------------
 {

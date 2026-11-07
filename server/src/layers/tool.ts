@@ -20,7 +20,7 @@ import { footageFxTool } from '../tools/footageFx.js';
 import { VFX_CLOUD_ROUTE } from '../comfy/ltx23VfxCloud.js';
 import { FOOTAGE_FX_WORKFLOW } from '../shared/footageFx.js';
 import { LAYERS_TOOL, LAYERS_LOCAL, LAYERS_WORKFLOW, LAYERS_MAX_SECONDS, LAYERS_MIN_SECONDS, LAYERS_MAX_OBJECTS, LAYERS_FPS, LAYERS_LONG_SIDE,
-  LAYERS_PLATE_SECONDS, LAYERS_MODEL_LINE, objectNames, optionOn, layersMode } from './constants.js';
+  LAYERS_PLATE_SECONDS, LAYERS_MODEL_LINE, objectNames, optionOn, layersMode, CLOUD_PLATE_NOTE } from './constants.js';
 import { sampleRaw } from './mock.js';
 import { assembleLayers } from './assemble.js';
 
@@ -41,8 +41,7 @@ async function plateInput(fields: Record<string, string>, video: string, seconds
   const r: any = await footageFxTool.parseInput({ types: effect, prompt, duration, resolution: '448p', route: VFX_CLOUD_ROUTE /* also makes the Comfy Cloud copy a silent clip needs */, keepAudio: '0', seed: fields.seed ?? '' }, { video: [video] });
   return r?.error ? { why: String(r.error) } : { input: r };
 }
-/** What Remove an object is told to remove: the names, as one line ("the woman and the steam"). */
-export const removeLine = (names: string[]) => names.map((n) => `the ${n.replace(/^(the|a|an)\s+/i, '')}`).join(names.length > 2 ? ', ' : ' and ').replace(/, (?=[^,]*$)/, ' and ');
+
 
 export const layersTool: ToolDef = {
   id: LAYERS_TOOL, name: 'Layers', category: 'Edit Video', status: 'new', route: `/tools/${LAYERS_TOOL}`, ui: 'app',
@@ -76,15 +75,14 @@ export const layersTool: ToolDef = {
       '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-movflags', '+faststart', out]);
     if (code !== 0) return bad('video', 'That clip could not be prepared. Try another clip.', 'format');
     const frames = await countFrames(out); if (!frames) return bad('video', 'That clip has no frames we could read.', 'unreadable');
-    const warnings: string[] = []; let plate: Record<string, any> | null = null; let plateCloud: Record<string, any> | null = null;
-    if (background) { // your computer: Vanish; Comfy Cloud: Remove an object with your names (each prepared the way Footage Effects does)
-      const r = await plateInput(fields, vf, p.duration, 'vanish'); const c = await plateInput(fields, vf, p.duration, 'remove-object', removeLine(objects));
-      if ('why' in r && 'why' in c) { background = false; warnings.push(`No clean background for this clip: ${r.why}`); }
-      if ('input' in r) plate = r.input; if ('input' in c) plateCloud = c.input; }
+    const warnings: string[] = []; let plate: Record<string, any> | null = null;
+    if (background) { // Vanish, prepared the way Footage Effects does (your computer; Comfy Cloud skips it for now: plan.ts)
+      const r = await plateInput(fields, vf, p.duration, 'vanish');
+      if ('why' in r) { background = false; warnings.push(`No clean background for this clip: ${r.why}`); } else plate = r.input; }
     if (plate && p.duration > LAYERS_PLATE_SECONDS + 0.05) warnings.push(`The clean background covers the first ${LAYERS_PLATE_SECONDS} s; after that it holds its last frame.`);
     if (p.width > LAYERS_LONG_SIDE || p.height > LAYERS_LONG_SIDE || (p.fps ?? 0) > LAYERS_FPS + 0.01) warnings.push(`Layers are made at ${size.width}×${size.height}, ${fps} fps.`);
     const seconds = Math.round((frames / fps) * 100) / 100;
-    return { mode: 'layers', outKind: 'video', ownSample: true, objects, edges, depth, background, plate, plateCloud, types: background ? ['with-plate'] : ['split'],
+    return { mode: 'layers', outKind: 'video', ownSample: true, objects, edges, depth, background, plate, types: background ? ['with-plate'] : ['split'],
       prompt: objects.join(', '), videoPath: out, videoUrl: `/files/${name}`, originalVideoUrl: `/files/${vf}`, width: size.width, height: size.height, fps, frames,
       duration: seconds, hasAudio: false, outputLabel: 'Layers overview', warnings };
   },
@@ -94,7 +92,9 @@ export const layersTool: ToolDef = {
     if (job.status !== 'done') return;
     try {
       job.status = 'running' as any; job.stage = 'saving' as any;
-      const finals = await assembleLayers(job, await sampleRaw(job.id, job.input as any), 'sample');
+      const i: any = job.input; const cloud = String(job.route ?? '').startsWith('comfy-cloud:'); // a Comfy Cloud sample shows what Comfy Cloud makes: no clean background yet
+      const finals = await assembleLayers(job, await sampleRaw(job.id, { ...i, background: i.background && !cloud }), 'sample');
+      if (cloud && i.background) ((job as any).warnings ??= []).push(CLOUD_PLATE_NOTE);
       job.outputs = finals.map((f) => ({ label: f.label, url: `/files/${path.basename(f.file)}` }));
       job.resultUrl = job.outputs[0]?.url ?? null; job.status = 'done'; job.stage = 'done'; job.progress = 100;
     } catch (e) {

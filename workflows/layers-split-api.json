@@ -26,7 +26,7 @@
    "title": "SAM 3.1 (Meta, SAM License)"
   }
  },
- "4": {
+ "5": {
   "class_type": "ImageFromBatch",
   "inputs": {
    "image": [
@@ -34,10 +34,24 @@
     0
    ],
    "batch_index": 0,
+   "length": 48
+  },
+  "_meta": {
+   "title": "This 2-second piece (48 frames; the app adds one piece per 2 s, overlapping by 4 frames)"
+  }
+ },
+ "4": {
+  "class_type": "ImageFromBatch",
+  "inputs": {
+   "image": [
+    "5",
+    0
+   ],
+   "batch_index": 0,
    "length": 1
   },
   "_meta": {
-   "title": "First frame (as Swap Two People node 42)"
+   "title": "The piece's first frame (as Swap Two People node 42)"
   }
  },
  "100": {
@@ -261,7 +275,7 @@
   "class_type": "SAM3_VideoTrack",
   "inputs": {
    "images": [
-    "2",
+    "5",
     0
    ],
    "model": [
@@ -309,7 +323,7 @@
     "201",
     0
    ],
-   "filename_prefix": "layers/mask0"
+   "filename_prefix": "layers/mask0_p0"
   },
   "_meta": {
    "title": "Object 1 matte (per frame)"
@@ -344,7 +358,7 @@
     "211",
     0
    ],
-   "filename_prefix": "layers/mask1"
+   "filename_prefix": "layers/mask1_p0"
   },
   "_meta": {
    "title": "Object 2 matte (per frame)"
@@ -379,7 +393,7 @@
     "221",
     0
    ],
-   "filename_prefix": "layers/mask2"
+   "filename_prefix": "layers/mask2_p0"
   },
   "_meta": {
    "title": "Object 3 matte (per frame)"
@@ -414,7 +428,7 @@
     "231",
     0
    ],
-   "filename_prefix": "layers/mask3"
+   "filename_prefix": "layers/mask3_p0"
   },
   "_meta": {
    "title": "Object 4 matte (per frame)"

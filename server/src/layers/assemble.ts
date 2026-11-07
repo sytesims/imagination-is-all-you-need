@@ -11,11 +11,12 @@
 import path from 'node:path';
 import { mkdir, rename, writeFile, readdir, rm } from 'node:fs/promises';
 import { DATA_DIR } from '../config.js';
-import { LAYERS_MODELS } from './constants.js';
+import { LAYERS_MODELS, CLOUD_PLATE_NOTE } from './constants.js';
 import { bandPx, combineArgs, occludeArgs, ff } from './masks.js';
 import { grabGrey, clipRange, objectDepths, layerOrder, coverage, depth16Args, depthPreviewArgs } from './depth.js';
 import { buildManifest, colourOf, type LayersManifest } from './manifest.js';
-import { maskNode, EDGES_NODE, DEPTH_NODE } from './graph.js';
+import { maskNode, EDGES_NODE, DEPTH_NODE, pieces } from './graph.js';
+import { stitchPieces } from './stitch.js';
 
 export const workDir = (jobId: string) => path.join(DATA_DIR, 'layers-work', jobId.replace(/[^\w-]/g, ''));
 export const manifestPath = (jobId: string) => path.join(DATA_DIR, `${jobId.replace(/[^\w-]/g, '')}-layers.json`);
@@ -28,7 +29,7 @@ export interface LayersJobInput {
   plate?: { footageFx?: { plan?: { seconds?: number } } } | null;
 }
 /** The raw model outputs, as frame folders (NNNNN.png) and one plate clip. */
-export interface RawSet { masks: string[]; edges: string | null; depth: string | null; plate: string | null }
+export interface RawSet { masks: string[]; edges: string | null; depth: string | null; plate: string | null; /** plain notes for the job (a name not found at a piece's start) */ notes?: string[] }
 
 /** runNative's files of the analysis pass → one frame folder per output node (files are named <job>-p0-<node>[-k].png, k = frame). */
 export async function rawFromOuts(jobId: string, i: LayersJobInput, outs: string[][]): Promise<RawSet> {
@@ -44,9 +45,23 @@ export async function rawFromOuts(jobId: string, i: LayersJobInput, outs: string
     for (const [n, x] of list.entries()) await rename(x.f, path.join(d, `${String(n + 1).padStart(5, '0')}.png`));
     return d;
   };
-  const masks: string[] = [];
-  for (let k = 0; k < i.objects.length; k++) { const d = await folder(maskNode(k), `mask${k}`); if (!d) throw new Error(`Layers: no matte came back for “${i.objects[k]}”`); masks.push(d); }
-  return { masks, edges: i.edges ? await folder(EDGES_NODE, 'edges') : null, depth: i.depth ? await folder(DEPTH_NODE, 'depth') : null, plate: outs[1]?.[0] ?? null };
+  const ps = pieces(i.frames); const perPiece: string[][] = [];
+  for (let k = 0; k < i.objects.length; k++) {
+    const dirs: string[] = [];
+    for (let p = 0; p < ps.length; p++) { const d = await folder(maskNode(k, p), `mask${k}p${p}`); if (!d) throw new Error(`Layers: no matte came back for “${i.objects[k]}” (piece ${p + 1})`); dirs.push(d); }
+    perPiece.push(dirs);
+  }
+  const { masks, notes } = await joinPieces(jobId, i, perPiece);
+  return { masks, notes, edges: i.edges ? await folder(EDGES_NODE, 'edges') : null, depth: i.depth ? await folder(DEPTH_NODE, 'depth') : null, plate: outs[1]?.[0] ?? null };
+}
+/** Each name's pieces joined into one frame folder (stitch.ts), with a note for every piece that starts without that name. */
+export async function joinPieces(jobId: string, i: Pick<LayersJobInput, 'objects' | 'frames' | 'fps'>, perPiece: string[][]): Promise<{ masks: string[]; notes: string[] }> {
+  const ps = pieces(i.frames); const masks: string[] = []; const notes: string[] = [];
+  for (const [k, dirs] of perPiece.entries()) {
+    const out = path.join(workDir(jobId), 'raw', `mask${k}`); const missing = await stitchPieces(dirs, ps, out); masks.push(out);
+    if (missing.length) notes.push(`“${i.objects[k]}” wasn’t found at ${missing.map((f) => `${(f / i.fps).toFixed(1)} s`).join(', ')}, so its layer is empty until it is found again.`);
+  }
+  return { masks, notes };
 }
 
 const frameCount = async (dir: string) => (await readdir(dir)).filter((f) => f.endsWith('.png')).length;
@@ -114,6 +129,8 @@ export async function assembleLayers(job: { id: string; input: Record<string, an
   const m = buildManifest({ jobId: job.id, width: W, height: H, fps, frames, names: i.objects, order, depths, coverage: cov, range, plate, edges: !!raw.edges, where,
     urls: { preview, matte: matteUrl, overview: fileUrl(ov), source: fileUrl(i.videoPath), depth: depthUrl, background: bgUrl } });
   await writeFile(manifestPath(job.id), JSON.stringify(m, null, 1));
+  if (raw.notes?.length) ((job as any).warnings ??= []).push(...raw.notes);
+  if (where === 'comfy-cloud' && i.background) ((job as any).warnings ??= []).push(CLOUD_PLATE_NOTE);
   const warn = order.filter((id) => cov[id] < 0.05).map((id) => `“${i.objects[id]}” was hardly found in the clip. Try other words, or check it is in the first frame.`);
   if (warn.length) ((job as any).warnings ??= []).push(...warn);
   return [

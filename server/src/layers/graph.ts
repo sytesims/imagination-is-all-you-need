@@ -10,6 +10,10 @@
  *    its mask is multiplied with each object's grown matte on this computer (masks.ts), so it only softens that object's edge.
  *  - Depth Anything 3: the official template utility_depth_anything3_video_depth_estimation's chain (DA3Inference 504, lower_bound_resize, mono →
  *    DA3Render depth, v2_style). Small on your computer; Mono-Large on Comfy Cloud (plan.ts). Frames saved as PNG; depth.ts stretches them over the clip.
+ * In 2-second pieces (owner, 2026-11-07, from the Comfy Cloud test: 48 frames tracked in about 18 s; 120 frames in one pass ran past 73 s and
+ * was stopped): the SAM part is repeated per piece of 48 frames (ImageFromBatch batch_index / length), each piece finding every name again on its
+ * own first frame, pieces overlapping by 4 frames. Name i is track i in every piece; stitch.ts joins the pieces with a crossfade in the overlap.
+ * BiRefNet and depth have no memory, so they run once over the whole clip. SAM 3.1 loads once for every piece (one graph, one job).
  * Unused objects and switched-off parts are taken out, so ComfyUI only loads what this job needs.
  */
 import { readFileSync } from 'node:fs';
@@ -18,9 +22,26 @@ import { WORKFLOWS_DIR } from '../config.js';
 import { LAYERS_MAX_OBJECTS, LAYERS_WORKFLOW } from './constants.js';
 
 export type FileRef = { __file: string };
-export interface GraphJob { source: string; objects: string[]; edges: boolean; depth: boolean }
+export interface GraphJob { source: string; objects: string[]; edges: boolean; depth: boolean; /** frames of the clip (the pieces follow it) */ frames: number }
+/** A piece: its first frame in the clip and its length. */
+export type Piece = { start: number; length: number };
+export const PIECE_FRAMES = 48;
+export const PIECE_OVERLAP = 4;
+/** The pieces of a clip: 48 frames each, every next one starting 4 frames before the last one ends; the last one ends with the clip.
+ *  A tail that would sit wholly inside the overlap is left out (the piece before covers it). */
+export function pieces(frames: number, size = PIECE_FRAMES, overlap = PIECE_OVERLAP): Piece[] {
+  const n = Math.max(1, Math.floor(frames)); const out: Piece[] = []; const stride = size - overlap;
+  for (let start = 0; ; start += stride) {
+    const length = Math.min(size, n - start); out.push({ start, length });
+    if (start + size >= n) break;
+    if (n - (start + stride) <= overlap) break;
+  }
+  return out;
+}
 /** Output nodes of the analysis graph, in the order the plan reads them back. */
-export const maskNode = (k: number) => String(202 + 10 * k);
+/** Piece p's node ids: the first piece keeps the file's ids, piece p adds 1000 × p. */
+const pid = (p: number, id: number | string) => String(p * 1000 + Number(id));
+export const maskNode = (k: number, p = 0) => pid(p, 202 + 10 * k);
 export const EDGES_NODE = '303';
 export const DEPTH_NODE = '403';
 /** Depth Anything 3 on Comfy Cloud: the template's own default (on your computer: Small, 0.14 GB). */
@@ -30,6 +51,10 @@ const load = () => JSON.parse(readFileSync(path.join(WORKFLOWS_DIR, LAYERS_WORKF
 const drop = (g: Record<string, any>, ids: string[]) => { for (const id of ids) delete g[id]; };
 const detectNodes = (k: number) => [100, 101, 102].map((n) => String(n + 10 * k));
 const trackNodes = (k: number) => [200, 201, 202].map((n) => String(n + 10 * k));
+
+/** The SAM nodes of one piece in the file (frames, first frame, the detect / batch / track / mask chains). */
+const SAM_PIECE = ['5', '4', ...[0, 1, 2, 3].flatMap((k) => [...detectNodes(k), ...trackNodes(k)]), '150', '151', '152'];
+const isLink = (v: unknown): v is [string, number] => Array.isArray(v) && v.length === 2 && typeof v[0] === 'string';
 
 export function layersGraph(j: GraphJob): Record<string, any> {
   const n = j.objects.length;
@@ -44,12 +69,23 @@ export function layersGraph(j: GraphJob): Record<string, any> {
   g['152'].inputs.max_objects = n;
   if (!j.edges) drop(g, ['300', '301', '302', EDGES_NODE]);
   if (!j.depth) drop(g, ['400', '401', '402', DEPTH_NODE]);
+  // one copy of the SAM part per piece; links inside the piece move with it, links to the shared nodes (video, SAM model) stay
+  const ps = pieces(j.frames); const tmpl = Object.fromEntries(SAM_PIECE.filter((id) => g[id]).map((id) => [id, structuredClone(g[id])]));
+  for (const [p, pc] of ps.entries()) {
+    for (const [id, node] of Object.entries<any>(tmpl)) {
+      const c = p === 0 ? g[id] : structuredClone(node);
+      for (const [key, v] of Object.entries<any>(c.inputs)) if (isLink(v) && tmpl[v[0]]) c.inputs[key] = [pid(p, v[0]), v[1]];
+      if (id === '5') Object.assign(c.inputs, { batch_index: pc.start, length: pc.length });
+      if (c.class_type === 'SaveImage') c.inputs.filename_prefix = String(c.inputs.filename_prefix).replace(/_p\d+$/, `_p${p}`);
+      g[pid(p, id)] = c;
+    }
+  }
   return g;
 }
 
-/** The output nodes this graph saves: the object mattes first (chip order), then edges, then depth. */
-export function outputNodes(j: Pick<GraphJob, 'objects' | 'edges' | 'depth'>): { node: string; role: string }[] {
-  const out = j.objects.map((_, k) => ({ node: maskNode(k), role: `mask${k}` }));
+/** The output nodes this graph saves: the object mattes per piece (piece by piece, chip order), then edges, then depth. */
+export function outputNodes(j: Pick<GraphJob, 'objects' | 'edges' | 'depth' | 'frames'>): { node: string; role: string }[] {
+  const out = pieces(j.frames).flatMap((_, p) => j.objects.map((__, k) => ({ node: maskNode(k, p), role: `mask${k}p${p}` })));
   if (j.edges) out.push({ node: EDGES_NODE, role: 'edges' });
   if (j.depth) out.push({ node: DEPTH_NODE, role: 'depth' });
   return out;

@@ -7,7 +7,8 @@
 import path from 'node:path';
 import { mkdir, rm } from 'node:fs/promises';
 import { ff, seq } from './masks.js';
-import { workDir, type RawSet, type LayersJobInput } from './assemble.js';
+import { workDir, joinPieces, type RawSet, type LayersJobInput } from './assemble.js';
+import { pieces } from './graph.js';
 
 /** Where each sample oval sits (share of the frame): centre x / y, radius x / y. Later chips are smaller and higher (further away). */
 export function sampleOval(k: number, n: number) {
@@ -27,6 +28,16 @@ export async function sampleRaw(jobId: string, i: LayersJobInput): Promise<RawSe
     await ff(['-y', '-v', 'error', ...src, '-vf', `format=gray,geq=lum='${e}'`, ...frames(i), seq(d)], 'sample matte');
     masks.push(d);
   }
+  // as a real run brings them back: one folder per 2-second piece (each later piece a little off, as a fresh first-frame find is), then joined
+  const ps = pieces(i.frames); const perPiece: string[][] = [];
+  for (const [k, full] of masks.entries()) {
+    const dirs: string[] = [];
+    for (const [p, pc] of ps.entries()) { const d = path.join(dir, `mask${k}p${p}`); await mkdir(d);
+      await ff(['-y', '-v', 'error', '-start_number', String(pc.start + 1), '-framerate', String(fps), '-i', seq(full), '-frames:v', String(pc.length), '-vf', p % 2 ? 'format=gray,crop=iw-3:ih:3:0,pad=iw+3:ih:0:0' : 'format=gray', seq(d)], 'sample piece');
+      dirs.push(d); }
+    perPiece.push(dirs);
+  }
+  const joined = await joinPieces(jobId, i, perPiece);
   let edges: string | null = null;
   if (i.edges) { edges = path.join(dir, 'edges'); await mkdir(edges);
     const inputs = masks.flatMap((m) => ['-framerate', String(fps), '-i', seq(m)]);
@@ -40,5 +51,5 @@ export async function sampleRaw(jobId: string, i: LayersJobInput): Promise<RawSe
   let plate: string | null = null;
   if (i.background) { plate = path.join(dir, 'plate.mp4');
     await ff(['-y', '-v', 'error', ...src, '-t', '5', '-vf', 'boxblur=12:2,eq=saturation=0.6,format=yuv420p', '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', plate], 'sample background'); }
-  return { masks, edges, depth, plate };
+  return { masks: joined.masks, notes: joined.notes, edges, depth, plate };
 }

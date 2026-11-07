@@ -81,3 +81,6 @@ export function layersMode(i: Record<string, any>): LayersMode {
   if (first === 'split' || first === 'with-plate') return first;
   return i.background !== false && optionOn(i.background) ? 'with-plate' : 'split';
 }
+
+/** Comfy Cloud runs skip the clean background until its Comfy Cloud step is confirmed by a real run (owner, 2026-11-07). */
+export const CLOUD_PLATE_NOTE = 'Clean background on Comfy Cloud is coming; run it on your computer or with Footage Effects.';
