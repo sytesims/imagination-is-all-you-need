@@ -1,0 +1,167 @@
+/* The React Flow board (RfBoard.tsx, behind the engine switch). Our look through our tokens; React Flow's base.css only for layout,
+   never its default node / edge styles. Card looks stay in node.css (scoped to :is(.tl-container,.cv-rf)). */
+.cv-rf{overflow:hidden;background:#0F1113;font-family:var(--font-ui,Inter,system-ui,sans-serif);font-size:12px;color:var(--text-1,#F7F7F8)}
+.cv-rf .react-flow{position:absolute;inset:0;--xy-background-color:transparent;background:transparent}
+.cv-rf .react-flow__renderer,.cv-rf .react-flow__pane{background:transparent}
+.cv-rf .react-flow__pane{cursor:default}
+.cv-rf .react-flow__pane.draggable,.cv-rf[data-tool=hand] .react-flow__pane{cursor:grab}
+.cv-rf .react-flow__pane.dragging{cursor:grabbing}
+.cv-rf .react-flow__node{cursor:default;border:0;padding:0;background:none;box-shadow:none;border-radius:0;color:inherit;font:inherit;text-align:left}
+.cv-rf .react-flow__node:focus,.cv-rf .react-flow__node:focus-visible{outline:none}
+.cv-rf .react-flow__edges svg{overflow:visible}
+.cv-rf .react-flow__edge{cursor:pointer}
+.cv-rf .react-flow__edge .react-flow__edge-interaction{pointer-events:stroke}
+.cv-rf .lk.sel .lk-thread{stroke:var(--accent,#FF7A1A);stroke-opacity:.95}
+.cv-rf .lk.sel .lk-bridge{stroke:var(--accent,#FF7A1A)}
+
+/* a card inside its node: the wrappers tldraw gave it (node.css and the agent's effects key on .tl-shape[data-shape-id]) */
+.cv-rf .tl-shape.cv-rf-shape{position:relative;width:100%;height:100%;pointer-events:all;overflow:visible;contain:none;transform:none}
+.cv-rf .tl-shape.cv-rf-shape>.tl-html-container{position:absolute;inset:0;width:100%;height:100%;color:var(--text-1,#F7F7F8);transform:none}
+.cv-rf .react-flow__node-card .tl-html-container>*{height:100%}
+/* links need two ends on every node; they are never shown and never grabbed */
+.cv-rf .react-flow__handle.cv-rf-end{opacity:0;pointer-events:none;width:1px;height:1px;min-width:0;min-height:0;border:0;background:none}
+
+/* selection box and resize handles: the board's orange, calm */
+.cv-rf .react-flow__selection,.cv-rf .react-flow__nodesselection-rect{background:rgba(255,122,26,.06);border:1px solid rgba(255,122,26,.55);border-radius:2px}
+.cv-rf .react-flow__nodesselection-rect{background:transparent;border-color:transparent}
+.cv-rf .react-flow__resize-control.cv-rf-line{border-color:rgba(255,122,26,.55)}
+.cv-rf .react-flow__resize-control.cv-rf-line-quiet{border-color:transparent}
+.cv-rf .react-flow__resize-control.handle.cv-rf-handle-dot{width:calc(9px * min(1.5, max(1, var(--tl-scale,1))));height:calc(9px * min(1.5, max(1, var(--tl-scale,1))));border-radius:2px;background:#F7F7F8;border:1.5px solid var(--accent,#FF7A1A);box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.cv-rf .react-flow__resize-control.handle.cv-rf-handle-dot:not(.top.left):not(.top.right):not(.bottom.left):not(.bottom.right){display:none}
+
+/* sticky notes: tldraw's paper colours */
+.cv-sticky{box-sizing:border-box;transform-origin:0 0;padding:18px 20px;border-radius:14px;box-shadow:0 14px 34px rgba(0,0,0,.4);color:#1d1d1d;font-weight:500;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--font-ui,Inter,sans-serif)}
+.cv-sticky.sel{box-shadow:0 0 0 calc(2px * max(1, var(--tl-scale,1))) var(--accent,#FF7A1A),0 14px 34px rgba(0,0,0,.4)}
+.cv-sticky-ph{opacity:.4}
+.cv-sticky-edit{display:block;width:100%;min-height:1.35em;field-sizing:content;resize:none;border:0;outline:0;padding:0;margin:0;background:transparent;color:inherit;font:inherit;line-height:inherit;overflow:hidden}
+.cv-sticky.c-yellow{background:#FEE590}.cv-sticky.c-orange{background:#F2913F}.cv-sticky.c-red{background:#FF9D9D}.cv-sticky.c-green{background:#A9E8B4}.cv-sticky.c-blue{background:#9CC6FF}
+.cv-sticky.c-violet{background:#D0B6FF}.cv-sticky.c-grey{background:#D7D9DC}.cv-sticky.c-black{background:#2A2C30;color:#F7F7F8}.cv-sticky.c-white{background:#F7F7F8}
+.cv-sticky.c-light-blue{background:#BEE3FF}.cv-sticky.c-light-green{background:#CDEFC7}.cv-sticky.c-light-red{background:#FFC6C6}.cv-sticky.c-light-violet{background:#E6D6FF}
+/* D3 options (dev only, ?rfopt=sticky:card|minimal) */
+.cv-sticky.as-card{background:var(--surface-1,#131517)!important;color:var(--text-1,#F7F7F8);border:1px solid rgba(255,255,255,.08);border-left:4px solid var(--sticky,#FEE590);border-radius:18px;font-size:.8em!important}
+.cv-sticky.as-card.c-orange{--sticky:#F2913F}.cv-sticky.as-card.c-blue{--sticky:#9CC6FF}.cv-sticky.as-card.c-green{--sticky:#A9E8B4}.cv-sticky.as-card.c-red{--sticky:#FF9D9D}.cv-sticky.as-card.c-violet{--sticky:#D0B6FF}
+.cv-sticky.as-minimal{background:transparent!important;box-shadow:none;color:var(--text-1,#F7F7F8);border-left:2px solid rgba(255,255,255,.25);border-radius:0;padding:4px 14px}
+
+/* frames: a quiet outline, the name above (today's tldraw frame look) */
+.cv-frame{box-sizing:border-box;position:absolute;inset:0;border:calc(1px * max(1, var(--tl-scale,1))) solid rgba(255,255,255,.14);background:rgba(255,255,255,.018);border-radius:4px;pointer-events:none}
+.cv-frame.sel{border-color:rgba(255,122,26,.7)}
+.cv-frame-name{position:absolute;left:calc(-7px * min(var(--tl-scale,1),4));bottom:100%;margin-bottom:calc(9px * min(var(--tl-scale,1),4));transform:scale(min(var(--tl-scale,1),4));transform-origin:0 100%;font:600 15px/15px var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.005em;color:var(--text-1,#F7F7F8);background:rgba(15,17,19,.55);padding:3px 9px;border-radius:7px;white-space:nowrap;pointer-events:all;cursor:default}
+.cv-rf .react-flow__node-frame .react-flow__resize-control{pointer-events:all}
+
+/* a link card (an old board's bookmark) */
+.cv-linkcard{box-sizing:border-box;width:100%;height:100%;display:flex;flex-direction:column;gap:6px;overflow:hidden;padding:0 0 12px;border-radius:18px;background:var(--surface-1,#131517);border:1px solid rgba(255,255,255,.08);box-shadow:0 20px 52px rgba(0,0,0,.4)}
+.cv-linkcard.sel{border-color:rgba(255,122,26,.55)}
+.cv-linkcard img,.cv-linkcard-ph{width:100%;flex:1;min-height:0;object-fit:cover;background:rgba(255,255,255,.04)}
+.cv-linkcard b{padding:0 14px;font:600 14px/1.3 var(--font-ui,Inter,sans-serif)}
+.cv-linkcard p{margin:0;padding:0 14px;color:var(--text-2,#898A8B);font-size:12px;line-height:1.4;max-height:3.4em;overflow:hidden}
+.cv-linkcard a{padding:0 14px;color:var(--accent,#FF7A1A);font-size:12px;text-decoration:none}
+.cv-rf-unknown{box-sizing:border-box;width:100%;height:100%;display:grid;place-items:center;border:1px dashed rgba(255,255,255,.2);border-radius:14px;color:var(--text-2,#898A8B);font-size:13px;padding:12px;text-align:center}
+
+/* the agent's cursor, outline and laser */
+.cv-rf-agent{position:absolute;left:0;top:0;pointer-events:none;z-index:2000}
+.cv-rf-agent-sel{position:absolute;border:solid rgba(255,122,26,.8)}
+.cv-rf-laser{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
+.cv-rf-laser polyline{fill:none;stroke:#FF4D3D;stroke-linecap:round;stroke-linejoin:round;opacity:.85;filter:drop-shadow(0 0 6px rgba(255,77,61,.6))}
+.cv-rf-cursor{position:absolute;left:0;top:0;transform-origin:0 0;transition:none}
+.cv-rf-tag{position:absolute;left:16px;top:-2px;display:flex;flex-direction:column;gap:2px;white-space:nowrap}
+.cv-rf-tag b{font:700 11px/14px var(--font-ui,Inter,sans-serif);letter-spacing:.02em;color:#FF7A1A;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.cv-rf-tag em{font:600 12px/16px var(--font-ui,Inter,sans-serif);font-style:normal;padding:4px 9px;border-radius:999px;background:#FF7A1A;color:#14151A;box-shadow:0 6px 18px rgba(255,122,26,.28),0 2px 6px rgba(0,0,0,.35);max-width:260px;overflow:hidden;text-overflow:ellipsis}
+
+/* React Flow's attribution: visible (free tier), quiet, on brand */
+.cv-rf .react-flow__attribution{background:transparent;padding:2px 8px;margin:0 0 6px 64px;font-size:10px;opacity:.55}
+.cv-rf .react-flow__attribution a{color:var(--text-2,#898A8B);text-decoration:none}
+.cv-rf-minimap{border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
+.cv-rf-dropped{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);margin:0;padding:6px 12px;border-radius:999px;background:rgba(20,21,26,.82);border:1px solid rgba(255,255,255,.08);color:var(--text-2,#898A8B);font-size:12px;pointer-events:none;z-index:5}
+/* the board opens settled (RfBoard: data-booting for its first moment): no entrance fade on what is already there */
+.cv-rf[data-booting] .gc-stage,.cv-rf[data-booting] .gc-stage img,.cv-rf[data-booting] .gc-stage video,.cv-rf[data-booting] .nf-tk img{animation:none!important}
+.cv-rf .cv-settled:not(.lk-thread),.cv-rf .lk:not(.run) .lk-thread.cv-settled{animation:none!important}
+
+/* ===================================================================== premium pass (2026-11-06; this engine only, tldraw's look unchanged)
+   Options (taste calls) sit on the board's container from ?rfopt=: data-takes (ring | strip | classic), data-text (clean | today),
+   data-joins (ports | notch | curve), data-handles (all | corners | none). */
+
+/* cards: hover lifts the edge; selected wears a crisp orange ring with a soft halo; a dragged card floats */
+.cv-rf .react-flow__node .nf.nf-node{transition:border-color var(--t-state,150ms) ease,box-shadow 180ms ease,transform 180ms ease}
+.cv-rf .react-flow__node:hover .nf.nf-node:not(.nf-sel){border-color:rgba(255,255,255,.2)}
+.cv-rf .nf.nf-node.nf-sel{border-color:rgba(255,122,26,.7);box-shadow:0 0 0 1px rgba(255,122,26,.55),0 0 0 calc(5px * max(1, var(--tl-scale,1))) rgba(255,122,26,.09),0 24px 60px rgba(0,0,0,.5)}
+.cv-rf .react-flow__node.dragging .nf.nf-node{box-shadow:0 0 0 1px rgba(255,122,26,.55),0 40px 90px rgba(0,0,0,.62);transform:scale(1.006)}
+.cv-rf.cv-far .react-flow__node.dragging .nf.nf-node{transform:none}
+/* resize: the ring is the frame, so the edge lines are invisible grab areas; the corners show (D4: all, corners, none) */
+.cv-rf .react-flow__resize-control.line.cv-rf-line,.cv-rf .react-flow__resize-control.line.cv-rf-line-quiet{border-color:transparent}
+.cv-rf[data-handles=corners] .react-flow__resize-control.line{pointer-events:none}
+.cv-rf[data-handles=none] .react-flow__resize-control.handle.cv-rf-handle-dot{opacity:0}
+.cv-rf[data-handles=none] .react-flow__resize-control.handle.cv-rf-handle-dot:hover{opacity:1}
+.cv-rf .react-flow__resize-control.handle.cv-rf-handle-dot{border-radius:3px;transition:scale 120ms ease}
+.cv-rf .react-flow__resize-control.handle.cv-rf-handle-dot:hover{scale:1.3}
+
+/* the version strip (D: ring, strip, classic): crisp thumbnails, a clear chosen one, hover previews it on the card's picture */
+.cv-rf .gc-v-n{font:600 calc(10.5px * var(--nf-k))/1 var(--font-sans,Inter,sans-serif);letter-spacing:.04em;color:var(--text-3,rgba(255,255,255,.45))}
+.cv-rf[data-takes=ring] .gc-v-thumbs{gap:7px}
+.cv-rf[data-takes=ring] .gc-v-thumbs .nf-tk{width:32px;height:32px;border-radius:8px;opacity:.7;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.cv-rf[data-takes=ring] .gc-v-thumbs .nf-tk img{border-radius:8px}
+.cv-rf[data-takes=ring] .gc-v-thumbs .nf-tk:hover{opacity:1;transform:translateY(-1.5px)}
+.cv-rf[data-takes=ring] .gc-v-thumbs .nf-tk.on{opacity:1;box-shadow:0 0 0 2px var(--surface-1,#131517),0 0 0 3.5px var(--accent,#FF7A1A),0 4px 12px rgba(255,122,26,.25)}
+.cv-rf[data-takes=strip] .gc-v-thumbs{gap:4px}
+.cv-rf[data-takes=strip] .gc-v-thumbs .nf-tk{width:44px;height:30px;border-radius:6px;opacity:.55;box-shadow:none}
+.cv-rf[data-takes=strip] .gc-v-thumbs .nf-tk img{border-radius:6px}
+.cv-rf[data-takes=strip] .gc-v-thumbs .nf-tk:hover{opacity:.95;transform:none}
+.cv-rf[data-takes=strip] .gc-v-thumbs .nf-tk.on{opacity:1;box-shadow:none}
+.cv-rf[data-takes=strip] .gc-v-thumbs .nf-tk.on::after{content:'';position:absolute;left:8px;right:8px;bottom:-6px;height:2.5px;border-radius:2px;background:var(--accent,#FF7A1A)}
+.cv-rf .gc-stage[data-peek]::after{content:attr(data-peek);position:absolute;left:10px;top:10px;z-index:3;padding:4px 9px;border-radius:999px;background:rgba(15,17,19,.74);backdrop-filter:blur(6px);
+  font:600 calc(11px * var(--nf-k))/1.2 var(--font-sans,Inter,sans-serif);color:var(--text-1,#F7F7F8);box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+
+/* card text (D: clean, today): a small eyebrow for the workflow, the name as the headline, the prompt readable, More as a quiet chip */
+.cv-rf[data-text=clean] .gc .nf-head .nf-title{font:600 calc(11px * var(--nf-k))/1 var(--font-sans,Inter,sans-serif);letter-spacing:.07em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.5))}
+.cv-rf[data-text=clean] .gc .nf-model{font-size:calc(12px * var(--nf-k))}
+.cv-rf[data-text=clean] .gc-prompt-ro .nf-prompt-line{color:color-mix(in srgb,var(--text-1,#F7F7F8) 74%,transparent);line-height:1.45}
+.cv-rf[data-text=clean] .gc-more{padding:3px 8px;border-radius:999px;color:var(--text-1,#F7F7F8);background:var(--surface-2,#1C1E20);box-shadow:0 0 0 1px rgba(255,255,255,.08),-14px 0 12px var(--surface-1,#131517)}
+
+/* joins: links run port to port (D: ports, notch, curve); ports on a link are filled, free ones hollow; lit chains glow; a new link draws in */
+.cv-rf[data-joins=ports] .nf-port i,.cv-rf[data-joins=curve] .nf-port i{background:var(--surface-1,#131517);box-shadow:0 0 0 1.5px color-mix(in srgb,var(--k,#888) 75%,transparent),0 0 0 3.5px var(--surface-1,#131517)}
+.cv-rf[data-joins=ports] .nf-port.linked i,.cv-rf[data-joins=curve] .nf-port.linked i{background:var(--k,#888);box-shadow:0 0 0 1.5px var(--k,#888),0 0 0 3.5px var(--surface-1,#131517)}
+.cv-rf[data-joins=ports] .nf:hover .nf-port i,.cv-rf[data-joins=curve] .nf:hover .nf-port i{background:color-mix(in srgb,var(--k,#888) 55%,var(--surface-1,#131517))}
+.cv-rf .lk-join{stroke-width:calc(2.4px * max(1, var(--tl-scale,1)));stroke-opacity:calc(var(--lk-o) + .42)}
+.cv-rf[data-joins=ports] .lk-thread:not(.lk-join),.cv-rf[data-joins=curve] .lk-thread:not(.lk-join){stroke-width:calc(1.8px * max(1, var(--tl-scale,1)));stroke-opacity:calc(var(--lk-o) + .12)}
+.cv-rf .lk.lit .lk-thread{stroke-opacity:.95;filter:drop-shadow(0 0 calc(4px * max(1, var(--tl-scale,1))) color-mix(in srgb,var(--k) 55%,transparent))}
+.cv-rf .lk.sel .lk-thread{stroke:var(--accent,#FF7A1A);stroke-opacity:1;stroke-width:calc(2.6px * max(1, var(--tl-scale,1)))}
+.cv-rf .lk.run .lk-thread{stroke-dasharray:.012 .012;animation:rf-lk-flow 1.4s linear infinite}
+.cv-rf:not([data-booting]) .lk:not(.run) .lk-thread{animation:rf-lk-draw 560ms cubic-bezier(.3,.7,.2,1) both}
+@keyframes rf-lk-draw{from{stroke-dasharray:0 1}to{stroke-dasharray:1 0}}
+@keyframes rf-lk-flow{to{stroke-dashoffset:-.24}}
+.cv-rf.cv-far .lk .lk-thread{filter:none;animation:none}
+@media (prefers-reduced-motion:reduce){.cv-rf .lk .lk-thread{animation:none!important}.cv-rf .react-flow__node .nf.nf-node{transition:none}.cv-rf .react-flow__node.dragging .nf.nf-node{transform:none}}
+/* corner handles sit on the card's rounded corner, not on its bounding box */
+.cv-rf .react-flow__node-card .react-flow__resize-control.handle.left{left:calc(5px * max(1, var(--tl-scale,1)))}
+.cv-rf .react-flow__node-card .react-flow__resize-control.handle.right{left:calc(100% - 5px * max(1, var(--tl-scale,1)))}
+.cv-rf .react-flow__node-card .react-flow__resize-control.handle.top{top:calc(5px * max(1, var(--tl-scale,1)))}
+.cv-rf .react-flow__node-card .react-flow__resize-control.handle.bottom{top:calc(100% - 5px * max(1, var(--tl-scale,1)))}
+.cv-rf .react-flow__resize-control{z-index:12}
+
+/* ---- release 1: the right-click menu, the drop menu and bubble, the shortcuts sheet (our tokens, never React Flow's) ---- */
+.cv-ctx{position:fixed;z-index:60;min-width:224px;max-width:min(300px,calc(100vw - 16px));padding:6px;border-radius:14px;background:rgba(22,23,26,.98);border:1px solid rgba(255,255,255,.09);
+  box-shadow:0 18px 48px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35);backdrop-filter:blur(14px);font:500 13px/18px var(--font-sans,Inter,sans-serif);color:var(--text-1,#F7F7F8)}
+.cv-ctx-h{margin:2px 8px 6px;font:600 10px/14px var(--font-sans,Inter,sans-serif);letter-spacing:.09em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.5))}
+.cv-ctx-row,.cv-dm-row{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;padding:7px 9px;border-radius:9px;cursor:pointer}
+.cv-ctx-row:hover:not(:disabled),.cv-ctx-row:focus-visible,.cv-dm-row:hover,.cv-dm-row:focus-visible{background:rgba(255,255,255,.07)}
+.cv-ctx-row:disabled{opacity:.38;cursor:default}
+.cv-ctx-row.danger:not(:disabled){color:#FF8A80}
+.cv-ctx kbd{font:500 11px/14px var(--font-mono,'JetBrains Mono',monospace);color:var(--text-3,rgba(255,255,255,.5));padding:1px 6px;border-radius:6px;background:rgba(255,255,255,.05)}
+.cv-ctx-sep{display:block;height:1px;margin:5px 6px;background:rgba(255,255,255,.07)}
+.cv-dropmenu{transform:translate(12px,-12px);min-width:288px}
+.cv-dm-t{display:flex;flex-direction:column;gap:1px}.cv-dm-t small{font-size:11.5px;line-height:15px;color:var(--text-2,#9A9BA0)}
+.cv-dm-row.def .cv-dm-t b{color:var(--accent,#FF7A1A)}.cv-dm-row.def{background:rgba(255,255,255,.045)} /* the default (↵): Replace only */
+.cv-dropbubble{position:fixed;z-index:61;transform:translate(14px,-130%);padding:7px 11px;border-radius:10px;background:#2A2416;border:1px solid rgba(232,180,74,.45);color:#F3D48D;
+  font:600 12.5px/16px var(--font-sans,Inter,sans-serif);box-shadow:0 10px 26px rgba(0,0,0,.45);pointer-events:none;white-space:nowrap;animation:cv-bubble-in 160ms ease-out both}
+@keyframes cv-bubble-in{from{opacity:0;transform:translate(14px,-110%)}}
+.cv-keys-back{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:16px;background:rgba(8,9,10,.55);backdrop-filter:blur(3px)}
+.cv-keys{width:min(720px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:20px 22px;border-radius:18px;background:#16171A;border:1px solid rgba(255,255,255,.09);box-shadow:0 30px 80px rgba(0,0,0,.6);color:var(--text-1,#F7F7F8)}
+.cv-keys header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cv-keys h2{margin:0;font:600 18px/24px var(--font-display,'Space Grotesk',Inter,sans-serif)}
+.cv-keys h3{margin:0 0 8px;font:600 11px/14px var(--font-sans,Inter,sans-serif);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3,rgba(255,255,255,.5))}
+.cv-keys-cols{display:grid;grid-template-columns:1.2fr 1fr;gap:22px}
+.cv-keys dl{margin:0;display:grid;gap:6px}.cv-keys dl>div{display:flex;align-items:center;gap:12px}
+.cv-keys dt{flex:none;min-width:58px}.cv-keys dd{margin:0;font:400 13px/18px var(--font-sans,Inter,sans-serif);color:var(--text-2,#B4B5BA)}
+.cv-keys kbd{font:500 12px/16px var(--font-mono,'JetBrains Mono',monospace);padding:2px 7px;border-radius:7px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);color:var(--text-1,#F7F7F8)}
+.cv-keys-note{margin:14px 0 0;font:400 12.5px/18px var(--font-sans,Inter,sans-serif);color:var(--text-3,rgba(255,255,255,.55))}
+@media (max-width:620px){.cv-keys-cols{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.cv-dropbubble{animation:none}}

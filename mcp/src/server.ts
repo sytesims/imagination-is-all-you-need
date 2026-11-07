@@ -7,7 +7,7 @@ import { registerResources } from './resources.js';
 import { registerPrompts, instructionsFor, LISTEN_PHRASE } from './prompts.js';
 import { annotateTools } from './meta.js';
 import { WEB, abs, webLink, get, post, patch, del, submit, waitFor, uploadMedia, currentBudgetId, setBudgetId, budgetLocked, withBudget, sharedBudgetEnabled, ApiError, type Fields } from './api.js';
-import { issueQuote, useQuote, requestHash } from './quotes.js';
+import { issueQuote, useQuote, requestHash, fmtUsd } from './quotes.js';
 import { loadTools, findTool, knownToolIds, catalogSource, fieldSchema, isFileInput, modelCard, limitsOf, runOnPlaces, loadWorkflows, loadSearchWords, COMMON_JOB_FIELDS } from './catalog.js';
 import { buildIndex, search, toolModes, type Entry } from './search.js';
 import { parseRecipe, recipeToRun } from './recipe.js';
@@ -97,14 +97,14 @@ async function quoteOne(tool_id: string, params: Record<string, string | number 
   // prices in dollars (2026-10-26): the same words the app shows. priceUsd = the dollars to show; priceLabel = "≈ $0.76" / "Free · this computer";
   // priceDetail = the provider's own units, plan and price date ("160 Comfy credits · on your Creator plan · price checked 2026-10-26"). credits stays the internal unit (1 = $0.01).
   const priceUsd = local ? 0 : typeof q.cost?.estUsd === 'number' && q.cost.estUsd > 0 ? q.cost.estUsd : Math.round(credits) / 100;
-  const priceLabel: string = typeof q.cost?.usdText === 'string' && q.cost.usdText ? q.cost.usdText : local ? 'Free · this computer' : priceUsd > 0 ? `≈ $${priceUsd.toFixed(2)}` : 'Free';
+  const priceLabel: string = typeof q.cost?.usdText === 'string' && q.cost.usdText ? q.cost.usdText : local ? 'Free · this computer' : priceUsd > 0 ? `≈ ${fmtUsd(priceUsd)}` : 'Free';
   return { toolId: tool_id, endpoint: image ? '/api/models/quote' : `/api/tools/${tool_id}/price`, priceUsd, priceLabel, priceDetail: q.cost?.detail ?? null, credits, usd: Math.round(credits) / 100, costUsd: q.cost?.estUsd ?? null,
     free: !!q.free || credits === 0, local, localFree: !!cfg?.localFree, basis, billedTo: q.cost?.billedToName ?? null, runnable: q.runnable !== false, blockedReason: q.runnable === false ? q.blockedReason ?? null : null,
     estimated: typeof q.estimated === 'boolean' ? q.estimated : !(basis === 'hosted' || basis === 'open-weights'),
     modelKey: q.modelKey ?? null, runOn: q.runOn ?? null, route: q.route ?? null, draftCredits: q.draftCredits ?? null, breakdown: (q.breakdown ?? []).map((b: any) => b.label), ...(q.resolutionMapped ? { resolution: q.resolutionMapped.to, resolutionMapped: q.resolutionMapped } : {}),
     ...(q.agentBudget ? { agentBudget: q.agentBudget } : {}), raw: q };
 }
-const money = (n: number | null | undefined) => (n == null ? '-' : `$${n.toFixed(2)}`);
+const money = (n: number | null | undefined) => (n == null ? '-' : fmtUsd(n));
 /** The receipt as a short plain-text table (what agents show the user). */
 export function receiptText(r: any) {
   const lines = [`Receipt: agent "${r.budget.name}", budget ${money(r.budget.budgetUsd)}`, ''];
@@ -145,7 +145,7 @@ async function run(toolId: string, c: Common, fields: Fields, files: Record<stri
     const hash = requestHash({ toolId, form: { ...params, legacy: '1' }, media: Object.fromEntries(Object.entries(files).map(([k, v]) => [k, v ?? []])) });
     let quote: ReturnType<typeof useQuote> | null = null;
     if (credits > 0 && !c.use_free) {
-      if (!c.quote_id) return refusal({ reason: `This run costs about $${usd.toFixed(2)}${q.billedTo ? ` (billed to ${q.billedTo})` : ''}, so it was not started. Tell the user the price; with their OK, call this tool again with the same arguments and quote_id.`, price: { usd, credits }, ...issueQuote({ toolId, hash, credits, usd, routeId: q.route ?? null }) });
+      if (!c.quote_id) return refusal({ reason: `This run costs about ${fmtUsd(usd)}${q.billedTo ? ` (billed to ${q.billedTo})` : ''}, so it was not started. Tell the user the price; with their OK, call this tool again with the same arguments and quote_id.`, price: { usd, credits }, ...issueQuote({ toolId, hash, credits, usd, routeId: q.route ?? null }) });
       quote = useQuote(c.quote_id, toolId, hash); if (!quote.ok) return refusal({ reason: `${quote.reason} Nothing was sent or charged.`, price: { usd, credits } });
     }
     let s: any;
@@ -506,7 +506,7 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
           try { const base = priceParams(r0.form, r0.media, undefined, undefined, a.draft, r0.media.video?.[0], r0.t.id);
             const rr: any = await post('/api/models/quotes', { toolId: r0.t.id, params: base, models: [{ model: a.model, runOn: a.run_on ?? null }], range: false }); const v = rr?.quotes?.[a.model];
             if (!v?.fit?.changes?.length) return null;
-            return { fitsWith: { fields: v.fit.values, note: v.fit.note, runnable: v.ok !== false && v.runnable !== false, priceLabel: v.cost?.usdText ?? (typeof v.credits === 'number' ? `≈ $${(v.credits / 100).toFixed(2)}` : null) },
+            return { fitsWith: { fields: v.fit.values, note: v.fit.note, runnable: v.ok !== false && v.runnable !== false, priceLabel: v.cost?.usdText ?? (typeof v.credits === 'number' ? `≈ ${fmtUsd(v.credits / 100)}` : null) },
               next: `${a.model} doesn't take these settings as sent. ${v.fit.note} Send fitsWith.fields with the same request to quote and run it.` };
           } catch { return null; } };
         if (!a.compare) { let q0: Awaited<ReturnType<typeof quoteOne>>; try { q0 = await quoteOne(r0.t.id, r0.params); } catch (e) { const f = await fitFor(); if (f) return text({ toolId: r0.t.id, runnable: false, error: e instanceof Error ? e.message : String(e), quote_id: null, ...f }); throw e; }
@@ -516,7 +516,7 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
         const p = priceParams(r0.form, r0.media, undefined, undefined, a.draft, r0.media.video?.[0], r0.t.id);
         const r: any = await post('/api/models/quotes', { toolId: r0.t.id, params: p, ...(a.models?.length ? { models: a.models } : {}) });
         const nameOf = new Map<string, string>((r0.t.models ?? []).map((m: any) => [m.key, m.displayName ?? m.name]));
-        const rows = Object.entries(r.quotes ?? {}).map(([k, v]: [string, any]) => ({ model: k, name: nameOf.get(k) ?? v.model ?? null, runOn: v.runOn ?? null, place: v.runOnLabel ?? null, priceLabel: v.runOn === 'local' || v.credits === 0 ? (v.runOn === 'local' ? 'Free · this computer' : 'Free') : v.cost?.usdText ?? (v.credits != null ? `≈ $${(v.credits / 100).toFixed(2)}` : null), credits: v.credits ?? null, usd: v.cost?.estUsd ?? (v.credits != null ? v.credits / 100 : null), free: v.credits === 0, runnable: v.runnable !== false, status: v.status ?? null,
+        const rows = Object.entries(r.quotes ?? {}).map(([k, v]: [string, any]) => ({ model: k, name: nameOf.get(k) ?? v.model ?? null, runOn: v.runOn ?? null, place: v.runOnLabel ?? null, priceLabel: v.runOn === 'local' || v.credits === 0 ? (v.runOn === 'local' ? 'Free · this computer' : 'Free') : v.cost?.usdText ?? (v.credits != null ? `≈ ${fmtUsd(v.credits / 100)}` : null), credits: v.credits ?? null, usd: v.cost?.estUsd ?? (v.credits != null ? v.credits / 100 : null), free: v.credits === 0, runnable: v.runnable !== false, status: v.status ?? null,
           ...(v.reason || v.blockedReason ? { reason: v.blockedReason ?? v.reason } : {}), ...(v.adjusted ? { adjusted: v.adjusted } : {}), ...(v.fit?.note ? { willUse: { fields: v.fit.values, note: v.fit.note } } : {}), ...(v.need ? { needs: v.need.short } : {}), ...(v.priceRange?.places?.length > 1 ? { otherPlaces: v.priceRange.places.map((x: any) => ({ runOn: x.runOn, credits: x.credits })) } : {}) }))
           .sort((x, y) => Number(!x.runnable) - Number(!y.runnable) || (x.usd ?? 1e9) - (y.usd ?? 1e9));
         return text({ toolId: r0.t.id, compare: rows, next: 'Pick a row, then quote {model, run_on} from it to get its quote_id (a free row needs none). A row with willUse is priced at those settings: send willUse.fields with it.' });
@@ -540,11 +540,11 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
         const refuse = (o: Record<string, unknown>) => ({ isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, ...o }, null, 2) }] });
         if (!q) return refuse({ reason: `Could not price this run (${quoteError}), so it was not started. Nothing was charged.` });
         if (!q.runnable) return refuse({ reason: q.blockedReason ?? 'This request is not runnable. Fix the inputs or setup and quote again.', quote: q });
-        if (a.max_usd != null && q.runnable && q.usd > a.max_usd + 1e-9) return refuse({ reason: `The price is $${q.usd.toFixed(2)}, over max_usd $${a.max_usd.toFixed(2)}. Nothing was sent or charged.`, quote: q, next: 'Ask the user to approve this price, or pick a cheaper model / run_on ("local" is free).' });
+        if (a.max_usd != null && q.runnable && q.usd > a.max_usd + 1e-9) return refuse({ reason: `The price is ${fmtUsd(q.usd)}, over max_usd ${fmtUsd(a.max_usd)}. Nothing was sent or charged.`, quote: q, next: 'Ask the user to approve this price, or pick a cheaper model / run_on ("local" is free).' });
         const paid = q.runnable && q.usd > 0; let quoted: { credits: number; routeId: string | null } | null = null; let taken: ReturnType<typeof useQuote> | null = null;
         // a quote starts ONE run (audit 2026-11-01 #6): taken here, before the submit; the same client_request_id again is a replay of that run
         if (paid) { const c = useQuote(a.quote_id, t.id, r0.hash, a.client_request_id); if (!c.ok) return refuse({ reason: `${c.reason} Nothing was sent or charged.`, price: { usd: q.usd, credits: q.credits, billedTo: q.billedTo } }); quoted = c.q; taken = c;
-          if (typeof extra?.approve === 'function') { const no = await extra.approve(`run ${t.name}${q.modelKey ? ` on ${q.modelKey}` : ''}${q.billedTo ? ` (billed to ${q.billedTo})` : ''} for about $${Number(q.usd).toFixed(2)}${q.estimated ? ' (estimate)' : ''}`); if (no) { c.release(); return refuse({ reason: no }); } } }
+          if (typeof extra?.approve === 'function') { const no = await extra.approve(`run ${t.name}${q.modelKey ? ` on ${q.modelKey}` : ''}${q.billedTo ? ` (billed to ${q.billedTo})` : ''} for about ${fmtUsd(Number(q.usd))}${q.estimated ? ' (estimate)' : ''}`); if (no) { c.release(); return refuse({ reason: no }); } } }
         // free runs carry their price too (0): if the place flips to a paid one between quote and submit, the app refuses (409 route_changed, audit P3 #18)
         const priced = quoted ?? { credits: q.credits ?? 0, routeId: q.route ?? null };
         let sub: any; try { sub = await submit(t.id, { ...formOf(r0.form), ...(a.model ? { model: a.model } : {}), ...(a.run_on ? { runOn: a.run_on } : {}), ...(a.route ? { route: a.route } : {}), ...(a.seed !== undefined ? { seed: a.seed } : {}), ...(a.draft !== undefined ? { draft: a.draft } : {}), fromJob: a.from_job, output: a.from_output, reuseInputs: a.reuse_inputs,
@@ -651,7 +651,7 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
       const credits = Number(p?.quote?.credits ?? 0); const hash = requestHash({ toolId: `retry:${id}`, form: { ...body, failedOnly: !!failed_only }, media: {} });
       let taken: ReturnType<typeof useQuote> | null = null;
       if (credits > 0) {
-        if (!quote_id) return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, reason: `This re-run costs about $${(credits / 100).toFixed(2)}, so it was not started. Tell the user the price; with their OK, call retry again with the same arguments and quote_id.`, price: { usd: credits / 100, credits, routeId: p.quote.routeId ?? null, runOn: p.quote.runOn ?? null }, ...issueQuote({ toolId: `retry:${id}`, hash, credits, usd: credits / 100, routeId: p.quote.routeId ?? null }) }, null, 2) }] };
+        if (!quote_id) return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, reason: `This re-run costs about ${fmtUsd(credits / 100)}, so it was not started. Tell the user the price; with their OK, call retry again with the same arguments and quote_id.`, price: { usd: credits / 100, credits, routeId: p.quote.routeId ?? null, runOn: p.quote.runOn ?? null }, ...issueQuote({ toolId: `retry:${id}`, hash, credits, usd: credits / 100, routeId: p.quote.routeId ?? null }) }, null, 2) }] };
         taken = useQuote(quote_id, `retry:${id}`, hash); if (!taken.ok) return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, reason: `${taken.reason} Nothing was sent or charged.` }, null, 2) }] };
       }
       let r: any; try { r = await post(path, { ...body, quotedCredits: taken?.ok ? taken.q.credits : credits }); } catch (e) { if (taken?.ok && e instanceof ApiError && e.status < 500) taken.release(); throw e; }

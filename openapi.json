@@ -4584,7 +4584,7 @@
         "tags": [
           "Canvas"
         ],
-        "summary": "What this board's runs cost (jobs submitted with boardId=<id>, not in Trash) → {runs, running, estUsd (estimate at submit, sample runs priced as real; failed, blocked or canceled runs add only what was charged), countedUsd (what counts in the Spend totals: sample runs and uncharged failures are $0), simulated, local, recent (up to 6: id, model, status, url, poster, createdAt, demo, local, estUsd, countedUsd), limit (the tightest own-accounts day/month cap: provider, providerName, period, capUsd, spentUsd; null)}; 404 unknown id",
+        "summary": "What this board's runs cost (jobs submitted with boardId=<id>, not in Trash) → {runs, running, estUsd (estimate at submit, sample runs priced as real; failed, blocked or canceled runs add only what was charged), countedUsd (what counts in the Spend totals: sample runs and uncharged failures are $0), simulated, local, recent (up to 6: id, model, status, url, poster, createdAt, demo, local, estUsd, countedUsd), limit (the tightest own-accounts day/month cap: provider, providerName, period, capUsd, spentUsd; null), budget ({usd, spentUsd, leftUsd} or null: the board budget the person set)}; 404 unknown id",
         "responses": {
           "200": {
             "description": "OK",
@@ -13285,6 +13285,66 @@
               "application/json": {
                 "schema": {
                   "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/canvas/boards/{id}/budget": {
+      "put": {
+        "tags": [
+          "Canvas"
+        ],
+        "summary": "Set the board budget (Canvas release 1): JSON {usd: number (0–100000) | null to remove} → {id, budget: {usd, spentUsd, leftUsd} | null}. People only: 403 people_only for an agent (MCP headers or an agent budget) or any client that isn't the app's own page. Stored on the board row, never in the board document. A run started from the board (boardId) that would go over it → 402 board_budget, nothing charged; a canvas proposal over it can't Go.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }

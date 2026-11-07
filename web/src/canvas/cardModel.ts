@@ -47,7 +47,7 @@ export function draftProps(o: { flow?: string; medium?: GenMedium; provider?: st
 export function compactQuote(q: any): any {
   if (!q || typeof q !== 'object') return null;
   const c = q.cost && typeof q.cost === 'object' ? { billedTo: q.cost.billedTo, billedToName: q.cost.billedToName, estUsd: q.cost.estUsd, estUnits: q.cost.estUnits, unitLabel: q.cost.unitLabel, checkedAt: q.cost.checkedAt ?? null, plan: q.cost.plan ?? null, estimated: q.cost.estimated, demo: q.cost.demo, failureNote: q.cost.failureNote, realRunUsd: q.cost.realRunUsd } : null;
-  return JSON.parse(JSON.stringify({ credits: q.credits ?? null, demo: q.demo === true, localRun: q.localRun === true, needsKey: q.needsKey === true, runnable: q.runnable !== false, priceAvailable: q.priceAvailable, chargeable: q.chargeable, routeKind: q.routeKind ?? null, ...(q.runs > 1 ? { runs: q.runs } : {}) /* Material Swap: one run per swatch */, ...(c ? { cost: c } : {}) })); /* JSON only: tldraw's json props refuse undefined */
+  return JSON.parse(JSON.stringify({ credits: q.credits ?? null, demo: q.demo === true, localRun: q.localRun === true, needsKey: q.needsKey === true, runnable: q.runnable !== false, priceAvailable: q.priceAvailable, chargeable: q.chargeable, routeKind: q.routeKind ?? null, routeId: typeof q.routeId === 'string' ? q.routeId : typeof q.route === 'string' ? q.route : null /* the price lock holds a run to it */, ...(q.runs > 1 ? { runs: q.runs } : {}) /* Material Swap: one run per swatch */, ...(c ? { cost: c } : {}) })); /* JSON only: tldraw's json props refuse undefined */
 }
 
 const IMG = /\.(png|jpe?g|webp)($|\?)/i;

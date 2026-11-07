@@ -19,7 +19,11 @@ import { TypeFilter, type TypePick } from '../shared/TypeFilter';
 type Item = { job: JobState; m: ResultMedia };
 const KINDS: ResultKind[] = ['image', 'video', 'audio', '3d'];
 
-export function AssetsDrawer({ open, onClose, projectId, onProject }: { open: boolean; onClose: () => void; /** the board's project: the drawer shows its results */ projectId: string | null; onProject: (id: string | null) => void }) {
+/** The React Flow board's port drops (release 1): while a tile is dragged its kind lights the ports that take it; let go on a port, the
+ *  board handles it (true). The classic board passes none, so nothing changes there. */
+export interface AssetPortDrop { over: (kind: 'image' | 'video' | 'audio' | null) => void; drop: (x: number, y: number, item: { kind: 'image' | 'video' | 'audio' | null; name: string; url: string; poster?: string; jobId: string }) => boolean }
+const portKind = (k: string) => (k === 'image' || k === 'video' || k === 'audio' ? k : null);
+export function AssetsDrawer({ open, onClose, projectId, onProject, portDrop }: { open: boolean; onClose: () => void; /** the board's project: the drawer shows its results */ projectId: string | null; onProject: (id: string | null) => void; portDrop?: AssetPortDrop }) {
   const board = useBoardApi(); const own = useOwnAccounts();
   const [jobs, setJobs] = useState<JobState[] | null>(null); const [err, setErr] = useState(''); const [filter, setFilter] = useState<TypePick>('all');
   const [drag, setDrag] = useState<{ item: Item; x: number; y: number } | null>(null); const start = useRef<{ item: Item; x: number; y: number; moved: boolean } | null>(null);
@@ -46,9 +50,10 @@ export function AssetsDrawer({ open, onClose, projectId, onProject }: { open: bo
       if (r) at = { x: r.left + ((d ? d.left : r.right) - r.left) / 2 + k, y: r.top + r.height / 2 + k }; }
     void addResultCard(board, it.job.id, it.m, at ? board.screenToBoard(at) : undefined, { free: !dropped }); };
   const onDown = (e: React.PointerEvent, item: Item) => { if (e.button !== 0) return; start.current = { item, x: e.clientX, y: e.clientY, moved: false }; (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); };
-  const onMove = (e: React.PointerEvent) => { const s = start.current; if (!s) return; if (!s.moved && Math.hypot(e.clientX - s.x, e.clientY - s.y) < 5) return; s.moved = true; setDrag({ item: s.item, x: e.clientX, y: e.clientY }); };
-  const onUp = (e: React.PointerEvent) => { const s = start.current; start.current = null; setDrag(null); if (!s) return;
+  const onMove = (e: React.PointerEvent) => { const s = start.current; if (!s) return; if (!s.moved && Math.hypot(e.clientX - s.x, e.clientY - s.y) < 5) return; s.moved = true; setDrag({ item: s.item, x: e.clientX, y: e.clientY }); portDrop?.over(portKind(s.item.m.kind)); };
+  const onUp = (e: React.PointerEvent) => { const s = start.current; start.current = null; setDrag(null); portDrop?.over(null); if (!s) return;
     if (!s.moved) { place(s.item); return; }
+    if (portDrop?.drop(e.clientX, e.clientY, { kind: portKind(s.item.m.kind), name: String((s.item.job as any).input?.prompt || s.item.job.toolId || "Result").slice(0, 60), url: s.item.m.url, poster: s.item.m.poster, jobId: s.item.job.id })) return;
     const over = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
     if (over?.closest('.cv-drawer') || !over?.closest('.cv-board')) return; /* dropped back on the drawer or outside the board */
     place(s.item, { x: e.clientX, y: e.clientY }); };

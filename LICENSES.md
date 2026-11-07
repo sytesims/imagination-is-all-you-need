@@ -195,6 +195,9 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | tldraw 5.5.2 (the Canvas board: @tldraw/editor, @tldraw/store, @tldraw/tlschema, @tldraw/state, @tldraw/driver). Local use needs no key; a public deployment needs a tldraw licence key (VITE_TLDRAW_LICENSE_KEY). Full text: licenses/tldraw-LICENSE.md | tldraw license (Development use only without a licence key; production use needs a trial, hobby or commercial key. Do not disable or interfere with licence key enforcement or the watermark. Include a verbatim copy of the licence with any distribution.) | restricted | [link](https://github.com/tldraw/tldraw/blob/v5.5.2/LICENSE.md) |
 | Tiptap 3 (rich text inside tldraw text shapes, via tldraw) | MIT | yes | [link](https://github.com/ueberdosis/tiptap/blob/develop/LICENSE.md) |
 | Radix UI (menus and popovers inside tldraw, via tldraw) | MIT | yes | [link](https://github.com/radix-ui/primitives/blob/main/LICENSE) |
+| React Flow 12.12.1 (@xyflow/react, @xyflow/system: the new Canvas engine, behind a switch while it is tested) | MIT | yes | [link](https://github.com/xyflow/xyflow/blob/main/LICENSE) |
+| zustand 4.5.7 (the board store of the new Canvas engine; also used inside React Flow) | MIT | yes | [link](https://github.com/pmndrs/zustand/blob/main/LICENSE) |
+| d3-zoom, d3-drag, d3-selection, d3-interpolate and their d3 helpers (pan and zoom inside React Flow, via React Flow) | ISC | yes | [link](https://github.com/d3/d3-zoom/blob/main/LICENSE) |
 
 ## Components: audio-player
 

@@ -93,7 +93,7 @@ assert.equal(batchNote({ n: 1, local: false }), null, 'one image: no note');
 assert.equal(batchNote({ n: 4, local: null }), null, 'unknown route: no note');
 assert.match(batchNote({ n: 4, local: true })!, /one run on your GPU/, 'local: one batch');
 assert.match(batchNote({ n: 3, local: false })!, /^3 separate requests/, 'hosted: one request per image');
-assert.equal(priceDelta({ diffCredits: 3, own: true }), '+$0.03');
+assert.equal(priceDelta({ diffCredits: 3, own: true }), '+$0.030');
 assert.equal(priceDelta({ diffCredits: -24, own: true }), '−$0.24');
 assert.equal(priceDelta({ diffCredits: 0.2, own: true }), 'Same price');
 assert.equal(priceDelta({ diffCredits: 12, own: false }), '+$0.12', 'team mode: dollars too');

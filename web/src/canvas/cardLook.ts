@@ -52,3 +52,63 @@ export function linkedFrom(types: string[]): string {
 export function panelSlide(left: number, right: number, boardW: number): number {
   const over = right + 24 - boardW; return over > 0 ? Math.min(over, Math.max(0, left - 80)) : 0;
 }
+
+/* ------------------------------------------------------------------ auto titles (2026-11-06, Canvas release 1: never "Untitled") */
+/** The most a title made from a prompt keeps before "…" (spaced scripts; text without spaces keeps fewer characters). */
+export const TITLE_MAX = 32, TITLE_MAX_UNSPACED = 18;
+const cap = (s: string) => (s ? s[0].toLocaleUpperCase() + s.slice(1) : s);
+/** True when the text is written without spaces between words (Chinese, Japanese, Thai…). */
+const unspaced = (s: string) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u.test(s);
+/** A prompt as a short title, in its own words (user, 6 Nov): its first clause, a leading article dropped, cut neatly with "…" at a word
+ *  ("A red coat in a white studio, soft light" → "Red coat in a white studio"). '' when there's nothing to say. */
+export function promptTitle(prompt: string): string {
+  let t = prompt.replace(/\s+/g, ' ').replace(/^["“”'‘’(\[]+/, '').trim(); if (!t) return '';
+  const tight = unspaced(t); const max = tight ? TITLE_MAX_UNSPACED : TITLE_MAX;
+  /* the first clause, unless it is too short to say anything */
+  const m = t.match(tight ? /^(.+?)[。、，！？.,;:!?]/u : /^(.+?)(?:[.;:!?]|,\s|\s[-–—]\s)/u); if (m && [...m[1].trim()].length >= (tight ? 4 : 10)) t = m[1].trim();
+  if (!tight) t = t.replace(/^(a|an|the)\s+/i, '');
+  t = t.replace(/[\s.,;:!?。、，！？"”’)]+$/u, '');
+  const chars = [...t]; if (chars.length <= max) return cap(t);
+  let cut = chars.slice(0, max).join(''); if (!tight && chars[max] !== ' ') { const sp = cut.lastIndexOf(' '); if (sp > max * 0.5) cut = cut.slice(0, sp); } /* a word cut in half goes */
+  /* never end on a little word ("finds a…") */
+  if (!tight) cut = cut.replace(/(\s+(a|an|the|of|in|on|at|to|for|with|and|or|by|from|into))+$/i, '');
+  return `${cap(cut.replace(/[\s,;:]+$/u, ''))}…`;
+}
+
+/** What a card's title is made from (plain data, so the board, the panel and the tests share one rule). */
+export interface TitleFacts {
+  /** the name you gave it (meta.name): always wins */ name?: string | null;
+  kind: 'gen' | 'result' | 'upload' | 'other';
+  /** gen: its workflow id and shown name */ flow?: string; flowName?: string;
+  prompt?: string;
+  /** gen: what's wired in, by slot (`many`: the several-file slot, e.g. Material Swap's swatches) */ inputs?: { label: string; many?: boolean }[];
+  /** upload: the file's name; result: the title it was placed with */ fileName?: string; title?: string;
+}
+/** A card's title, never "Untitled": your name; else Material Swap → "<swatch> <object>" ("Velvet armchair"); an upload → its file name
+ *  without the extension; anything with a prompt → its first content words; else the workflow's name. */
+export function autoTitle(f: TitleFacts): string {
+  const own = cleanName(f.name ?? ''); if (own) return own;
+  if (f.kind === 'upload') return stem(f.fileName ?? '') || 'Upload';
+  if (f.kind === 'result') return cleanName(f.title ?? '') || promptTitle(f.prompt ?? '') || 'Result';
+  if (f.kind === 'gen') {
+    if (f.flow === 'material-swap' && f.inputs?.length) {
+      const sw = f.inputs.filter((i) => i.many).map((i) => stem(i.label)).filter(Boolean); const obj = stem(f.inputs.find((i) => !i.many)?.label ?? '');
+      const swatch = sw.length > 1 ? `${sw.length} materials` : sw[0] ?? '';
+      if (swatch && obj) return cap(`${swatch} ${obj.toLocaleLowerCase()}`); if (obj) return cap(obj);
+    }
+    return promptTitle(f.prompt ?? '') || (f.flowName ?? '').trim() || 'Generate';
+  }
+  return promptTitle(f.prompt ?? '') || 'Card';
+}
+/** A file or card label without its folder or extension, tidy spaces ("velvet_swatch.jpg" → "velvet swatch"). */
+const stem = (s: string) => cleanName((s.split(/[\\/]/).pop() ?? '').replace(/\.[a-z0-9]{1,5}$/i, '').replace(/[_]+/g, ' '));
+
+/** A failed card leads with its reason (user, 6 Nov): the run's error split into a heading and the rest ("Kling refused the start frame:
+ *  its content check said no." → "Kling refused the start frame" + "Its content check said no."). null when there is no reason (the card
+ *  then uses the shared failure wording). */
+export function failHeadline(error: string | null | undefined): { head: string; rest: string } | null {
+  const t = String(error ?? '').replace(/\s+/g, ' ').trim(); if (!t) return null;
+  const m = t.match(/^(.{6,90}?)(?::\s+|\.\s+|\s[-–—]\s)(.+)$/u);
+  const head = (m ? m[1] : t).replace(/[.:\s]+$/u, ''); const rest = m ? m[2].trim() : '';
+  return { head: cap(head), rest: rest ? cap(rest).replace(/([^.!?])$/u, '$1.') : '' };
+}

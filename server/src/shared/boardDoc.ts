@@ -219,3 +219,73 @@ export function flowToDoc(nodes: (FlowNode & { measured?: { width?: number; heig
   const links = edges.map((e): BoardDocLink => ({ id: e.id, from: e.source, to: e.target, order: String(e.data?.order ?? ''), ...(e.data?.snap ? { snap: true as const } : {}) }));
   return { format: BOARD_FORMAT, version: 2, nodes: out, links };
 }
+
+// ---------------------------------------------------------------- back to tldraw (while both engines run behind the switch)
+
+/** tldraw's colour names (a note or frame with any other colour falls back). */
+const TL_COLORS = new Set(['black', 'grey', 'light-violet', 'violet', 'blue', 'light-blue', 'yellow', 'orange', 'green', 'light-green', 'light-red', 'red', 'white']);
+const TL_SIZES = new Set(['s', 'm', 'l', 'xl']);
+const DIGITS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+/** The i-th of an increasing run of valid fractional index keys (tldraw's `index`): a0…az (62), then b00…bzz (3844), then c000… */
+export function indexKey(i: number): string {
+  for (let len = 1, head = 'a'.charCodeAt(0), base = 0; len < 8; len++, head++) {
+    const room = 62 ** len; if (i < base + room) { let n = i - base, s = ''; for (let k = 0; k < len; k++) { s = DIGITS[n % 62] + s; n = Math.floor(n / 62); } return String.fromCharCode(head) + s; }
+    base += room;
+  }
+  throw new Error('too many shapes');
+}
+/** A plain text as tldraw rich text (one paragraph per line). */
+export const richTextOf = (text: string) => ({ type: 'doc', content: String(text ?? '').split('\n').map((t) => (t ? { type: 'paragraph', content: [{ type: 'text', text: t }] } : { type: 'paragraph' })) });
+const hashOf = (s: string) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); };
+
+/**
+ * Board document → a tldraw document snapshot `{ store, schema }`, so a board saved by the React Flow engine still opens in today's
+ * tldraw Canvas while both run behind the switch (the inverse of fromTldraw for everything it keeps):
+ *  - our node types (`ohf-…`) keep their props; `ohf-sticky` → note (its text as rich text, growY from its height), `ohf-frame` → frame,
+ *    `ohf-link` → bookmark plus its asset; frame children keep their frame (relative x, y);
+ *  - each link → one hidden arrow from the right of `from` to the left of `to`, bound at both ends (as BoardApi.addLink draws it);
+ *  - indexes are fresh valid keys in draw order (per parent); links draw in front, in their order.
+ * `schema`: the running tldraw store's schema (store.schema.serialize()), so loading needs no migration. Pure: no tldraw import.
+ */
+export function docToTldraw(doc: BoardDoc, schema: unknown = {}): { store: Record<string, any>; schema: unknown } {
+  const store: Record<string, any> = {
+    'document:document': { gridSize: 10, name: '', meta: {}, id: 'document:document', typeName: 'document' },
+    'page:page': { meta: {}, id: 'page:page', name: 'Page 1', index: 'a1', typeName: 'page' },
+  };
+  const ids = new Set(doc.nodes.map((n) => n.id));
+  const kids = new Map<string, number>(); const nextIndex = (pid: string) => { const i = kids.get(pid) ?? 0; kids.set(pid, i + 1); return indexKey(i); };
+  const boxes = new Map(absoluteBoxes(doc).map((b) => [b.id, b]));
+  for (const n of [...doc.nodes].sort((a, b) => a.z - b.z)) {
+    const pid = n.parentId && ids.has(n.parentId) && n.parentId !== n.id ? n.parentId : 'page:page';
+    const { from: _from, ...meta } = (n.meta ?? {}) as Record<string, unknown>; const p = (n.props ?? {}) as Record<string, any>;
+    const base = { x: n.x, y: n.y, rotation: 0, isLocked: false, opacity: 1, id: n.id, parentId: pid, index: nextIndex(pid), typeName: 'shape' };
+    if (n.type === STICKY_TYPE) {
+      const scale = num(p.scale, 1) > 0 ? num(p.scale, 1) : 1;
+      store[n.id] = { ...base, meta, type: 'note', props: { color: TL_COLORS.has(p.color) ? p.color : 'yellow', richText: richTextOf(String(p.text ?? '')), size: TL_SIZES.has(p.size) ? p.size : 'm',
+        font: 'sans', align: 'start', verticalAlign: 'start', labelColor: 'black', growY: Math.max(0, Math.round(n.h / scale - NOTE)), fontSizeAdjustment: 1, url: '', scale, textLastEditedBy: null } };
+    } else if (n.type === FRAME_TYPE) {
+      store[n.id] = { ...base, meta, type: 'frame', props: { w: n.w, h: n.h, name: String(p.name ?? ''), color: TL_COLORS.has(p.color) ? p.color : 'black' } };
+    } else if (n.type === LINK_CARD_TYPE) {
+      const url = String(p.url ?? ''); const assetId = `asset:${hashOf(url || n.id)}`;
+      store[assetId] = { id: assetId, typeName: 'asset', type: 'bookmark', meta: {}, props: { src: url, title: String(p.title ?? ''), description: String(p.description ?? ''), image: String(p.image ?? ''), favicon: String(p.favicon ?? '') } };
+      store[n.id] = { ...base, meta, type: 'bookmark', props: { w: n.w, h: n.h, assetId, url } };
+    } else {
+      store[n.id] = { ...base, meta: n.meta ?? {}, type: n.type, props: { ...p, ...('w' in p || isOhf(n.type) ? { w: n.w, h: n.h } : {}) } };
+    }
+  }
+  const empty = { type: 'doc', content: [{ type: 'paragraph' }] };
+  for (const l of [...doc.links].sort((a, b) => byStr(a.order ?? '', b.order ?? '') || byStr(a.id, b.id))) {
+    const f = boxes.get(l.from), t = boxes.get(l.to); if (!f || !t || l.from === l.to) continue;
+    const sx = f.x + f.w, sy = f.y + f.h / 2, ex = t.x, ey = t.y + t.h / 2; const span = Math.max(40, ex - sx);
+    store[l.id] = { x: sx, y: sy, rotation: 0, isLocked: false, opacity: 1, meta: l.snap ? { snap: true } : {}, id: l.id, type: 'arrow', parentId: 'page:page', index: nextIndex('page:page'), typeName: 'shape',
+      props: { kind: 'arc', elbowMidPoint: 0.5, dash: 'draw', size: 's', fill: 'none', color: 'grey', labelColor: 'black', bend: Math.min(48, span * 0.14), start: { x: 0, y: 0 }, end: { x: ex - sx, y: ey - sy },
+        arrowheadStart: 'none', arrowheadEnd: 'arrow', richText: empty, labelPosition: 0.5, font: 'sans', scale: 1 } };
+    const key = l.id.slice('shape:'.length);
+    for (const terminal of ['start', 'end'] as const) {
+      const id = `binding:${key}_${terminal === 'start' ? 's' : 'e'}`;
+      store[id] = { meta: {}, id, type: 'arrow', fromId: l.id, toId: terminal === 'start' ? l.from : l.to, typeName: 'binding',
+        props: { isPrecise: false, isExact: false, normalizedAnchor: { x: terminal === 'start' ? 1 : 0, y: 0.5 }, snap: 'none', terminal } };
+    }
+  }
+  return { store, schema };
+}

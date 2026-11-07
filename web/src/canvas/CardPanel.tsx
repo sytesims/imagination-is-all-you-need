@@ -23,7 +23,7 @@ import { shownCredits } from '../shared/quote';
 import { useToolQuote } from '../shared/useToolQuote';
 import { jobCaption } from '../shared/FeedCaption';
 import { modelOfEngine, shownName } from '../shared/models';
-import { flowById, flowInfo, flowAudioKind, availableFlows, tooManyNote, type GenMedium } from '../shared/genFlows';
+import { flowById, flowInfo, flowAudioKind, availableFlows, tooManyNote, type GenMedium, type GenSlot } from '../shared/genFlows';
 import { audioKindOfJob } from '../shared/audioVizLogic';
 import ImageCompare from '../shared/ImageCompare';
 import { workflowRecreateHref } from '../shared/workflowLinks';
@@ -39,7 +39,9 @@ import { useCatalog, catalogNow } from './catalog';
 import { GEN_TYPE, layersLine, type GenCardProps, type Take, type MadeFrom as MadeFromT } from './cardModel';
 import { LayerTile } from '../shared/LayerStack';
 import { pullOutResult } from './resultCardUtil';
-import { CardInputs } from './CardInputs';
+import { CardInputs, chooseForSlot, replaceInSlot } from './CardInputs';
+import { titleOf } from './cardTitle';
+import { takePeekAtom } from './boardApi';
 import { CardName } from './CardName';
 import { RESULT_TYPE, PROMPT_TYPE, NOTE_TYPE, UPLOAD_TYPE, AD_TYPE, COMPARE_TYPE, GROUP_TYPE, isNodeType } from './nodeTypes';
 import { groupGenIds } from './nodeLogic';
@@ -155,7 +157,10 @@ function buildView(s: BoardNode, x: { st: ReturnType<typeof cardState> | null; s
 }
 
 /* ------------------------------------------------------------------ the panel */
-export function CardPanel({ hidden, onOpen }: { hidden: boolean; onOpen?: (on: boolean) => void }) {
+/** `variant` 'inspector' (the React Flow board, release 1): a generate card shows the slim side inspector of mockup 12a (inputs as rows with
+ *  Replace, the prompt, the settings, the takes with Claude's reviews, the price with Run again) instead of the big preview: the card on the
+ *  board is already the picture. Other cards, and the tldraw board, keep the panel as it is. */
+export function CardPanel({ hidden, onOpen, variant }: { hidden: boolean; onOpen?: (on: boolean) => void; variant?: 'inspector' }) {
   const board = useBoardApi(); const [pin, setPinS] = useState(readPin);
   const setPin = (v: boolean) => { setPinS(v); try { localStorage.setItem(PIN_KEY, v ? '1' : '0'); } catch { /* private window */ } };
   const ids = useValue('panel selection', () => board.selection().filter(id => isNodeType(board.getNode(id)?.type)), [board]);
@@ -175,8 +180,8 @@ export function CardPanel({ hidden, onOpen }: { hidden: boolean; onOpen?: (on: b
     addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [board, ids.length]);
   const close = () => { setPin(false); board.select([]); };
   const head: HeadFn = (h) => <Header {...h} pin={pin} onPin={() => setPin(!pin)} onClose={close} />;
-  return <aside className={`cp${open ? ' on' : ''}`} aria-label="Card details" aria-hidden={!open} data-testid="card-panel" onPointerDown={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()} onWheel={e => e.stopPropagation()}>
-    {ids.length === 1 ? <One key={ids[0]} id={ids[0]} head={head} /> : ids.length > 1 ? <Many ids={ids} head={head} /> : <Empty head={head} />}
+  return <aside className={`cp${open ? ' on' : ''}${variant === 'inspector' ? ' cp-insp' : ''}`} aria-label="Card details" aria-hidden={!open} data-testid="card-panel" onPointerDown={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()} onWheel={e => e.stopPropagation()}>
+    {ids.length === 1 ? (variant === 'inspector' && board.getNode(ids[0])?.type === GEN_TYPE ? <Inspector key={ids[0]} id={ids[0]} head={head} /> : <One key={ids[0]} id={ids[0]} head={head} />) : ids.length > 1 ? <Many ids={ids} head={head} /> : <Empty head={head} />}
   </aside>;
 }
 const PinIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 17v5M8 3h8l-1 6 3 4H6l3-4z" /></svg>;
@@ -225,6 +230,60 @@ function One({ id, head }: { id: NodeId; head: HeadFn }) {
       {(v.ins.length > 0 || v.outs.length > 0) && <Section title="Connections" aside={[v.ins.length && `${v.ins.length} in`, v.outs.length && `${v.outs.length} out`].filter(Boolean).join(' · ')}><Connections v={v} /></Section>}
     </div>
     {finished && <footer className="cp-foot"><Actions v={v} /></footer>}
+  </>;
+}
+
+/* ------------------------------------------------------------------ the side inspector (release 1, mockup 12a) */
+const SPAN = (k: string) => <i className={`cpi-dot k-${k}`} aria-hidden />;
+function Inspector({ id, head }: { id: NodeId; head: HeadFn }) {
+  const board = useBoardApi(); const cat = useCatalog(); const toast = useToast();
+  const s = useValue('insp shape', () => board.getNode(id) ?? null, [board, id]); const v = useCardView(board, s, cat);
+  const title = useValue('insp title', () => { const n = board.getNode(id); return n ? titleOf(board, n).title : ''; }, [board, id, cat]);
+  const [peek, setPeek] = useState<number | null>(null); const [busy, setBusy] = useState(false); const box = useRef<HTMLDivElement>(null); const genRef = useRef<HTMLButtonElement>(null);
+  if (!s || !v || !v.gen) return <Empty head={head} />;
+  const p = v.p as GenCardProps; const spec = v.spec; const bySlot = v.st?.bySlot ?? {};
+  const place = placeWord(v.quote); const run = async () => { setBusy(true); try { await submit(board, id); } catch (e: any) { toast(e?.issues?.[0]?.message ?? e?.message ?? 'That didn’t start.', 'error'); } finally { setBusy(false); } };
+  const reviewed = v.takes.filter(t => t.review).length; const shown = peek ?? v.take; const st = v.takes[shown];
+  const missing = v.draft ? missingOf(spec, bySlot, v.prompt) : null;
+  const line = st ? `v${shown + 1}${st.review ? ` · Claude: “${st.review.reason}”` : ''}. ${shown === v.take ? 'Pinned: this one flows on.' : `v${v.take + 1} is pinned and flows on.`}` : '';
+  const srcName = (i: { shapeId?: string; label: string }) => { const n = i.shapeId ? board.getNode(i.shapeId as NodeId) : null; return n ? titleOf(board, n).title : i.label; };
+  return <>
+    {head({ icon: <v.Icon size={15} />, tint: v.tint, title, rename: { id, name: String((s.meta as any)?.name ?? '') }, sub: [v.f?.name, v.model, place].filter(Boolean).join(' · '), live: v.status === 'running' })}
+    <div className="cp-body cpi" ref={box}>
+      {spec && <section className="cpi-sec"><h4 className="cpi-h">Inputs</h4>
+        {spec.slots.map((sl: GenSlot) => { const got = bySlot[sl.name] ?? []; const first = got[0];
+          return <div key={sl.name} className={`cpi-row${got.length ? '' : ' is-empty'}`} data-testid={`cpi-in-${sl.name}`}>{SPAN(sl.accept)}
+            {first ? <span className="cpi-th">{first.poster ? <img src={gridSrc(first.poster, 80)} alt="" /> : <i />}</span> : null}
+            <span className="cpi-n"><b>{sl.label}{!sl.required && !got.length && <em> optional</em>}</b>
+              <small>{first ? `from “${srcName(first)}”${got.length > 1 ? ` · ${got.length} pictures` : first.shapeId ? '' : ` · ${first.label}`}` : sl.hint || sl.missing}</small></span>
+            <button type="button" className="cpi-link" onClick={() => (got.length ? replaceInSlot(board, id, sl, toast, got) : chooseForSlot(board, id, sl, toast))}>{got.length ? 'Replace' : 'Add'}</button></div>; })}
+        {spec.promptMode !== 'hidden' && v.linkedPrompt && <div className="cpi-row">{SPAN('text')}<span className="cpi-n"><b>Prompt</b><small>{v.linkedWord}</small></span></div>}
+      </section>}
+      {spec && spec.promptMode !== 'hidden' && <section className="cpi-sec"><h4 className="cpi-h">Prompt{!v.draft && <small>Edits apply to the next run</small>}</h4>
+        {v.linkedPrompt ? <p className="cpi-prompt ro">{v.prompt}</p>
+          : <textarea className="cpi-prompt" rows={3} value={p.prompt} placeholder={spec.placeholder ?? 'Describe what you want'} aria-label="Prompt" data-testid="cpi-prompt" onChange={e => setCard(board, id, { prompt: e.target.value })} />}
+      </section>}
+      {spec && <section className="cpi-sec"><h4 className="cpi-h">Settings</h4>
+        <div className="cp-settings cpi-settings"><WorkflowControls key={spec.flow.id} recipe={spec.recipe} vals={spec.vals} setVal={(k, val) => setCard(board, id, { vals: { ...p.vals, ...spec.vals, [k]: val } })} provider={spec.provider} watch={box} mode={spec.mode}
+          files={{ image: bySlot.image?.[0]?.url ? { file: null as any, url: bySlot.image[0].poster || bySlot.image[0].url } : null }} /></div></section>}
+      {v.takes.length > 0 && <section className="cpi-sec"><h4 className="cpi-h">Takes · {v.takes.length}{reviewed > 0 && <> · Claude reviewed {reviewed}</>}</h4>
+        <div className="cpi-takes" role="listbox" aria-label="Takes" onPointerLeave={() => setPeek(null)}>
+          {v.takes.map((t, k) => <button key={`${t.url}-${k}`} type="button" role="option" aria-selected={k === v.take} className={`cpi-tk${k === v.take ? ' on' : ''}`} data-testid={`cpi-take-${k + 1}`}
+            onPointerEnter={() => { setPeek(k); takePeekAtom.set({ id, k }); }} onPointerLeave={() => takePeekAtom.set(null)}
+            onClick={() => board.batch(() => board.patchNode(id, { props: { take: k, ratio: 0 } } as any), { history: 'ignore' })} {...tip(t.review ? badgeText(t.review) : k === v.take ? 'Pinned: flows on' : `Pin version ${k + 1}`)}>
+            {t.poster ? <img src={gridSrc(t.poster, 140)} alt="" /> : <i>{k + 1}</i>}
+            {t.review && <b className={`cpi-rv ${t.review.verdict}`}>{t.review.verdict === 'fits' ? '✓' : '!'}</b>}</button>)}
+        </div>
+        {line && <p className="cp-cap" data-testid="cpi-take-line">{line}</p>}
+      </section>}
+      {v.status === 'failed' && <section className="cpi-sec"><h4 className="cpi-h">Last run</h4><p className="cp-cap cpi-err">{p.error || 'This run didn’t work.'}</p></section>}
+    </div>
+    <footer className="cp-foot cpi-foot">
+      {!v.draft && <small className="cpi-spent">{p.runs > 0 ? `${p.runs} run${p.runs === 1 ? '' : 's'} here` : v.takes.length ? `${v.takes.length} take${v.takes.length === 1 ? '' : 's'} here` : 'Not run yet'}</small>}
+      {v.draft && spec ? <DockGenerate toolId={spec.tool.id} engine={spec.provider} quote={v.q} label={spec.generateLabel} busy={busy} problems={[]} missing={missing} pfOpen={false} genRef={genRef} onClick={() => runCard(id)} workflowId={spec.flow.id} className="cp-go cpi-go" variant="node" testId="cpi-generate" />
+        : <><span className="cpi-price"><PriceSuffix q={v.q ?? p.quote} />{' '}a run</span>
+          <button type="button" className="cp-btn cp-btn-main cpi-again" disabled={busy || v.status === 'running'} data-testid="cpi-run-again" onClick={() => void run()}><RetryIcon size={14} /><span>{v.status === 'running' ? 'Running…' : busy ? 'Starting…' : 'Run again'}</span></button></>}
+    </footer>
   </>;
 }
 

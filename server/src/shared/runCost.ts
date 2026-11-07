@@ -4,9 +4,10 @@
  */
 import { usdToCredits, COMFY_CREDITS_PER_USD } from './hostedPrices.js';
 
-/** $ amounts (moved from web billing.ts, 2026-10-26, so the share receipt can use it too): '$0.00', '$0.045' (3 decimals under 10 cents), '$0.42', '$12.40'; '—' for no value. */
+/** $ amounts (moved from web billing.ts, 2026-10-26, so the share receipt can use it too): '$0.00', '$0.045', '$0.030' (always 3 decimals under
+ *  10 cents, owner 2026-11-06: an old and a new price read at the same precision), '$0.42', '$12.40'; '—' for no value. */
 export const fmtUsd = (n: number | null | undefined): string => { if (n == null || !Number.isFinite(n)) return '—'; const a = Math.abs(n); if (a === 0) return '$0.00';
-  if (a < 0.1) { const s = a.toFixed(3).replace(/0$/, ''); return `${n < 0 ? '-' : ''}$${s}`; } return `${n < 0 ? '-' : ''}$${a.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; };
+  if (a < 0.1) { const s = a.toFixed(3); return s === '0.000' ? '$0.00' : `${n < 0 ? '-' : ''}$${s}`; } /* a sliver rounds to $0.00, as before */ return `${n < 0 ? '-' : ''}$${a.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; };
 /** USD to 4 decimals (cost.estUsd). */
 export const r4 = (n: number) => Math.round(n * 10000) / 10000;
 /** Comfy credits for a USD figure, rounded UP (2026-10-24, was Math.round of the cent-rounded price: Seedream Pro layers 2K showed 13 for 13.58).

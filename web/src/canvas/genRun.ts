@@ -15,6 +15,7 @@ import type { FlowSpec } from '../shared/genFlows';
 import { GEN_TYPE, compactQuote, runForm, takesOf, addVersions, madeFromOf, withFrom, batchOf, type BoardInput, type MadeFrom, type Take } from './cardModel';
 import { runBatch, setState } from '../../../server/src/shared/swatchBatch';
 import { cardInputs } from './graph';
+import { lockFields, type PriceLock } from './priceLock';
 export { compactQuote, takesOf, addVersions, MAX_VERSIONS, type Take } from './cardModel';
 /** job id → the inputs it was sent with (its versions keep them as "Made from"). A reload falls back to the card's inputs at the end. */
 const usedBy = new Map<string, MadeFrom[]>();
@@ -72,13 +73,14 @@ export function reattachRunning(board: BoardApi) {
     else if (p.status === 'failed' && p.jobId && !liveJobs.get()[p.jobId]) void getJob(p.jobId).then(putLive).catch(() => undefined); }
 }
 
-export interface RunCtx { spec: FlowSpec; bySlot: Record<string, BoardInput[]>; inputs: BoardInput[]; prompt: string; projectId: string | null; boardId: string; quote: any; modelName: string; maker: string }
+export interface RunCtx { spec: FlowSpec; bySlot: Record<string, BoardInput[]>; inputs: BoardInput[]; prompt: string; projectId: string | null; boardId: string; quote: any; modelName: string; maker: string;
+  /** the approved price (priceLock.ts): the jobs route refuses the run when it moved too much */ lock?: PriceLock | null }
 /** Submit a card's run. Throws the jobs API's error (its message is in the user's words); the card is untouched then. */
 export async function submitCard(board: BoardApi, cardId: NodeId, c: RunCtx): Promise<string> {
   const { spec } = c; const b = batchOf(spec.slots, c.bySlot); if (b) return submitSet(board, cardId, c, b); const form = runForm(spec, c.bySlot, c.inputs, c.prompt, { projectId: c.projectId, boardId: c.boardId, route: spec.provider ? pinQ(spec.provider).route ?? null : null });
-  const fd = new FormData(); for (const [k, v] of Object.entries(form.fields)) fd.append(k, v);
+  const fd = new FormData(); for (const [k, v] of Object.entries({ ...form.fields, ...(c.lock ? lockFields(c.lock, 1) : {}) })) fd.append(k, v);
   for (const f of form.files) { const file = await mediaToFile(f.input.url, f.input.kind, f.name); fd.append(f.field, file, file.name); }
-  const r = await createJob(spec.tool.id, fd, { showsIssues: true });
+  const r = await createJob(spec.tool.id, fd, { showsIssues: true, ...(c.lock ? { priceAsked: true } : {}) /* a locked run never re-asks in a dialog: the card or row says the price changed */ });
   usedBy.set(r.id, madeFromOf(spec.slots, c.bySlot));
   startRun(board, cardId, r.id, c);
   return r.id;
@@ -89,9 +91,9 @@ async function submitSet(board: BoardApi, cardId: NodeId, c: RunCtx, b: { slot: 
   const { spec } = c; const seed = Math.floor(Math.random() * 1e6);
   const r = await runBatch(b.inputs, async (inp, set) => { const bySlot = { ...c.bySlot, [b.slot]: [inp] };
     const form = runForm(spec, bySlot, c.inputs, c.prompt, { projectId: c.projectId, boardId: c.boardId, seed, route: spec.provider ? pinQ(spec.provider).route ?? null : null });
-    const fd = new FormData(); for (const [k, v] of Object.entries({ ...form.fields, ...set })) fd.append(k, v);
+    const fd = new FormData(); for (const [k, v] of Object.entries({ ...form.fields, ...set, ...(c.lock ? lockFields(c.lock, b.inputs.length) : {}) })) fd.append(k, v);
     for (const f of form.files) { const file = await mediaToFile(f.input.url, f.input.kind, f.name); fd.append(f.field, file, file.name); }
-    const res = await createJob(spec.tool.id, fd, { showsIssues: true }); usedBy.set(res.id, madeFromOf(spec.slots, bySlot)); return res.id; });
+    const res = await createJob(spec.tool.id, fd, { showsIssues: true, ...(c.lock ? { priceAsked: true } : {}) }); usedBy.set(res.id, madeFromOf(spec.slots, bySlot)); return res.id; });
   const ids = r.jobIds.filter((x): x is string => !!x); if (!ids.length) throw new Error(r.failed[0]?.error ?? 'None of the swatches started.');
   startRun(board, cardId, ids[0], c, ids);
   return ids[0];

@@ -8,7 +8,7 @@
  *                   → Decoding → Saving. `finishing` is Decoding until the job's stage says it is muxing / downloading / encoding (Saving).
  *   hosted places   Sending to <place> → Generating → Downloading the result (status only; percent when the place reports one).
  */
-import { ledgerUsd } from './billing';
+import { ledgerUsd, fmtUsd } from './billing';
 import { placeOf as sharedPlaceOf } from '../../../server/src/shared/modelIds';
 export type Medium = 'image' | 'video' | 'audio' | '3d';
 export type RunStage = 'queued' | 'loading' | 'generating' | 'finishing' | 'done' | 'failed' | 'canceled';
@@ -125,7 +125,7 @@ export const placeName = (j: any) => (isLocalRun(j) ? 'your computer' : hostedPl
 export type FailureRule = 'not-charged' | 'may-charge' | 'unknown';
 export interface MoneyCtx { /** own-accounts billing (no app balance) */ own: boolean; /** the billing provider's rule for failed / canceled runs */ failureRule?: FailureRule | null; /** "where" for local runs */ where?: string }
 export interface RunMoney { price: string; free: boolean; sample: boolean; canCancel: boolean; /** the one sentence about money and stopping */ note: string }
-const usd = (v: number) => (v < 0.1 ? `$${v.toFixed(3).replace(/0$/, '')}` : `$${v.toFixed(2)}`);
+const usd = fmtUsd; /* the app's one $ format (runCost.fmtUsd) */
 /** What this run costs and what stopping it does. Cancel only when the server says a cancel will succeed (`cancellable`; older servers: still queued). */
 export function runMoneyOf(j: any, ctx: MoneyCtx): RunMoney {
   const local = isLocalRun(j); const where = ctx.where ?? 'on your computer'; const st = String(j?.status ?? '');

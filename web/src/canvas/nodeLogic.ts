@@ -139,11 +139,14 @@ export function runOrder(ids: string[], waitsOf: (id: string) => Upstream[]): { 
   return { now, later, blocked };
 }
 
-export interface OrderedRun { jobIds: string[]; failed: { cardId: string; error: string }[]; /** start by themselves once the cards before them are done */ later: string[] }
+/** A card that didn't start; a price stop (priceLock.ts) carries its code, why and both prices. */
+export interface RunFailure { cardId: string; error: string; code?: string; reason?: string; wasUsd?: number | null; nowUsd?: number | null }
+const stopInfo = (e: any) => (e?.code === 'price_changed' ? { code: 'price_changed', reason: e.reason, wasUsd: e.wasUsd ?? null, nowUsd: e.nowUsd ?? null } : {});
+export interface OrderedRun { jobIds: string[]; failed: RunFailure[]; /** start by themselves once the cards before them are done */ later: string[] }
 export interface RunDeps {
   waits: (id: string) => Upstream[]; submit: (id: string) => Promise<string>; exists: (id: string) => boolean;
   /** a card that didn't start: shown on the card itself (2026-11-02: it used to go silently back to a draft) */ notStarted: (id: string, error: string) => void;
-  stop?: (e: Error) => boolean; onLater?: (id: string, r: { jobId?: string; error?: string }) => void; timeoutMs?: number; pollMs?: number;
+  stop?: (e: Error) => boolean; onLater?: (id: string, r: { jobId?: string; error?: string; failure?: RunFailure }) => void; timeoutMs?: number; pollMs?: number;
 }
 /** Run several cards (Go on a proposal, a group's Run all) in graph order (2026-10-28): cards with nothing to wait for start now; a card fed
  *  by another card in the same run starts when that card has its result, so a clip gets its first frame instead of running without it.
@@ -151,16 +154,16 @@ export interface RunDeps {
  *  that doesn't start (the server refused it, or a card before it didn't finish) gets notStarted with the reason. */
 export async function runInOrder(ids: string[], d: RunDeps): Promise<OrderedRun> {
   const plan = runOrder(ids, d.waits); const out: OrderedRun = { jobIds: [], failed: [], later: [] };
-  const fail = (cardId: string, error: string) => { out.failed.push({ cardId, error }); d.notStarted(cardId, error); };
+  const fail = (cardId: string, error: string, e?: unknown) => { out.failed.push({ cardId, error, ...stopInfo(e) }); d.notStarted(cardId, error); };
   for (const b of plan.blocked) fail(b.id, `Waits for ${b.name}, which isn’t running. Generate it first.`);
-  for (const id of plan.now) { try { out.jobIds.push(await d.submit(id)); } catch (e) { fail(id, (e as Error).message); if (d.stop?.(e as Error)) return out; } }
+  for (const id of plan.now) { try { out.jobIds.push(await d.submit(id)); } catch (e) { fail(id, (e as Error).message, e); if (d.stop?.(e as Error)) return out; } }
   out.later = plan.later;
   /* chains of any length (A → B → C): C waits on B while B waits on A; a card in this run that didn't start (or gave up) ends the wait after it */
   const gaveUp = new Set(out.failed.map(f => f.cardId));
-  const later = (id: string, r: { jobId?: string; error?: string }) => { if (r.error) { gaveUp.add(id); d.notStarted(id, r.error); } d.onLater?.(id, r); };
+  const later = (id: string, r: { jobId?: string; error?: string; failure?: RunFailure }) => { if (r.error) { gaveUp.add(id); d.notStarted(id, r.error); } d.onLater?.(id, r); };
   for (const id of plan.later) void (async () => { const end = Date.now() + (d.timeoutMs ?? 3_600_000);
     while (Date.now() < end) { const up = d.waits(id); if (!d.exists(id)) return;
-      if (!up.length) { try { later(id, { jobId: await d.submit(id) }); } catch (e) { later(id, { error: (e as Error).message }); } return; }
+      if (!up.length) { try { later(id, { jobId: await d.submit(id) }); } catch (e) { later(id, { error: (e as Error).message, failure: { cardId: id, error: (e as Error).message, ...stopInfo(e) } }); } return; }
       const dead = up.find(u => (u.status !== 'running' && u.status !== 'draft') || gaveUp.has(u.id)); /* failed (a done card is an input, so it's no longer listed) */
       if (dead || up.every(u => u.status === 'draft' && !ids.includes(u.id))) { later(id, { error: `${dead?.name ?? up[0].name} didn’t finish, so this card didn’t run.` }); return; }
       await new Promise(r => setTimeout(r, d.pollMs ?? 1500)); }
