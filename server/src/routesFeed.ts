@@ -46,18 +46,20 @@ export function registerFeed(app: FastifyInstance, pub: (j: any) => any) {
     return { ok: true, action, done, skipped, items: done.map((id) => pub(jobs.get(id)!)) };
   });
 
-  app.post<{ Body: { models?: unknown; aspect?: string; quality?: string; imageResolution?: string; n?: unknown; refs?: unknown; mode?: string; preview?: unknown } }>('/api/compare/quote', async (req, reply) => {
+  app.post<{ Body: { models?: unknown; aspect?: string; quality?: string; imageResolution?: string; n?: unknown; refs?: unknown; mode?: string; preview?: unknown; prompt?: unknown; promptBytes?: unknown } }>('/api/compare/quote', async (req, reply) => {
     const b = req.body ?? {}; const models = Array.isArray(b.models) ? [...new Set(b.models.filter((x): x is string => typeof x === 'string' && !!x))] : [];
     const preview = b.preview === true || b.preview === 1 || b.preview === '1'; // the picker's list: each model's adapted price, up to 60 models, no run check
     if (models.length > (preview ? 60 : COMPARE_MAX)) return reply.code(400).send({ error: `Compare up to ${COMPARE_MAX} models at once.`, errorType: 'validation', code: 'compare_max', issues: [{ code: 'compare_max', field: 'models', message: `Pick ${COMPARE_MIN}–${COMPARE_MAX} models.` }] });
     const want = { aspect: b.aspect, quality: b.quality, imageResolution: b.imageResolution, n: Number(b.n) || 1, refs: Number(b.refs) || 0, mode: b.mode === 'edit' ? 'edit' as const : 'generate' as const };
     const agentHdr = req.headers[AGENT_HEADER];
+    /* the prompt's length (GPT Image bills prompt text): each row is priced as its run submits it, so a compared run is never refused as dearer */
+    const pb = typeof b.prompt === 'string' ? Buffer.byteLength(b.prompt) : Number(b.promptBytes); const promptQ: Record<string, string> = Number.isFinite(pb) && pb >= 0 && (typeof b.prompt === 'string' || (b.promptBytes != null && b.promptBytes !== '')) ? { promptBytes: String(Math.round(pb)) } : {};
     const rows: CompareRow[] = [];
     for (const id of models) {
       const name = getProvider(id)?.name ?? id; const base = { model: id, name, ok: false, excluded: null, unpriced: false, params: null, changes: [] as CompareChange[], credits: null, estUsd: 0, billedTo: null, runOn: null, routeId: null, local: false, demo: false };
       if (!getProvider(id)) { rows.push({ ...base, excluded: { code: 'unknown_model', reason: 'Unknown model' } }); continue; }
       const a = adaptForModel(id, want); if (!a.ok) { rows.push({ ...base, excluded: { code: a.code, reason: a.reason } }); continue; }
-      const p = a.params; const qs = new URLSearchParams({ model: id, aspect: p.aspect, n: String(p.n), refs: String(p.refs), mode: p.mode, ...(p.quality ? { quality: p.quality } : {}), ...(p.imageResolution ? { imageResolution: p.imageResolution } : {}) });
+      const p = a.params; const qs = new URLSearchParams({ model: id, aspect: p.aspect, n: String(p.n), refs: String(p.refs), mode: p.mode, ...(p.quality ? { quality: p.quality } : {}), ...(p.imageResolution ? { imageResolution: p.imageResolution } : {}), ...promptQ });
       const r = await app.inject({ method: 'GET', url: `/api/models/quote?${qs}`, headers: { 'x-forwarded-for': String(req.ip ?? ''), ...(agentHdr ? { [AGENT_HEADER]: String(agentHdr) } : {}) } });
       const q = r.json() as any; const row: CompareRow = { ...base, params: p, changes: a.changes };
       if (r.statusCode >= 400) { rows.push({ ...row, excluded: { code: String(q?.code ?? 'invalid'), reason: String(q?.error ?? 'Can’t run these settings') } }); continue; }

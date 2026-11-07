@@ -11,6 +11,7 @@ import { demoPriceLine } from './routing/http.js';
 import { cameraDefaultMove, cameraPresetOff } from './tools/apps.js';
 import { fillPattern } from './shared/promptPatterns.js';
 import { jobSpendView } from './billing.js';
+import { priceAskAgain } from './shared/priceChange.js';
 import { runFfmpeg, mediaDuration } from './ffmpeg.js';
 
 export const REEL_TOOL = 'app-photos-to-reel';
@@ -232,7 +233,7 @@ export async function startReel(app: FastifyInstance, req: FastifyRequest, reply
   const admission = admitBudget(budgetOfRequest(req), { jobId: id, toolId: REEL_TOOL, model: null, estUsd: quote.body.cost.estUsd, credits: quote.body.demo ? 0 : quote.body.credits, hold: false });
   if ('refused' in admission) return reply.code(admission.refused.status).send(admission.refused.body);
   const quoted = fields.quotedCredits == null || fields.quotedCredits === '' ? null : Number(fields.quotedCredits);
-  if (quoted != null && Number.isFinite(quoted) && Number(quote.body.credits) > quoted + 0.000001) return reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: 'The reel price has changed. Review the new price and press Generate again.', charged: false, quote: quote.body, quotedCredits: quoted, credits: quote.body.credits, dearer: true });
+  if (quoted != null && Number.isFinite(quoted) && priceAskAgain({ quotedCredits: quoted, credits: Number(quote.body.credits) })) return reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: 'The reel price has changed. Review the new price and press Generate again.', charged: false, quote: quote.body, quotedCredits: quoted, credits: quote.body.credits, dearer: true });
   const cameraQuote = quote.body.steps[0].quote, musicQuote = quote.body.steps[1]?.quote;
   fields = { ...fields, provider: cameraQuote.provider ?? fields.provider, route: cameraQuote.routeId ?? cameraQuote.route ?? fields.route, ...(musicQuote ? { musicProvider: musicQuote.provider, musicRoute: musicQuote.routeId ?? musicQuote.route } : {}) };
   const { unchangedVisual } = resumePlan;

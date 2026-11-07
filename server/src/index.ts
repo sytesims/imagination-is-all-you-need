@@ -709,14 +709,16 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
     if (g) return reply.code(409).send({ error: `${g.message} Nothing was charged.`, errorType: 'routing', code: g.code, reasonCode: g.code, missingBytes: g.missingBytes, missingFiles: g.missingFiles, diskFreeBytes: g.diskFreeBytes, downloadable: g.downloadable, downloadEndpoint: g.downloadEndpoint, downloadId: g.downloadId, alternative: await (async () => { try { return (await import('./routing/fitView.js')).fitAlternative(tool, inp); } catch { return null; } })(), charged: false, calm: true, refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }); }
   if (routed && config.backend === 'mock' && fields.simulateRouteFail) routed.routing.failRoutes = String(fields.simulateRouteFail).split(',').map((x: string) => x.trim()).filter(Boolean);
   const routedCost = routed ? routed.routing.prices[routed.first.routeId] ?? 0 : null;
-  // Quote/submit contract (DP, 2026-10-18; user decision 2026-10-28): optional quotedRouteId / quotedCredits from the quote the user saw. Only a
-  // DEARER run asks again: now costs more than the quote → 409 route_changed with the fresh quote (same object GET /price returns); nothing is
-  // charged. The same or a lower price just runs (on whichever place the server picked). A different place with no quoted price asks, to be safe.
+  // Quote/submit contract (DP, 2026-10-18; user decisions 2026-10-28 + 2026-11-07): optional quotedRouteId / quotedCredits from the quote the user
+  // saw. Only a noticeably DEARER run asks again: more than the allowance over the quote (10 % or 5¢, whichever is bigger: shared/priceChange.ts)
+  // → 409 route_changed with the fresh quote (same object GET /price returns); nothing is charged. A small rise, the same or a lower price just
+  // runs and the job's cost is the real price. A different place with no quoted price asks, to be safe.
   { const qr = fields.quotedRouteId?.trim(); const qc0 = fields.quotedCredits != null && fields.quotedCredits !== '' ? Number(fields.quotedCredits) : null; const qc = qc0 != null && Number.isFinite(qc0) ? qc0 : null;
     const nowRoute = routed ? routed.first.routeId : null; const nowCost = routedCost ?? cost;
     if ((await import('./shared/priceChange.js')).priceAskAgain({ quotedRoute: qr || null, quotedCredits: qc, route: nowRoute, credits: nowCost })) {
       const qs = new URLSearchParams(); for (const [k, v] of Object.entries(fields)) if (typeof v === 'string' && v.length <= 4000 && !['quotedRouteId', 'quotedCredits', 'webhookUrl', 'rights'].includes(k)) qs.set(k, v);
       for (const f of Object.keys(files)) if (files[f]?.length && !qs.has(f)) qs.set(f, '1'); // uploads → markers (same as POST /price)
+      if (typeof fields.prompt === 'string' && !qs.has('prompt') && !qs.has('promptBytes')) qs.set('promptBytes', String(Buffer.byteLength(fields.prompt))); // a prompt too long for the query still prices by its length (GPT Image bills prompt text)
       if (Number(inp.refVideoSeconds) > 0) qs.set('refVideoSeconds', String(inp.refVideoSeconds)); qs.set('provider', prov.id);
       const fresh = await app.inject({ method: 'GET', url: `/api/tools/${tool.id}/price?${qs}` }); let quote: any = null; try { quote = fresh.json(); } catch { /* */ }
       return reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: ROUTE_CHANGED_MSG, userMessage: ROUTE_CHANGED_MSG, detail: 'Review the new price and press Generate again.', charged: false, calm: true, quote, quotedCredits: qc, credits: nowCost, dearer: true,
