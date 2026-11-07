@@ -133,7 +133,7 @@ export function ensureSignupGrant(account = 'default') {
   const done = getKv<string[]>('signupGrants', []); if (!HOSTED || done.includes(account) || SIGNUP_GRANT <= 0) return null;
   setKv('signupGrants', [...done, account]); return grant(SIGNUP_GRANT, 'promo', `signup grant (${SIGNUP_GRANT} credits)`);
 }
-ensureSignupGrant();
+// the one-time grant is given by the hosted-grant plugin when it starts (it was given here, at import, before the plugin tree)
 /**
  * Ledger notes in plain words (DP ask #4, 2026-10-18; standing decision: credits go back to your balance, never "refunded").
  * New rows: "<what happened>: credits back to your balance" (sentence case, no raw route ids). The row kind stays 'refund' and

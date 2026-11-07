@@ -19,6 +19,7 @@ import { afterSettle } from './routing/state.js';
 import { runWithVideoFit } from './videoFit.js';
 import './services/placesBuiltin.js'; // the built-in places when nothing booted (tests): the boot recovery below asks them what can be picked up
 import { pickUpOnBoot, startPickUp, collectable, remoteCancellable } from './routing/reattach.js';
+import { emitJob, reportedCostOf } from './services/jobEvents.js';
 
 /**
  * Shared job queue for all tools, in two run lanes (2026-10-25):
@@ -126,8 +127,10 @@ function settle(job: Job) {
     parent.input.childCost = children.reduce((sum,j)=>sum+Math.max(0,Number(j.cost??0)-Number(j.refunded??0)),0);
     parent.input.childCostUsd = children.reduce((sum,j)=>sum+Number(jobSpendView(j.id)?.countedUsd ?? 0),0); parent.updatedAt=Date.now(); persistJob(parent);
   }
-
+  settledEvent(job);
 }
+/** job/settled (ctx.jobs): after this tick, so the copy listeners get carries run.ts's own late fixes; cost = what the places reported (never the charge). */
+const settledEvent = (job: Job) => setImmediate(() => emitJob('job/settled', job, { status: job.status, cost: reportedCostOf(job) }));
 
 /** Own-accounts mode, a failed / canceled paid run: what the provider does with it (its documented rule), never an app refund. */
 function ownAccountsNote(job: Job): string {
@@ -165,6 +168,7 @@ function begin(job: Job, lane: RunLane, isFree: boolean) {
   const id = job.id; const tool = getTool(job.toolId)!;
   laneActive[lane]++; if (isFree) activeFree++; slots.set(id, { lane, free: isFree });
   job.runLane = lane; job.queueReason = null; job.queuePos = 0; job.updatedAt = Date.now();
+  emitJob('job/progress', job, { stage: 'running' });
   runWithVideoFit(job, () => runWithProvider(job, tool)) // Fit to model: the clip fitted before the run, a padded result cropped back after (videoFit.ts)
     .catch((e) => { job.status = 'failed'; job.errorType = job.errorType ?? 'temporary'; job.error = e instanceof Error ? e.message : String(e); })
     .finally(() => { if ((job as any).cancelRequested) { job.status = 'canceled'; job.stage = 'canceled'; job.outputs = []; job.resultUrl = null; job.progress = 0; job.error = null; } job.queueReason = null;
@@ -227,6 +231,7 @@ if (reconnect.length) setTimeout(() => { import('./comfy/resume.js').then(({ res
 function settleLate(job: Job) {
   try { settleSpend(job); } catch { /* spend log only */ }
   void import('./etaLearn.js').then((L) => L.recordJob(job)).catch(() => {});
+  settledEvent(job);
 }
 const LATE_SWEEP_MS = Number(env('LATE_SWEEP_MS')) || 30_000;
 // Runs failed by the old fixed 30-min timeout ("timed out after N min of running") in the last 2 h kept their prompt on ComfyUI: watch them too.
@@ -259,6 +264,7 @@ export function enqueue(toolId: string, input: Record<string, any>, eta: number,
   (free ? self.free : self.paid).push(id);
   refreshPositions();
   setTimeout(pump, free ? FREE_LANE_DELAY_MS : 300);
+  emitJob('job/created', job);
   return job;
 }
 

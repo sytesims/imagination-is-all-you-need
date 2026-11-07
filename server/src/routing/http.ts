@@ -19,7 +19,7 @@ import { getTool, listTools } from '../tools/registry.js';
 /** The reel tool whose GET price is quoteReel (routesBatch1.ts): Camera Moves' quote per clip. */
 const REEL_QUOTED_ON_CAMERA = 'app-photos-to-reel';
 import { jobs } from '../jobs.js';
-import { getBalance, canAfford } from '../ledger.js';
+import { getBalance } from '../ledger.js';
 import { routesFor, findRoute, isTwinAlias, toolKeys, mapTwinAlias } from './routes.js';
 import { requestMode, toolDefaults, setStatusInput, toolModes, lyricsFreeDefault, draftOn, draftCapableDefault } from './defaults.js';
 import { localRunnerName } from './routes.js';
@@ -501,7 +501,7 @@ export function registerRouting(app: FastifyInstance) {
     const b = (req.body ?? {}) as { route?: string; decline?: boolean };
     if (b.decline) return decline(j) ? { id: j.id, status: j.status } : reply.code(409).send({ error: 'job is not waiting for a decision', errorType: 'validation' });
     const tool = getTool(j.toolId)!;
-    const price = j.routing?.prices[String(b.route)] ?? 0; if (price > 0 && !canAfford(price)) return reply.code(402).send({ error: `Not enough credits: needs ${price}, balance ${getBalance()}.`, errorType: 'credits' });
+    const price = j.routing?.prices[String(b.route)] ?? 0; { const bal = (await import('../spendGuard.js')).admitStage('balance', { credits: price, free: !(price > 0) }); if ('refused' in bal) return reply.code(402).send({ error: bal.refused.message, errorType: 'credits' }); } // team mode: the balance covers it
     const route = String(b.route ?? ''); const ck = continueCheck(j, tool, route);
     if ('error' in ck) return reply.code(ck.status).send({ error: ck.error, errorType: 'validation', alternatives: j.alternatives ?? [] });
     // S-01: the move to another (possibly differently billed) route goes through the submit's spend guard: quote it → agent budget (when one is set;

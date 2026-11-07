@@ -215,7 +215,7 @@ function OverviewTab({ ov, period, setPeriod, toolName, nameOf, onAllRuns, tools
 /** This month, last month, each project's share and the optional monthly limit (GET /api/spend/tally, PUT /api/settings/spend-cap).
  *  The server checks the limit before every paid run (spendGuard.ts); this only shows and edits it. */
 interface Tally { thisMonth: { spentUsd: number; paidRuns: number; freeRuns: number; runs: number; from: string }; lastMonth: { spentUsd: number; paidRuns: number; runs: number; from: string };
-  projects: { projectId: string | null; name: string | null; thisMonthUsd: number; lastMonthUsd: number; runs: number }[]; cap: { monthlyUsd: number | null; spentUsd: number; leftUsd: number | null; resetsOn: string }; canWrite: boolean }
+  projects: { projectId: string | null; name: string | null; thisMonthUsd: number; lastMonthUsd: number; runs: number }[]; /** left out when the spend-cap plugin is off: no limit card */ cap?: { monthlyUsd: number | null; spentUsd: number; leftUsd: number | null; resetsOn: string }; canWrite: boolean }
 const monthName = (iso: string) => new Date(iso).toLocaleDateString([], { month: 'long' });
 function MonthTally({ tick }: { tick: number }) {
   const [t, setT] = useState<Tally | null>(null); const [edit, setEdit] = useState(false); const [val, setVal] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
@@ -230,14 +230,14 @@ function MonthTally({ tick }: { tick: number }) {
     catch { setErr('Can’t reach the app. Try again.'); } finally { setBusy(false); } };
   const submit = (e: React.FormEvent) => { e.preventDefault(); const n = Number(val.replace(/[$,\s]/g, '')); if (!val.trim() || !Number.isFinite(n) || n < 0) { setErr('Enter an amount in dollars, like 20.'); return; } void save(n); };
   if (!t) return <section className="spg-tally spg-tally-ph" aria-hidden data-testid="spend-tally" />;
-  const cap = t.cap; const on = cap.monthlyUsd != null; const pct = on ? (cap.monthlyUsd! > 0 ? Math.min(100, (cap.spentUsd / cap.monthlyUsd!) * 100) : 100) : 0;
+  const cap = t.cap ?? { monthlyUsd: null, spentUsd: 0, leftUsd: null, resetsOn: t.thisMonth.from }; const on = cap.monthlyUsd != null; const pct = on ? (cap.monthlyUsd! > 0 ? Math.min(100, (cap.spentUsd / cap.monthlyUsd!) * 100) : 100) : 0;
   const over = on && cap.leftUsd === 0; const resets = new Date(cap.resetsOn).toLocaleDateString([], { month: 'long', day: 'numeric' });
   const projects = allP ? t.projects : t.projects.slice(0, 5);
   return <section className="spg-tally" data-testid="spend-tally" aria-label="Monthly spend">
     <div className="spg-tally-nums">
       <div className="spg-tally-n" data-testid="spend-tally-this"><small>{monthName(t.thisMonth.from)} so far</small><b>{fmtUsd(t.thisMonth.spentUsd)}</b><span>{t.thisMonth.paidRuns ? `${t.thisMonth.paidRuns} paid run${t.thisMonth.paidRuns === 1 ? '' : 's'}` : 'No paid runs'}{t.thisMonth.freeRuns ? ` · ${t.thisMonth.freeRuns} free` : ''}</span></div>
       <div className="spg-tally-n" data-testid="spend-tally-last"><small>{monthName(t.lastMonth.from)}</small><b>{fmtUsd(t.lastMonth.spentUsd)}</b><span>{t.lastMonth.paidRuns ? `${t.lastMonth.paidRuns} paid run${t.lastMonth.paidRuns === 1 ? '' : 's'}` : 'No paid runs'}</span></div>
-      <div className={`spg-cap${over ? ' is-over' : ''}`} data-testid="spend-cap">
+      {t.cap && <div className={`spg-cap${over ? ' is-over' : ''}`} data-testid="spend-cap">
         <small>Monthly limit</small>
         {edit ? <form className="spg-cap-form" onSubmit={submit}>
             <label className="spg-cap-in"><span aria-hidden>$</span><input autoFocus inputMode="decimal" aria-label="Monthly limit in dollars" placeholder="20" value={val} onChange={(e) => setVal(e.target.value)} data-testid="spend-cap-input" /></label>
@@ -252,7 +252,7 @@ function MonthTally({ tick }: { tick: number }) {
           : <><b className="spg-cap-off">Off</b><span>Set one and paid runs stop before they go past it.</span></>}
         {!edit && t.canWrite && <button type="button" className="spg-link spg-cap-edit" onClick={() => { setVal(on ? String(cap.monthlyUsd) : ''); setErr(''); setEdit(true); }} data-testid="spend-cap-edit">{on ? 'Change' : 'Set a limit'}</button>}
         {err && <span className="spg-cap-err" role="alert">{err}</span>}
-      </div>
+      </div>}
     </div>
     {t.projects.length > 0 && <div className="spg-proj" data-testid="spend-projects">
       <div className="spg-proj-h"><span>By project</span><span>{monthName(t.thisMonth.from)}</span><span>{monthName(t.lastMonth.from)}</span></div>

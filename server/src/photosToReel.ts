@@ -228,8 +228,8 @@ export async function startReel(app: FastifyInstance, req: FastifyRequest, reply
   const resumePlan = reelResumePlan(files.photos.length,o,resume ? { clipsByPhoto:resume.input.clipsByPhoto, musicStatus:jobs.get(resume.input.musicJobId)?.status } : undefined);
   const quote = await quoteReel(app,{...fields,photoCount:files.photos.length},resumePlan.pendingCameraCount,resumePlan.pendingMusicCount);
   if (quote.status !== 200) return reply.code(quote.status).send(quote.body);
-  const { admitBudget, budgetOfRequest } = await import('./agentBudget.js');
-  const admission = admitBudget(budgetOfRequest(req), { jobId: id, toolId: REEL_TOOL, model: null, estUsd: quote.body.cost.estUsd, credits: quote.body.demo ? 0 : quote.body.credits, hold: false });
+  const { budgetOfRequest } = await import('./agentBudget.js'); const { admitStage } = await import('./spendGuard.js'); // ctx.spend, the agent budget stage (the reel's total; each step is held on its own submit)
+  const admission = admitStage('budget', { budget: budgetOfRequest(req), budgetUsd: quote.body.cost.estUsd, budgetCredits: quote.body.demo ? 0 : quote.body.credits, credits: quote.body.demo ? 0 : quote.body.credits, free: false, jobId: id, toolId: REEL_TOOL, model: null, hold: false });
   if ('refused' in admission) return reply.code(admission.refused.status).send(admission.refused.body);
   const quoted = fields.quotedCredits == null || fields.quotedCredits === '' ? null : Number(fields.quotedCredits);
   if (quoted != null && Number.isFinite(quoted) && Number(quote.body.credits) > quoted + 0.000001) return reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: 'The reel price has changed. Review the new price and press Generate again.', charged: false, quote: quote.body, quotedCredits: quoted, credits: quote.body.credits, dearer: true });

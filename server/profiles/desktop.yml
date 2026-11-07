@@ -1,5 +1,5 @@
 # The desktop app (npm start / npm run dev). One plugin id per line; leave a line out to turn that plugin off.
-# The places, tools and workflows services are part of the kernel and always on. `legacy` (today's server) always starts last.
+# The places, tools, workflows, spend (the money guard), pricing and jobs services are part of the kernel and always on. `legacy` (today's server) always starts last.
 name: desktop
 plugins:
   - place-comfy-local   # Your computer (your ComfyUI, built-in tools)
@@ -18,4 +18,8 @@ plugins:
   - studio-edit       # Edit Video: reframe, remove background, HDR, fps boost, depth, Footage Effects, Prompt Edit, Finish
   - apps-gallery      # the Apps (Photo FX, Upscale, every app recipe); after the studios, since each recipe wraps one of their tools
   - workflow-folders  # workflow folders: plugins/ (shipped, hub installs) and the ones you add in the app (one fiber per folder)
+  - spend-cap         # the optional monthly limit (Spend page card, quote line, the check before a paid run)
+  - agent-budgets     # agent budgets (X-OHF-Agent-Budget, MCP set_budget): /api/agent/budgets, quote line, the check before a run
+  - billing-team-mode # team mode: credit balances charged per run and given back on failure (off = always your own accounts)
+  - hosted-grant      # the one-time signup credits on a hosted demo (OPENHIGGSFIELD_HOSTED=1; does nothing elsewhere)
   - legacy

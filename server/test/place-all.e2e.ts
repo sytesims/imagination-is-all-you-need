@@ -15,7 +15,7 @@ Object.assign(process.env, { OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_DATA
   OPENHIGGSFIELD_COMFY_DETECT_URLS: 'http://127.0.0.1:9', OPENHIGGSFIELD_MOCK_KEYS: '1', OPENHIGGSFIELD_PROFILE: '', OPENHIGGSFIELD_BILLING_MODE: 'team' /* the app keeps a ledger */ });
 for (const k of Object.keys(process.env)) if (/(_KEY|_TOKEN)$|^COMFY_(BASE|DEPLOY|RUNNER)_URL$/.test(k) && k !== 'OPENHIGGSFIELD_MOCK_KEYS') delete process.env[k];
 const ALL = ['place-comfy-local', 'place-comfy-cloud', 'place-comfy-router', 'place-fal', 'place-replicate', 'place-sunra', 'place-direct', 'place-sample'];
-const TOOLS = ['studio-video', 'studio-image', 'studio-audio', 'studio-3d', 'studio-edit', 'apps-gallery', 'workflow-folders']; // the studios and workflow folders (Phase 3)
+const TOOLS = ['studio-video', 'studio-image', 'studio-audio', 'studio-3d', 'studio-edit', 'apps-gallery', 'workflow-folders', 'spend-cap', 'agent-budgets', 'billing-team-mode', 'hosted-grant']; // the studios and workflow folders (Phase 3) + the money plugins (Phase 4)
 /** Installable places: shipped, not in the desktop profile (place-kie). */
 const INSTALLABLE = ['place-kie'];
 const KIND: Record<string, string> = { 'place-comfy-local': 'local', 'place-comfy-cloud': 'comfy-cloud', 'place-comfy-router': 'comfy-router', 'place-fal': 'fal', 'place-replicate': 'replicate', 'place-direct': 'direct' };

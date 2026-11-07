@@ -48,7 +48,7 @@ import { getKv, setKv } from './db.js';
 import * as I from './idempotency.js';
 import { registerJsonErrors } from './jsonErrors.js';
 import { RESULT_TTL_DAYS } from './config.js';
-import { ledger, canAfford, getBalance, freeGensLeft, FREE_GENS_MAX_RES, grant, LOCAL_FREE, isLocalFree, refundOf, usageTotals } from './ledger.js';
+import { ledger, getBalance, freeGensLeft, FREE_GENS_MAX_RES, grant, LOCAL_FREE, isLocalFree, refundOf, usageTotals } from './ledger.js';
 import { registerPrecheck } from './precheck.js';
 import { registerPreflight } from './routesPreflight.js';
 import { registerPromptPeek } from './routesPromptPeek.js';
@@ -727,7 +727,8 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
   // Also capping spend: the quote the user saw (quotedCredits above), their OK, and an optional agent budget (admitAgentRun below).
   const sg = await spendGuard(reply, { kind: routed ? routed.first.kind : isLocalFree(prov.kind) ? 'local' : 'direct', routeId: routed?.first.routeId ?? null, credits: routedCost ?? cost, demo: !!routed?.routing.demo, free: wantFree });
   if ('sent' in sg) return sg.sent; const runCost = sg.runCost;
-  if (!wantFree && !canAfford(routedCost ?? cost)) {
+  const SG = await import('./spendGuard.js'); const bal = SG.admitStage('balance', { credits: routedCost ?? cost, free: wantFree }); // team mode: the balance covers it (plugin billing-team-mode)
+  if ('refused' in bal) {
     const needed = routedCost ?? cost; const balance = getBalance(); const n = groupCount(inp);
     const body: Record<string, any> = { error: `Not enough credits: needs ${needed}, balance ${balance}.`, errorType: 'credits', code: 'credits', needed, balance, totalGroups: n, affordableGroups: 0, partialCost: 0, refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } };
     if (n > 1) { // the largest k groups we can afford (same pricing path as the full submit)
@@ -748,7 +749,7 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
   if (mf) inp.modelFallback = mf;
   const fallback = FB.planNotice(routed ? routed.routing : undefined, prov.id, routed ? routed.first.routeId : null, routedCost ?? cost, mf);
   // Agent budgets (agentBudget.ts): a run started with X-OHF-Agent-Budget that would go over that budget is refused here, before the job is enqueued (nothing reaches a provider). Local / free runs cost $0.
-  const AB = await import('./agentBudget.js'); const ag = AB.admitAgentRun(req, reply, { jobId: id, toolId: tool.id, model: MR?.modelKey ?? prov.id, estUsd: wantFree ? 0 : runCost.estUsd, credits: wantFree || runCost.demo ? 0 : routedCost ?? cost });
+  const ag = SG.admitAgentRun(req, reply, { runCost, credits: routedCost ?? cost, free: wantFree, jobId: id, toolId: tool.id, model: MR?.modelKey ?? prov.id });
   if (!('agent' in ag)) return ag;
   if (fields.reelParentId && jobs.get(fields.reelParentId)?.toolId === 'app-photos-to-reel') { inp.reelParentId = fields.reelParentId; fields.parentId = fields.reelParentId; }
   const job = enqueue(tool.id, inp, est, id, fields.parentId || null, prov.id, routedCost ?? cost, wantFree);
@@ -843,7 +844,7 @@ app.get<{ Querystring: { toolId?: string } }>('/api/examples', async (req) => (a
 registerBatch1(app);
 (await import('./libraryDb.js')).registerLibrary(app, { tools: async () => { try { return toolsList(); } catch { return []; } } }); // workflows + references databases: /api/library/* (search, tags)
 { const R = await import('./routing/http.js'); R.registerRouting(app); setToolsBuilder(() => stripLicenseLinks(R.enrichTools(toolsPayload())), () => stripLicenseLinks(listTools().map((t) => ({ id: t.id, name: t.name, presets: (t.app as any)?.gallery?.locked?.types || (t.app as any)?.gallery?.locked?.preset ? [] /* an app locked to one base mode or style: the base tool's list isn't its presets */ : visiblePresets(t) })))); } // multi-provider routing: settings, /api/me/routing, /api/routes, fallback
-(await import('./billing.js')).registerBilling(app); (await import('./agentBudget.js')).registerAgentBudgets(app); // agent budgets (after billing's cost hook): /api/agent/budgets, receipts, POST /api/compose // real costs: /api/settings/billing, /api/spend, /api/spend/summary, /api/accounts; cost on every quote (after the routing hook)
+(await import('./billing.js')).registerBilling(app); (await import('./agentBudget.js')).registerCompose(app); // POST /api/compose (the agent budgets' routes and quote lines: plugin agent-budgets; quotes: ctx.pricing) // real costs: /api/settings/billing, /api/spend, /api/spend/summary, /api/accounts; cost on every quote (after the routing hook)
 registerDiscover(app);
 (await import('./routesHub.js')).registerHub(app);
 (await import('./cinema/routes.js')).registerCinema(app); // /api/cinema/* kept for compatibility (Director has no page since 2026-10-23); also /api/apps, /api/voices, /api/prompt/enhance
@@ -1048,9 +1049,9 @@ app.post<{ Params: { id: string }; Querystring: { failedOnly?: string; runOn?: s
       if (qc != null && Number.isFinite(qc) && (await import('./shared/priceChange.js')).priceAskAgain({ quotedCredits: qc, credits: rerunQuote.credits })) return { sent: reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: 'The price changed. Nothing was charged.', charged: false, quote: rerunQuote, quotedCredits: qc, credits: rerunQuote.credits, dearer: true }) }; }
     const sg = await spendGuard(reply, { kind: routed ? routed.first.kind : isLocalFree(prov?.kind) ? 'local' : 'direct', routeId: routed?.first.routeId ?? null, credits: cost, demo: !!routed?.routing.demo, free });
     if ('sent' in sg) return { sent: sg.sent };
-    if (!free && !canAfford(cost)) return { sent: reply.code(402).send({ error: `Not enough credits: needs ${cost}, balance ${getBalance()}.`, errorType: 'credits', code: 'credits', needed: cost, balance: getBalance(), refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }) };
+    const SG = await import('./spendGuard.js'); const bal = SG.admitStage('balance', { credits: cost, free }); if ('refused' in bal) return { sent: reply.code(bal.refused.status).send(bal.refused.body) }; // team mode: the balance covers it
     const id = randomUUID().slice(0, 8);
-    const ag = (await import('./agentBudget.js')).admitAgentRun(req, reply, { jobId: id, toolId: tool.id, model: j.modelKey ?? j.provider, estUsd: free ? 0 : sg.runCost.estUsd, credits: free || sg.runCost.demo ? 0 : cost });
+    const ag = SG.admitAgentRun(req, reply, { runCost: sg.runCost, credits: cost, free, jobId: id, toolId: tool.id, model: j.modelKey ?? j.provider });
     if (!('agent' in ag)) return { sent: ag };
     const nj = enqueue(tool.id, inp, est, id, j.id, j.provider, cost, free); nj.rerun = kind;
     if (ag.agent) nj.agent = ag.agent;
@@ -1148,9 +1149,9 @@ app.post<{ Params: { id: string }; Body: { output?: number; mode?: string } | un
   // S-01: the submit's spend guard (the run's cost + Spend row; refuses a paid run past the optional monthly limit) and the agent budget.
   // The upscale engines today are local (SeedVR2, $0) and FLUX 3 Upscaler is coming soon; a hosted upscale route is covered the day it lands.
   const sg = await spendGuard(reply, { kind: isLocalFree(prov?.kind) ? 'local' : 'direct', routeId: null, credits: cost, demo: false, free: false }); if ('sent' in sg) return sg.sent;
-  if (!canAfford(cost)) return reply.code(402).send({ error: `Not enough credits: needs ${cost}, balance ${getBalance()}.`, errorType: 'credits' });
+  const SG = await import('./spendGuard.js'); const bal = SG.admitStage('balance', { credits: cost, free: false }); if ('refused' in bal) return reply.code(402).send({ error: bal.refused.message, errorType: 'credits' }); // team mode
   const upId = randomUUID().slice(0, 8);
-  const ag = (await import('./agentBudget.js')).admitAgentRun(req, reply, { jobId: upId, toolId: up.id, model: provId, estUsd: sg.runCost.estUsd, credits: cost }); if (!('agent' in ag)) return ag;
+  const ag = SG.admitAgentRun(req, reply, { runCost: sg.runCost, credits: cost, free: false, jobId: upId, toolId: up.id, model: provId }); if (!('agent' in ag)) return ag;
   const nj = enqueue(up.id, inp, est, upId, j.id, provId, cost, false); if (ag.agent) nj.agent = ag.agent;
   sg.spendRow(nj); // spend log, same as a submit
   // BH13 (Oct 19): Upscale on a draft names its route like the Upscale quote: a keyless default route says plainly it's a sample run (0 credits charged).

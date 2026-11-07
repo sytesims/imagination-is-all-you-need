@@ -16,7 +16,7 @@
  * Also here: POST /api/compose (stitch clips + a music bed with ffmpeg, a local $0 step) and GET /api/agent/budgets/:id/receipt.
  * Stored in kv 'agent.budgets' (so export/import carries it).
  */
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest, RouteOptions } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -89,11 +89,7 @@ export function budgetById(id: string): AgentBudget | { error: string; status: n
   if (b.closedAt) return { status: 400, error: `The agent budget "${b.name}" is closed. Create a new one to keep going. Nothing was charged.` };
   return b;
 }
-/** createJob (index.ts), right before enqueue: refuse a run over the agent budget, or hold its amount until its spend row exists. Returns the reply when refused. */
-export function admitAgentRun(req: FastifyRequest, reply: FastifyReply, run: { jobId: string; toolId: string; model: string | null; estUsd: number; credits: number }): FastifyReply | { agent: { id: string; name: string } | null } {
-  const a = admitBudget(budgetOfRequest(req), run); return 'refused' in a ? reply.code(a.refused.status).send(a.refused.body) : a;
-}
-/** The check behind admitAgentRun, without a reply (also used before an allowFallback move to the next route, spendGuard.ts guardNextRoute):
+/** The agent budget check (the agent-budgets plugin's spend/admit check: a submit, a move to the next route, a story's or reel's total):
  *  refused → {status, body} (the same 400 a submit gets); else the budget's {id, name} (null without one), its amount held until the spend row exists. */
 /** hold:false = check only, nothing held (a story's TOTAL, POST /api/stories and /retry: each shot is then admitted and held on its own submit). */
 export function admitBudget(b: AgentBudget | { error: string; status: number } | undefined, run: { jobId: string; toolId: string; model: string | null; estUsd: number; credits: number; excludeJobId?: string; hold?: boolean }):
@@ -167,8 +163,10 @@ export function clampTrim(t: ClipTrim | null | undefined, dur: number): { in: nu
 }
 
 const bad = (reply: FastifyReply, field: string, message: string, code = 'invalid') => reply.code(400).send({ error: message, errorType: 'validation', code, issues: [{ code, field, message }] });
-export function registerAgentBudgets(app: FastifyInstance) {
-  app.post<{ Body: { name?: unknown; budgetUsd?: unknown; budgetCredits?: unknown; client?: unknown } }>('/api/agent/budgets', async (req, reply) => {
+/** The agent budget routes (the agent-budgets plugin registers them through ctx.http): create, list, one, receipt, close. */
+export function budgetRoutes(): RouteOptions[] {
+  return [
+  { method: 'POST', url: '/api/agent/budgets', handler: async (req: FastifyRequest<{ Body: { name?: unknown; budgetUsd?: unknown; budgetCredits?: unknown; client?: unknown } }>, reply: FastifyReply) => {
     const b = req.body ?? {}; const name = typeof b.name === 'string' ? b.name.trim() : '';
     if (!name || name.length > 60) return bad(reply, 'name', 'name is required (the agent’s name, 1–60 characters).', 'required');
     const num = (v: unknown, field: string, max: number) => { if (v == null || v === '') return null; const n = Number(v); return Number.isFinite(n) && n >= 0 && n <= max ? n : { field }; };
@@ -180,17 +178,19 @@ export function registerAgentBudgets(app: FastifyInstance) {
       createdAt: Date.now(), closedAt: null, client: typeof b.client === 'string' ? b.client.slice(0, 60) : null, refusals: [] };
     const m = load(); m[rec.id] = rec; saveAll(m);
     return reply.code(201).send({ ...budgetView(rec), header: AGENT_HEADER });
-  });
-  app.get('/api/agent/budgets', async () => ({ items: Object.values(load()).sort((a, b) => b.createdAt - a.createdAt).map(budgetView) }));
-  app.get<{ Params: { id: string } }>('/api/agent/budgets/:id', async (req, reply) => { const b = getBudget(req.params.id); return b ? budgetView(b) : reply.code(404).send({ error: 'agent budget not found', errorType: 'not_found' }); });
-  app.get<{ Params: { id: string } }>('/api/agent/budgets/:id/receipt', async (req, reply) => { const b = getBudget(req.params.id); return b ? receiptOf(b) : reply.code(404).send({ error: 'agent budget not found', errorType: 'not_found' }); });
-  app.post<{ Params: { id: string } }>('/api/agent/budgets/:id/close', async (req, reply) => { const b = getBudget(req.params.id); if (!b) return reply.code(404).send({ error: 'agent budget not found', errorType: 'not_found' });
-    update(b.id, (x) => { x.closedAt ??= Date.now(); }); return budgetView(getBudget(b.id)!); });
+  } },
+  { method: 'GET', url: '/api/agent/budgets', handler: async () => ({ items: Object.values(load()).sort((a, b) => b.createdAt - a.createdAt).map(budgetView) }) },
+  { method: 'GET', url: '/api/agent/budgets/:id', handler: async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => { const b = getBudget(req.params.id); return b ? budgetView(b) : reply.code(404).send({ error: 'agent budget not found', errorType: 'not_found' }); } },
+  { method: 'GET', url: '/api/agent/budgets/:id/receipt', handler: async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => { const b = getBudget(req.params.id); return b ? receiptOf(b) : reply.code(404).send({ error: 'agent budget not found', errorType: 'not_found' }); } },
+  { method: 'POST', url: '/api/agent/budgets/:id/close', handler: async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => { const b = getBudget(req.params.id); if (!b) return reply.code(404).send({ error: 'agent budget not found', errorType: 'not_found' });
+    update(b.id, (x) => { x.closedAt ??= Date.now(); }); return budgetView(getBudget(b.id)!); } },
+  ] as RouteOptions[];
+}
 
-  // Quotes: agentBudget {id, name, budgetUsd, spentUsd, remainingUsd, thisRunUsd, fits} and, over budget, runnable:false (registered after billing's cost hook).
-  app.addHook('preSerialization', async (req, _reply, payload: any) => {
-    const url = req.url.split('?')[0];
-    if (req.method !== 'GET' || !(url === '/api/models/quote' || /^\/api\/tools\/[^/]+\/price$/.test(url)) || !payload || typeof payload !== 'object' || Array.isArray(payload) || !('credits' in payload)) return payload;
+/** quote/compute, the agent budget's step (order 20, after the core cost and the monthly limit): agentBudget {id, name, budgetUsd, spentUsd,
+ *  remainingUsd, thisRunUsd, fits} and, over budget, runnable:false. */
+export function budgetQuote(req: FastifyRequest, payload: any) {
+    if (!('credits' in payload)) return payload;
     const b = budgetOfRequest(req); if (!b) return payload;
     if ('error' in b) return { ...payload, agentBudget: { error: b.error }, runnable: false, chargeable: false, blockedReason: b.error, blockedCode: 'agent_budget_unknown', reasonCode: 'agent_budget_unknown' };
     const estUsd = Number(payload.cost?.estUsd) || 0; const credits = payload.demo === true ? 0 : Number(payload.credits) || 0;
@@ -198,8 +198,10 @@ export function registerAgentBudgets(app: FastifyInstance) {
     const out: any = { ...payload, agentBudget: { id: v.id, name: v.name, budgetUsd: v.budgetUsd, spentUsd: v.spentUsd, remainingUsd: v.remainingUsd, budgetCredits: v.budgetCredits, remainingCredits: v.remainingCredits, thisRunUsd: estUsd, thisRunCredits: credits, fits: !blk } };
     if (blk) Object.assign(out, { runnable: false, chargeable: false, agentBudgetBlock: blk, blockedReason: blk.message, blockedCode: 'agent_budget', reasonCode: 'agent_budget' });
     return out;
-  });
+}
 
+/** POST /api/compose (Stitch): stays with the server (legacy); the agent budget routes and quote lines are the agent-budgets plugin's. */
+export function registerCompose(app: FastifyInstance) {
   /** Stitch clips (+ an optional music bed and a voice track) into one video with ffmpeg on this computer: free, recorded in the spend log at $0,
    *  and a job in Assets. layout "side-by-side" puts two clips next to each other (a before/after); aspect centre-crops the result (free cutdowns).
    *  trims (Stitch timeline, 2026-10-27): an optional {in, out} per clip (seconds, null = the whole clip), cut in each clip's own ffmpeg input and
