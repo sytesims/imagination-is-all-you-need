@@ -24,6 +24,7 @@ export type FailAction =
   | 'setupTranslate'
   | 'setupCloud'   // Settings → Connections → One-time setup (a Comfy Cloud import or your deployment)
   | 'collect'      // POST /api/jobs/:id/collect: fetch a paid result again from its provider (only when the job says canCollect)
+  | 'runAgain'     // a NEW paid run of a result that was made but can't be fetched: shows its price and asks first (never one click)
   | 'useCloud'     // open the tool with these settings, where the reason line offers Comfy Cloud (never a paid run from here)
   | 'details';     // open the technical details
 
@@ -189,18 +190,25 @@ export const detailOf = (j: FailJob) => String(j.error ?? '').replace(/\s*(Nothi
 /** A title's {provider}: the hosted place that ran it ("fal", "Comfy Cloud"), else "The provider" (copy wave 1, F14). */
 const titleFor = (j: FailJob, t: string) => { if (!t.includes('{provider}')) return t; const r = routeOf(j); const ro = String(j.runOn ?? '');
   return t.replace('{provider}', /^local:/.test(r) || ro === 'local' ? LOCAL_LABEL : r ? keyOwnerOf(r).name : (RUN_ON_LABELS as Record<string, string>)[ro] ?? 'The provider'); };
+/** Reasons where the result was made (or may still be): fetching it again is free, running it again is a new paid run. */
+export const MADE = new Set(['download_failed', 'download_refused', 'lost_contact']);
 /** The whole view: entry + money sentence + details. `runLocal` is dropped unless the server lists Local as ready (job.tryOn). */
 export function failView(j: FailJob, ctx: FailCtx = {}): FailView {
   const r = reasonOf(j); const local = Array.isArray(j.tryOn) && j.tryOn.some(o => o?.runOn === 'local');
-  const actions = [...(j.canCollect && !r.actions.includes('collect') ? ['collect' as const] : []), ...r.actions.filter(a => (a !== 'runLocal' || local) && (a !== 'collect' || !!j.canCollect))];
+  // 2026-11-07 (jobs e47bb4e4 → 42a3ef5c): a result that was made (and maybe paid for) offers Retry download only while it can be fetched (free);
+  // when it can't, Run again shows the price and asks first. Never a plain one-click Try again here.
+  const made = MADE.has(r.key);
+  const actions = made ? (j.canCollect ? ['collect' as const, 'details' as const] : ['runAgain' as const, 'details' as const])
+    : [...(j.canCollect && !r.actions.includes('collect') ? ['collect' as const] : []), ...r.actions.filter(a => (a !== 'runLocal' || local) && (a !== 'collect' || !!j.canCollect))];
   const mins = /(\d+) min\b/.exec(String(j.error ?? ''))?.[1];
   const line = r.key === 'cloud_credits' && !local ? 'Top up on comfy.org, then try again.' : r.key === 'no_credits' && !local ? 'Top up your account, then try again.'
     : r.key === 'declined' && refusalReason(j.providerError) ? refusalReason(j.providerError)! /* the provider said why: "The provider refused a photo of a real person." */
+    : MADE.has(r.key) && !j.canCollect ? 'It can’t be fetched any more. Run it again to make a new one.'
     : r.key === 'local_stalled' && mins ? `Nothing moved for ${mins} minute${mins === '1' ? '' : 's'}, so we stopped it. Try again.` : r.key === 'local_too_long' && mins ? `It hit the ${mins} min limit set for this computer. Try again.` : r.line;
   return { ...r, title: titleFor(j, r.title), line, actions: actions.length ? actions : ['retry'], charge: chargeOf(j, r, ctx), detail: detailOf(j) };
 }
 /** Button words. */
 export const ACTION_LABEL: Record<FailAction, string> = {
   retry: 'Try again', recreate: 'Recreate', changePhoto: 'Change photo', otherModel: 'Try another model', addCredits: 'Top up', runLocal: 'Run on your computer', useCloud: 'Use Comfy Cloud',
-  addKey: 'Add a key', startComfy: 'How to start ComfyUI', turnOnGpu: 'Turn it on', download: 'Download', spendLimits: 'Open Spend', setupTranslate: 'Set up translation', setupCloud: 'Show the steps', collect: 'Retry download', details: 'Details',
+  addKey: 'Add a key', startComfy: 'How to start ComfyUI', turnOnGpu: 'Turn it on', download: 'Download', spendLimits: 'Open Spend', setupTranslate: 'Set up translation', setupCloud: 'Show the steps', collect: 'Retry download', runAgain: 'Run again', details: 'Details',
 };
