@@ -63,7 +63,9 @@ assert.ok(close(wheelZoomFactor(100, 0) * wheelZoomFactor(-100, 0), 1), 'in and 
 assert.equal(wheelPixels(3, 1), 48, 'lines × 16'); assert.equal(wheelPixels(1, 2, 700), 700, 'pages × the board height');
 assert.ok(close(wheelZoomFactor(3, 1), Math.exp(-48 * 0.0015)), 'a mouse notch in lines zooms like 48 px');
 assert.equal(wheelZoomFactor(-100000, 0), ZOOM_STEP_MAX, 'one event never zooms past the clamp'); assert.equal(wheelZoomFactor(1, 2, 100000), 1 / ZOOM_STEP_MAX);
-assert.ok(wheelZoomFactor(-4, 0) < 1.01, 'a trackpad pinch step is gentle');
+assert.ok(close(wheelZoomFactor(-4, 0), Math.exp(0.04)), 'a trackpad pinch step (small pixel delta) zooms at 0.01/px');
+assert.ok(close(wheelZoomFactor(-30, 0), Math.exp(0.1)), 'a pinch step is capped at 10 px');
+{ let f = 1; for (let i = 0; i < 40; i++) f *= wheelZoomFactor(-4, 0); assert.ok(f > 3 && f < 7, `a full pinch zooms 3–7× (${f.toFixed(2)})`); }
 const cam = { x: 10, y: 20, z: 1 }; const at = { x: 400, y: 300 }; const n = zoomAround(cam, at, 2, 0.05, 4);
 assert.equal(n.z, 2); assert.ok(close(at.x / cam.z - cam.x, at.x / n.z - n.x) && close(at.y / cam.z - cam.y, at.y / n.z - n.y), 'the point under the pointer stays');
 assert.equal(zoomAround({ x: 0, y: 0, z: 4 }, at, 2, 0.05, 4).z, 4, 'kept within the zoom range');

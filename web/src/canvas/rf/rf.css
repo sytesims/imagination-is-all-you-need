@@ -45,7 +45,10 @@
 /* Groups (release 2, look A1): a quiet box with its header strip always on top; the strip is what you grab to move it */
 .cv-frame{box-sizing:border-box;position:absolute;inset:0;border:calc(1px * max(1, var(--tl-scale,1))) solid rgba(255,255,255,.12);background:rgba(255,255,255,.018);border-radius:14px;pointer-events:none}
 .cv-frame.sel{border-color:rgba(255,122,26,.7)}
-.cv-gstrip{position:absolute;left:0;right:0;top:0;height:52px;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:0 10px 0 16px;border-bottom:1px solid rgba(255,255,255,.07);
+/* zoomed out, the strip grows (up to 3.5×, from the settled --tl-scale) so its name stays readable; it grows upward from its bottom edge,
+   so at 100% and above nothing moves, and the change is smooth (no jump) */
+.cv-frame{--gs:min(3.5, max(1, var(--tl-scale,1)))}
+.cv-gstrip{position:absolute;left:0;bottom:calc(100% - 52px);width:calc(100% / var(--gs));transform:scale(var(--gs));transform-origin:0 100%;height:52px;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:0 10px 0 16px;border-bottom:1px solid rgba(255,255,255,.07);
   background:rgba(19,21,23,.86);border-radius:13px 13px 0 0;pointer-events:all;cursor:grab;overflow:hidden;color:var(--text-1,#F7F7F8);container-type:inline-size}
 .cv-gs-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
 .cv-gs-name{font:600 15px/19px var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text}
@@ -61,6 +64,9 @@
 /* a narrow Group: "$0.54 + 1" (the full words in the tooltip and the dock); the name truncates first */
 .cv-gs-short{display:none}
 @container (max-width:560px){.cv-gs-tail{display:none}.cv-gs-short{display:inline}}
+/* far out (the board's mood zoom, under 35%) or a strip under 160 px on screen: the name only */
+.cv-rf[data-mood] .cv-gs-t small,.cv-rf[data-mood] .cv-gs-run{display:none}
+@container (max-width:160px){.cv-gs-t small,.cv-gs-run{display:none}}
 .cv-rf .react-flow__node-frame .react-flow__resize-control{pointer-events:all}
 
 /* a link card (an old board's bookmark) */

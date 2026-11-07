@@ -323,7 +323,7 @@ async function spreadVersions(board: BoardApi, op: AgentOp) {
   const sorted = [...takes].sort((a, b) => keyOf(a) - keyOf(b)); const b = board.boundsOf(id); const at0 = op.at ?? (b ? { x: b.minX, y: b.maxY + 340 } : { x: 0, y: 0 }); const hand = handOf(board);
   const made: string[] = [];
   for (const [i, t] of sorted.entries()) { const job = await getJob(t.jobId).catch(() => null); if (!job) continue; const m = resultMedia(job, ownAccountsNow()); if (!m) continue;
-    const name = (t.from ?? []).at(-1)?.label || `Version ${i + 1}`; const at = { x: at0.x + 190 + i * 400, y: at0.y };
+    const name = (t.from ?? []).at(-1)?.label || `Version ${i + 1}`; const at = { x: at0.x + 190 + i * 440, y: at0.y }; /* 80 px between 360 px results: room for a link's lane */
     await hand.glideTo({ x: at.x - 160, y: at.y - 140 }, `Placing ${name.toLowerCase()}`);
     const rid = await addResultCard(board, job.id, { ...m, title: name }, at); fx.enter(rid); made.push(rid); }
   if (!made.length) throw new Error('None of the versions could be placed.');

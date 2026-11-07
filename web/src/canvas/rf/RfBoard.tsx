@@ -89,7 +89,8 @@ function useFlowNodes(store: BoardStore): Node[] {
 function useFlowEdges(store: BoardStore): Edge[] {
   const links = useStore(store.zs, (s: BoardState) => s.links), nodes = useStore(store.zs, (s: BoardState) => s.nodes), selection = useStore(store.zs, (s: BoardState) => s.selection);
   return useMemo(() => { const sel = new Set(selection);
-    return Object.values(links).filter((l) => nodes[l.from] && nodes[l.to] && l.from !== l.to).map((l) => ({ id: l.id, source: l.from, target: l.to, type: 'link', selected: sel.has(l.id), zIndex: 0 }) as Edge); }, [links, nodes, selection]);
+    /* links draw under every Group (Groups sit at i - BACK), so a line never crosses a Group's strip; inside a Group they show through its box */
+    return Object.values(links).filter((l) => nodes[l.from] && nodes[l.to] && l.from !== l.to).map((l) => ({ id: l.id, source: l.from, target: l.to, type: 'link', selected: sel.has(l.id), zIndex: -BACK - 1 }) as Edge); }, [links, nodes, selection]);
 }
 
 /** Keys for this phase (the full set, with the shortcuts sheet, is the next phase). */
@@ -142,7 +143,7 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
   const tool = useStore(store.zs, (s) => s.tool);
   const routeVal = useRoutes(board, opt.links === 'curve' || opt.joins === 'curve' ? 'curve' : opt.joins === 'notch' ? 'notch' : 'ports');
   const initial = useMemo(() => { const c = readCam(saved.id); return c ? { x: c.x * c.z, y: c.y * c.z, zoom: c.z } : undefined; }, [saved.id]);
-  const panning = useRef(false); const camTimer = useRef(0);
+  const panning = useRef(false); const camTimer = useRef(0); const settleTimer = useRef(0);
   const toast = useToast(); useBoardKeys(board, store, toast);
   const toolHook = useRfTool(store, board);
   const boardEl = useCallback(() => port.el, [port]);
@@ -174,7 +175,9 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
     const wheel = (e: WheelEvent) => { if (!(e.ctrlKey || e.metaKey)) return; if ((e.target as HTMLElement | null)?.closest?.('.nowheel')) return;
       e.preventDefault(); e.stopPropagation(); const r = el.getBoundingClientRect();
       const next = zoomAround(board.camera(), { x: e.clientX - r.left, y: e.clientY - r.top }, wheelZoomFactor(e.deltaY, e.deltaMode, r.height), MIN_ZOOM, MAX_ZOOM);
-      board.setCamera(next); onMoveEnd(null, { x: next.x * next.z, y: next.y * next.z, zoom: next.z }); };
+      /* onMove keeps the LIVE_ZOOM_MAX guard: on a big board the zoom-scaled styles update once the camera settles, not every step */
+      board.setCamera(next); onMove(null, { x: next.x * next.z, y: next.y * next.z, zoom: next.z });
+      window.clearTimeout(settleTimer.current); settleTimer.current = window.setTimeout(() => zoomVars(board.camera().z), 120); };
     el.addEventListener('wheel', wheel, { capture: true, passive: false }); return () => el.removeEventListener('wheel', wheel, { capture: true } as any); }, [port, board]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
