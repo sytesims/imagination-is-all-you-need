@@ -23,6 +23,8 @@ export const useLayersExtra: UseBarExtra = () => {
   const ex: BarExtra = {
     needs: () => (names.length ? [] : [{ missing: 'Name what to split out', group: 'objects' }]),
     form: () => ({ objects: JSON.stringify(names) }),
+    /* the price follows Clean background (the quote takes it as the mode: server/src/layers/constants.ts layersMode) */
+    quote: (c) => ({ types: c.valOf('background') === '0' ? 'split' : 'with-plate' }),
     onReset: () => { setNames([]); setDraft(''); },
     onRecreate: (f) => setNames(objectNames(f.objects ?? f.prompt).slice(0, LAYERS_MAX_OBJECTS)),
     chips: (c) => { const on = c.pop === 'g:objects';

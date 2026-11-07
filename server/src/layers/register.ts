@@ -13,7 +13,7 @@ import { CLOUD_RUNNER_ROUTES } from '../routing/runnable.js';
 import { NATIVE_DIRECT } from '../routing/directRoutes.js';
 import { HOSTED_PRICES, HOSTED_BY_ID, cloudGpuUsd, type HostedPrice } from '../shared/hostedPrices.js';
 import { FOOTAGE_FX_WORKFLOW } from '../shared/footageFx.js';
-import { LAYERS_LOCAL, LAYERS_CLOUD, LAYERS_CLOUD_ROUTE, LAYERS_TOOL, LAYERS_WORKFLOW, LAYERS_MAX_SECONDS, LAYERS_PLATE_SECONDS, LAYERS_MODEL_LINE, optionOn } from './constants.js';
+import { LAYERS_LOCAL, LAYERS_CLOUD, LAYERS_CLOUD_ROUTE, LAYERS_TOOL, LAYERS_WORKFLOW, LAYERS_MAX_SECONDS, LAYERS_PLATE_SECONDS, LAYERS_MODEL_LINE, layersMode } from './constants.js';
 import { layersPlan } from './plan.js';
 
 /** Comfy Cloud: an estimate of GPU-seconds per second of clip until a measured run sets it. */
@@ -21,7 +21,7 @@ export const LAYERS_GPU_SEC = { analysis: 4, plate: 9 } as const;
 /** The seconds the Comfy Cloud price counts: every second of the clip (analysis) plus the plate's seconds, weighted by its heavier work. */
 export function layersBillSeconds(i: Record<string, any>): number {
   const sec = Math.min(LAYERS_MAX_SECONDS, Math.max(0.5, Number(i.duration) || 5));
-  const plate = i.background !== false && optionOn(i.background) ? Math.min(LAYERS_PLATE_SECONDS, sec) * (LAYERS_GPU_SEC.plate / LAYERS_GPU_SEC.analysis) : 0;
+  const plate = layersMode(i) === 'with-plate' ? Math.min(LAYERS_PLATE_SECONDS, sec) * (LAYERS_GPU_SEC.plate / LAYERS_GPU_SEC.analysis) : 0;
   return Math.round((sec + plate) * 100) / 100;
 }
 

@@ -30,7 +30,9 @@ export async function sampleRaw(jobId: string, i: LayersJobInput): Promise<RawSe
   let edges: string | null = null;
   if (i.edges) { edges = path.join(dir, 'edges'); await mkdir(edges);
     const inputs = masks.flatMap((m) => ['-framerate', String(fps), '-i', seq(m)]);
-    const fc = masks.length === 1 ? '[0:v]format=gray,gblur=sigma=3[o]' : `${masks.map((_, k) => `[${k}:v]`).join('')}mix=inputs=${masks.length}:weights=${masks.map(() => '1').join(' ')}:normalize=0,format=gray,gblur=sigma=3[o]`;
+    const f: string[] = masks.map((_, k) => `[${k}:v]format=gray[m${k}]`); let cur = '[m0]';
+    for (let k = 1; k < masks.length; k++) { f.push(`${cur}[m${k}]blend=all_mode=lighten[u${k}]`); cur = `[u${k}]`; }
+    const fc = `${f.join(';')};${cur}gblur=sigma=3,format=gray[o]`;
     await ff(['-y', '-v', 'error', ...inputs, '-filter_complex', fc, '-map', '[o]', seq(edges)], 'sample edges'); }
   let depth: string | null = null;
   if (i.depth) { depth = path.join(dir, 'depth'); await mkdir(depth);

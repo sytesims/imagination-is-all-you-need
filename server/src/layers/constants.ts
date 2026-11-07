@@ -69,3 +69,13 @@ export function objectNames(raw: unknown): string[] {
 
 /** An option is on unless the form says 0 / false / off / no. */
 export const optionOn = (v: unknown) => !/^(0|false|off|no)$/i.test(String(v ?? ''));
+
+/** The job's mode for routing and price: 'with-plate' (Clean background on) or 'split'. A quote sends it as types (routing/http.ts takes no other
+ *  field); a job has background. Explicit types win. */
+export type LayersMode = 'with-plate' | 'split';
+export function layersMode(i: Record<string, any>): LayersMode {
+  const raw = i.types; let t: unknown = raw; if (typeof raw === 'string') { try { t = JSON.parse(raw); } catch { t = raw.split(','); } }
+  const first = Array.isArray(t) ? String(t[0] ?? '').trim() : '';
+  if (first === 'split' || first === 'with-plate') return first;
+  return i.background !== false && optionOn(i.background) ? 'with-plate' : 'split';
+}

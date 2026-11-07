@@ -19,7 +19,7 @@ import { mockRun } from '../tools/shared.js';
 import { footageFxTool } from '../tools/footageFx.js';
 import { VFX_CLOUD_ROUTE } from '../comfy/ltx23VfxCloud.js';
 import { LAYERS_TOOL, LAYERS_LOCAL, LAYERS_CLOUD, LAYERS_WORKFLOW, LAYERS_MAX_SECONDS, LAYERS_MIN_SECONDS, LAYERS_MAX_OBJECTS, LAYERS_FPS, LAYERS_LONG_SIDE,
-  LAYERS_PLATE_SECONDS, LAYERS_MODEL_LINE, objectNames, optionOn } from './constants.js';
+  LAYERS_PLATE_SECONDS, LAYERS_MODEL_LINE, objectNames, optionOn, layersMode } from './constants.js';
 import { sampleRaw } from './mock.js';
 import { assembleLayers } from './assemble.js';
 
@@ -53,7 +53,7 @@ export const layersTool: ToolDef = {
   app: { kind: 'video', input: 'video', maxSeconds: LAYERS_MAX_SECONDS, minSeconds: LAYERS_MIN_SECONDS },
   workflows: [LAYERS_WORKFLOW], model: LAYERS_MODEL_LINE, gpuSecPerSec: { source: 4 }, providers: [LAYERS_LOCAL, LAYERS_CLOUD], stages: LAYERS_STAGES,
   /** The download set follows Clean background: off = the split graph only; on = also Footage Effects' LTX files (hardware/requirements.ts jobWorkflows). */
-  routeInput: (i) => ({ types: optionOn(i.background) ? ['with-plate'] : ['split'] }),
+  routeInput: (i) => ({ types: [layersMode(i)] }),
   async parseInput(fields, files) {
     const vf = files.video?.[0]; if (!vf) return bad('video', 'Add a clip to split into layers.', 'required');
     if (/\.(png|jpe?g|webp|gif)$/i.test(vf)) return bad('video', 'Layers takes a video clip, not a photo.', 'format');
@@ -92,7 +92,7 @@ export const layersTool: ToolDef = {
       job.outputs = finals.map((f) => ({ label: f.label, url: `/files/${path.basename(f.file)}` }));
       job.resultUrl = job.outputs[0]?.url ?? null; job.status = 'done'; job.stage = 'done'; job.progress = 100;
     } catch (e) {
-      job.status = 'failed'; job.errorType = 'temporary'; job.error = `The sample layers could not be made (${e instanceof Error ? e.message : String(e)}). Nothing was charged.`;
+      job.status = 'failed'; job.errorType = 'temporary'; job.error = `The sample layers could not be made (${e instanceof Error ? e.message : String(e)}).`;
     }
   },
 };
