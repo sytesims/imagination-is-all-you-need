@@ -3,7 +3,7 @@
  * The ids, limits and plain names every Layers file shares. Isomorphic: no server imports, so the web reads the same words.
  *
  * Built only from official ComfyUI pieces (core nodes and Comfy-Org model repacks) and our own code:
- *  - SAM 3.1 (Meta, SAM License) finds each named object on the first frame and tracks it through the clip;
+ *  - SAM 3.1 (Meta, SAM License) finds each named object on the first frame and tracks it through the clip (one proven chain per object);
  *  - BiRefNet (MIT) gives soft edges, kept only in a thin band around each object's matte (our own combine, ffmpeg);
  *  - Depth Anything 3 Small (Apache-2.0) gives depth, normalised over the whole clip by our own code, and sets the layer order;
  *  - the clean background is Footage Effects' Vanish (LTX-2.5 on your computer, LTX-2.3 on Comfy Cloud), pasted only inside the objects' area.

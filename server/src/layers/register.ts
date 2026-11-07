@@ -60,7 +60,7 @@ NATIVE_DIRECT[LAYERS_CLOUD] = { label: 'Comfy Cloud', sourceUrl: 'https://docs.c
   priceInput: (i: Record<string, any>) => ({ ...i, duration: layersBillSeconds(i) }), caps: { maxSeconds: LAYERS_MAX_SECONDS, objects: 4 } } as any;
 CLOUD_WORKFLOWS[LAYERS_CLOUD_ROUTE] = { routeId: LAYERS_CLOUD_ROUTE, provider: LAYERS_CLOUD, standalone: true, target: 'cloud', label: 'Layers · Comfy Cloud',
   graphs: [LAYERS_WORKFLOW, VFX_CLOUD_GRAPHS.vanish.graph /* the clean background: Footage Effects' Vanish graph */],
-  requires: { nodes: [...new Set(['LoadVideo', 'GetVideoComponents', 'CheckpointLoaderSimple', 'ImageFromBatch', 'CLIPTextEncode', 'SAM3_Detect', 'MaskToImage', 'BatchImagesNode', 'ImageToMask', 'SAM3_VideoTrack',
+  requires: { nodes: [...new Set(['LoadVideo', 'GetVideoComponents', 'CheckpointLoaderSimple', 'ImageFromBatch', 'CLIPTextEncode', 'SAM3_Detect', 'MaskToImage', 'SAM3_VideoTrack',
     'SAM3_TrackToMask', 'SaveImage', 'LoadBackgroundRemovalModel', 'RemoveBackground', 'LoadDA3Model', 'DA3Inference', 'DA3Render', ...VFX_CLOUD_REQUIRES.nodes])],
     models: [{ loader: 'CheckpointLoaderSimple', field: 'ckpt_name', file: 'sam3.1_multiplex_fp16.safetensors' }, { loader: 'LoadBackgroundRemovalModel', field: 'bg_removal_name', file: 'birefnet.safetensors' },
       { loader: 'LoadDA3Model', field: 'model_name', file: 'depth_anything_3_small.safetensors' }, ...VFX_CLOUD_REQUIRES.models] },

@@ -50,7 +50,7 @@
    ]
   },
   "_meta": {
-   "title": "Object 1 name"
+   "title": "Object 1: its name"
   }
  },
  "101": {
@@ -68,21 +68,67 @@
     "100",
     0
    ],
-   "threshold": 0.4,
+   "threshold": 0.35,
    "refine_iterations": 2,
    "individual_masks": false
   },
   "_meta": {
-   "title": "Object 1 on the first frame"
+   "title": "Object 1 on the first frame (proven chain: H3 Character Swap Cloud nodes 42-43)"
   }
  },
  "102": {
+  "class_type": "SAM3_VideoTrack",
+  "inputs": {
+   "images": [
+    "2",
+    0
+   ],
+   "model": [
+    "3",
+    0
+   ],
+   "initial_mask": [
+    "101",
+    0
+   ],
+   "detection_threshold": 0.5,
+   "max_objects": 1,
+   "detect_interval": 1
+  },
+  "_meta": {
+   "title": "Object 1 tracked from its first-frame mask (max_objects 1, no text detection; as H3 Character Swap node 47)"
+  }
+ },
+ "103": {
+  "class_type": "SAM3_TrackToMask",
+  "inputs": {
+   "track_data": [
+    "102",
+    0
+   ],
+   "object_indices": "0"
+  }
+ },
+ "104": {
   "class_type": "MaskToImage",
   "inputs": {
    "mask": [
-    "101",
+    "103",
     0
    ]
+  }
+ },
+ "105": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "104",
+    0
+   ],
+   "filename_prefix": "layers/mask0"
+  },
+  "_meta": {
+   "title": "Object 1 matte (per frame)"
   }
  },
  "110": {
@@ -95,7 +141,7 @@
    ]
   },
   "_meta": {
-   "title": "Object 2 name"
+   "title": "Object 2: its name"
   }
  },
  "111": {
@@ -113,21 +159,67 @@
     "110",
     0
    ],
-   "threshold": 0.4,
+   "threshold": 0.35,
    "refine_iterations": 2,
    "individual_masks": false
   },
   "_meta": {
-   "title": "Object 2 on the first frame"
+   "title": "Object 2 on the first frame (proven chain: H3 Character Swap Cloud nodes 42-43)"
   }
  },
  "112": {
+  "class_type": "SAM3_VideoTrack",
+  "inputs": {
+   "images": [
+    "2",
+    0
+   ],
+   "model": [
+    "3",
+    0
+   ],
+   "initial_mask": [
+    "111",
+    0
+   ],
+   "detection_threshold": 0.5,
+   "max_objects": 1,
+   "detect_interval": 1
+  },
+  "_meta": {
+   "title": "Object 2 tracked from its first-frame mask (max_objects 1, no text detection; as H3 Character Swap node 47)"
+  }
+ },
+ "113": {
+  "class_type": "SAM3_TrackToMask",
+  "inputs": {
+   "track_data": [
+    "112",
+    0
+   ],
+   "object_indices": "0"
+  }
+ },
+ "114": {
   "class_type": "MaskToImage",
   "inputs": {
    "mask": [
-    "111",
+    "113",
     0
    ]
+  }
+ },
+ "115": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "114",
+    0
+   ],
+   "filename_prefix": "layers/mask1"
+  },
+  "_meta": {
+   "title": "Object 2 matte (per frame)"
   }
  },
  "120": {
@@ -140,7 +232,7 @@
    ]
   },
   "_meta": {
-   "title": "Object 3 name"
+   "title": "Object 3: its name"
   }
  },
  "121": {
@@ -158,21 +250,67 @@
     "120",
     0
    ],
-   "threshold": 0.4,
+   "threshold": 0.35,
    "refine_iterations": 2,
    "individual_masks": false
   },
   "_meta": {
-   "title": "Object 3 on the first frame"
+   "title": "Object 3 on the first frame (proven chain: H3 Character Swap Cloud nodes 42-43)"
   }
  },
  "122": {
+  "class_type": "SAM3_VideoTrack",
+  "inputs": {
+   "images": [
+    "2",
+    0
+   ],
+   "model": [
+    "3",
+    0
+   ],
+   "initial_mask": [
+    "121",
+    0
+   ],
+   "detection_threshold": 0.5,
+   "max_objects": 1,
+   "detect_interval": 1
+  },
+  "_meta": {
+   "title": "Object 3 tracked from its first-frame mask (max_objects 1, no text detection; as H3 Character Swap node 47)"
+  }
+ },
+ "123": {
+  "class_type": "SAM3_TrackToMask",
+  "inputs": {
+   "track_data": [
+    "122",
+    0
+   ],
+   "object_indices": "0"
+  }
+ },
+ "124": {
   "class_type": "MaskToImage",
   "inputs": {
    "mask": [
-    "121",
+    "123",
     0
    ]
+  }
+ },
+ "125": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "124",
+    0
+   ],
+   "filename_prefix": "layers/mask2"
+  },
+  "_meta": {
+   "title": "Object 3 matte (per frame)"
   }
  },
  "130": {
@@ -185,7 +323,7 @@
    ]
   },
   "_meta": {
-   "title": "Object 4 name"
+   "title": "Object 4: its name"
   }
  },
  "131": {
@@ -203,58 +341,15 @@
     "130",
     0
    ],
-   "threshold": 0.4,
+   "threshold": 0.35,
    "refine_iterations": 2,
    "individual_masks": false
   },
   "_meta": {
-   "title": "Object 4 on the first frame"
+   "title": "Object 4 on the first frame (proven chain: H3 Character Swap Cloud nodes 42-43)"
   }
  },
  "132": {
-  "class_type": "MaskToImage",
-  "inputs": {
-   "mask": [
-    "131",
-    0
-   ]
-  }
- },
- "150": {
-  "class_type": "BatchImagesNode",
-  "inputs": {
-   "images.image0": [
-    "102",
-    0
-   ],
-   "images.image1": [
-    "112",
-    0
-   ],
-   "images.image2": [
-    "122",
-    0
-   ],
-   "images.image3": [
-    "132",
-    0
-   ]
-  },
-  "_meta": {
-   "title": "One first-frame mask per object, in chip order"
-  }
- },
- "151": {
-  "class_type": "ImageToMask",
-  "inputs": {
-   "image": [
-    "150",
-    0
-   ],
-   "channel": "red"
-  }
- },
- "152": {
   "class_type": "SAM3_VideoTrack",
   "inputs": {
    "images": [
@@ -266,137 +361,41 @@
     0
    ],
    "initial_mask": [
-    "151",
+    "131",
     0
    ],
    "detection_threshold": 0.5,
-   "max_objects": 4,
+   "max_objects": 1,
    "detect_interval": 1
   },
   "_meta": {
-   "title": "Track every object through the clip (index = chip)"
+   "title": "Object 4 tracked from its first-frame mask (max_objects 1, no text detection; as H3 Character Swap node 47)"
   }
  },
- "200": {
+ "133": {
   "class_type": "SAM3_TrackToMask",
   "inputs": {
    "track_data": [
-    "152",
+    "132",
     0
    ],
    "object_indices": "0"
   }
  },
- "201": {
+ "134": {
   "class_type": "MaskToImage",
   "inputs": {
    "mask": [
-    "200",
+    "133",
     0
    ]
   }
  },
- "202": {
+ "135": {
   "class_type": "SaveImage",
   "inputs": {
    "images": [
-    "201",
-    0
-   ],
-   "filename_prefix": "layers/mask0"
-  },
-  "_meta": {
-   "title": "Object 1 matte (per frame)"
-  }
- },
- "210": {
-  "class_type": "SAM3_TrackToMask",
-  "inputs": {
-   "track_data": [
-    "152",
-    0
-   ],
-   "object_indices": "1"
-  }
- },
- "211": {
-  "class_type": "MaskToImage",
-  "inputs": {
-   "mask": [
-    "210",
-    0
-   ]
-  }
- },
- "212": {
-  "class_type": "SaveImage",
-  "inputs": {
-   "images": [
-    "211",
-    0
-   ],
-   "filename_prefix": "layers/mask1"
-  },
-  "_meta": {
-   "title": "Object 2 matte (per frame)"
-  }
- },
- "220": {
-  "class_type": "SAM3_TrackToMask",
-  "inputs": {
-   "track_data": [
-    "152",
-    0
-   ],
-   "object_indices": "2"
-  }
- },
- "221": {
-  "class_type": "MaskToImage",
-  "inputs": {
-   "mask": [
-    "220",
-    0
-   ]
-  }
- },
- "222": {
-  "class_type": "SaveImage",
-  "inputs": {
-   "images": [
-    "221",
-    0
-   ],
-   "filename_prefix": "layers/mask2"
-  },
-  "_meta": {
-   "title": "Object 3 matte (per frame)"
-  }
- },
- "230": {
-  "class_type": "SAM3_TrackToMask",
-  "inputs": {
-   "track_data": [
-    "152",
-    0
-   ],
-   "object_indices": "3"
-  }
- },
- "231": {
-  "class_type": "MaskToImage",
-  "inputs": {
-   "mask": [
-    "230",
-    0
-   ]
-  }
- },
- "232": {
-  "class_type": "SaveImage",
-  "inputs": {
-   "images": [
-    "231",
+    "134",
     0
    ],
    "filename_prefix": "layers/mask3"
@@ -411,7 +410,7 @@
    "bg_removal_name": "birefnet.safetensors"
   },
   "_meta": {
-   "title": "BiRefNet (MIT)"
+   "title": "BiRefNet (MIT); chain of the official template utility_birefnet_remove_background"
   }
  },
  "301": {
@@ -456,7 +455,7 @@
    "weight_dtype": "default"
   },
   "_meta": {
-   "title": "Depth Anything 3 Small (Apache-2.0)"
+   "title": "Depth Anything 3 Small (Apache-2.0); chain of the official template utility_depth_anything3_video_depth_estimation"
   }
  },
  "401": {

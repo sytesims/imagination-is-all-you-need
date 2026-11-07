@@ -165,6 +165,7 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | Bernini-R · Comfy Cloud | Comfy Cloud · open workflow | [Apache-2.0](https://huggingface.co/Comfy-Org/Bernini-R) | yes | — | [link](https://docs.comfy.org/tutorials/video/bytedance/bernini-r) | prompt-edit |
 | Kling 4.0 Edit · Comfy Cloud | Comfy Cloud · API nodes | [Proprietary (hosted API)](https://kling.ai/document-api) | provider-terms | — | [link](https://github.com/Comfy-Org/ComfyUI/pull/17364) | prompt-edit |
 | Finish (ffmpeg on this computer) | Local ComfyUI | [AGPL-3.0-or-later](https://www.gnu.org/licenses/agpl-3.0.html) | yes | — | — | finish |
+| SAM 3.1 + BiRefNet + Depth Anything 3 Small | Local ComfyUI | [SAM License](https://github.com/facebookresearch/sam3/blob/main/LICENSE) | restricted | — | [link](https://docs.comfy.org/tutorials/utility/video-segment-sam3) | layers |
 | Auto (Luma Ray 3.2) | Provider API (hosted) | [Proprietary (hosted API)](https://fal.ai/models/luma/agent/ray/v3.2/reframe/api) | provider-terms | — | [link](https://fal.ai/models/luma/agent/ray/v3.2/reframe/api) | reframe |
 | Luma Reframe | Provider API (hosted) | [Proprietary (hosted API)](https://docs.lumalabs.ai/) | provider-terms | — | [link](https://docs.lumalabs.ai/) | reframe |
 | BiRefNet (local, per frame) | Local ComfyUI · or Comfy Router, fal | [BiRefNet (MIT)](https://github.com/ZhengPeng7/BiRefNet/blob/main/LICENSE) | yes | — | [link](https://github.com/ZhengPeng7/BiRefNet) | remove-bg |
@@ -425,6 +426,16 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | Official Comfy template · LTX-2.3 · Lightricks: template_ltx2_3_obscura_remova_lora_remove_object_from_video (Comfy-Org/workflow_templates) | MIT | yes | [link](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_ltx2_3_obscura_remova_lora_remove_object_from_video.json) |
 | Official Comfy template · LTX-2.3 · Lightricks: template_ltx2_3_lora_remove_subtitles_from_video (Comfy-Org/workflow_templates) | MIT | yes | [link](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_ltx2_3_lora_remove_subtitles_from_video.json) |
 | Official Comfy template · LTX-2.3 · Lightricks: template_ltx2_3_lora_video_outpainting (Comfy-Org/workflow_templates) | MIT | yes | [link](https://github.com/Comfy-Org/workflow_templates/blob/main/templates/template_ltx2_3_lora_video_outpainting.json) |
+
+## Components: layers
+
+| Component | Licence | Commercial | Source |
+|---|---|---|---|
+| SAM 3.1 (sam3.1_multiplex_fp16, Comfy-Org/sam3.1) · finds and tracks each object | SAM License (Royalty-free, including commercial use. Include the licence text when you redistribute the weights. Trade-control (ITAR / export) and military-use limits apply.) | restricted | [link](https://github.com/facebookresearch/sam3/blob/main/LICENSE) |
+| BiRefNet (birefnet.safetensors, Comfy-Org/BiRefNet; ZhengPeng7/BiRefNet) · soft edges | MIT | yes | [link](https://huggingface.co/ZhengPeng7/BiRefNet) |
+| Depth Anything 3 Small (depth_anything_3_small.safetensors, Comfy-Org/Depth-Anything-3; ByteDance-Seed) · depth and layer order | Apache-2.0 | yes | [link](https://huggingface.co/Comfy-Org/Depth-Anything-3) |
+| Clean background: Footage Effects Vanish (LTX-2.5 + Clean Plate IC-LoRA on your computer, LTX-2.3 on Comfy Cloud; Lightricks) | LTX-2.x Community License | restricted | [link](https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x) |
+| Layers graph (workflows/layers-split-api.json): our own, core ComfyUI nodes, after the official Comfy-Org templates (SAM 3 video segmentation, BiRefNet remove background, Depth Anything 3 video depth) | MIT | yes | [link](https://github.com/Comfy-Org/workflow_templates) |
 
 ## Credits and NOTICE texts
 

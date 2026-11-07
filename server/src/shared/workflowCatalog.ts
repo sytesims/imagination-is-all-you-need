@@ -173,6 +173,7 @@ export const WF_ENTRIES: WfEntry[] = [
   FX('extend-frame', { line: 'Grow the shot past its edges.' /* the card's short line; the tab keeps its own */, art: 'outpaint', tags: ['outpaint', 'extend frame', 'reframe', 'vertical', 'widen', 'zoom out', 'footage effects', 'vfx', 'comfy cloud'] }),
   V('reframe', 'clip', { line: 'Fit any clip to any screen.', name: 'Make it vertical', art: 'outpaint', tags: ['aspect ratio', 'vertical', 'outpaint'] }),
   V('remove-bg', 'clip', { name: 'Remove Video Background', art: 'video', tags: ['cutout', 'green screen'] }),
+  V('layers', 'clip', { line: 'Every thing you name on its own layer.', art: 'video', tags: ['layers', 'rotoscope', 'matte', 'depth', 'clean plate', 'prores', 'compositing', 'sam 3.1'] }),
   V('depth-map', 'clip', { art: 'video', tags: ['depth', 'compositing', 'vfx'] }),
   // Music & sound
   A('music', 'music', { line: 'Write a song from a few words.', name: 'Make music', model: 'yue2' /* installed and run here (job d967cfc3); ACE-Step 1.5 needs setting up */, featured: 'audio-last-train', art: 'music', tags: ['song', 'lyrics', 'track', 'beat'] }),

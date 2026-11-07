@@ -15,8 +15,8 @@ export default definePlugin({
   name: LAYERS_PLUGIN, inject: ['http', 'tools'], keys: [],
   async apply(ctx) {
     await import('../layers/register.js'); const { registerPlanOwner } = await import('../comfy/plans.js');
-    const { layersTool } = await import('../layers/tool.js'); const { layersPlan } = await import('../layers/plan.js');
-    ctx.tools.register(layersTool, { order: 245 });
+    const { FEATURE_TOOLS } = await import('../tools/builtin.js'); const { layersPlan } = await import('../layers/plan.js');
+    for (const e of FEATURE_TOOLS.layers) ctx.tools.register(e.tool, { order: e.order, aliases: e.aliases });
     ctx.effect(() => registerPlanOwner({ id: LAYERS_PLUGIN, owns: (j) => j.toolId === LAYERS_TOOL && j.provider === LAYERS_LOCAL && !!j.input?.videoPath, build: (j) => layersPlan(j, 'local') }), 'layers plan');
     await ctx.http.group(async (app) => (await import('../layers/routes.js')).registerLayersRoutes(app));
   },

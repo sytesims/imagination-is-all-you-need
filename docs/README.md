@@ -13,6 +13,7 @@ Start with the [main README](../README.md) for what Imagination Is All You Need 
 - [Library](LIBRARY.md): the recipes and media databases the app and your agent search.
 - [Plugins](PLUGINS.md): add a tool without touching the core.
 - [Direct a Shot](PLAN-A-SHOT.md): stage a shot in simple 3D, record a free mockup, then render it as real video with LTX-2.5; the presets and their credits; the contract for importing a scene your coding agent wrote.
+- [Layers](LAYERS.md): split a video into separate layers, with depth, a clean background and an export for editors.
 - [Backup and restore](BACKUP-RESTORE.md).
 - [Troubleshooting](TROUBLESHOOTING.md).
 

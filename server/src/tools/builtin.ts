@@ -33,6 +33,8 @@ import { footageFxTool } from './footageFx.js';
 import { finishTool } from './finish.js';
 import { promptEditTool } from './promptEdit.js';
 import { twoPersonSwapTool } from './twoPersonSwap.js';
+import { layersTool } from '../layers/tool.js';
+import '../layers/register.js'; // Layers' places, price row and licences (its plugin turns the tool, plan and routes on and off)
 import { wireComfyFeatured } from './comfyFeatured.js'; // official Comfy templates (2026-10-27): models on tools above (Gemini Omni 1.1 Flash, Topaz Bloom 2, Wan Animate 2…)
 import { booting } from '../kernel/booting.js';
 if (!booting()) wireComfyFeatured(); // scripts and tests; a booted server wires them in plugin comfy-featured (first in the profile)
@@ -83,6 +85,11 @@ export const STUDIO_TOOLS: Record<StudioId, ToolEntry[]> = {
     { tool: finishTool, order: 240 }, // Finish (2026-10-27): eight one-click finishing looks (ffmpeg, our own graphs), free on this computer
     ...NEW_EDIT_TOOLS.map((tool, i) => ({ tool, order: 250 + i * 10, aliases: EDIT_ALIASES[tool.id] })), // reframe, remove-bg, sdr-hdr, fps-boost, depth-map
   ],
+};
+/** Tools of the desktop profile's feature plugins (plugins-builtin/features.ts): the plugin registers them on a booted server; code that runs
+ *  without a boot (scripts, tests) gets them with the studios' tools, so the docs and checks see the same set as the desktop app. */
+export const FEATURE_TOOLS: Record<string, ToolEntry[]> = {
+  layers: [{ tool: layersTool, order: 245 }], // Layers (plugins-builtin/layers.ts): Edit Video, after Finish
 };
 /** The order every studio starts in (boot.ts, the registry's fallback): the gallery last, since its recipes wrap the other studios' tools. */
 export const STUDIO_IDS: readonly StudioId[] = ['studio-video', 'studio-image', 'studio-audio', 'studio-3d', 'studio-edit', 'apps-gallery'];
