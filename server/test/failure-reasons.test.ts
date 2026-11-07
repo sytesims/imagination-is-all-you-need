@@ -50,3 +50,11 @@ assert.equal(chargeOf({ route: 'router:x' }, r, { ownAccounts: true, providerRul
 assert.equal(chargeOf({ route: 'replicate:x' }, r, { ownAccounts: true, providerRule: 'not-charged', providerName: 'Replicate' }), 'Nothing was charged.');
 assert.equal(chargeOf({ route: 'minimax:x' }, r, { ownAccounts: true, providerRule: 'unknown', providerName: 'MiniMax' }), 'Any charge follows MiniMax’s rule.');
 ok('money sentence: credits back, free gen back, local free, never-ran reasons, the provider’s stated rule on your own key');
+// 2026-11-07 (jobs e47bb4e4 → 42a3ef5c): a result made but not saved never offers a one-click paid Try again
+for (const reasonCode of ['download_failed', 'lost_contact']) {
+  const base = { status: 'failed', reasonCode, route: 'comfy-cloud:cloud-tripo-31', cost: 30 };
+  assert.deepEqual(failView({ ...base, canCollect: true }).actions, ['collect', 'details'], `${reasonCode} collectable → Retry download only`);
+  const v = failView({ ...base, canCollect: false }); assert.deepEqual(v.actions, ['runAgain', 'details'], `${reasonCode} not collectable → Run again (priced, asks first)`);
+  assert.ok(!v.actions.includes('retry')); assert.match(v.line, /Run it again/);
+}
+ok('download_failed / lost_contact: Retry download when it can be fetched, otherwise Run again (with its price and a confirm), never a plain Try again');

@@ -153,6 +153,13 @@ async function execute(job: Job, tool: ToolDef, r: RouteDef, attempt: RouteAttem
   if (!sample?.sample) throw new Error(SAMPLES_OFF); // samples are off in this profile: nothing runs in place of the real place
   return sample.sample(job, tool, r, runner); // not live (mock backend, no key): a sample with the place's own stage names, or the model's own sample
 }
+/** A paid result that couldn't be saved: where the download failed (host, step, status; the runner's error says it, never the key or a signed
+ *  query) goes on the job (providerError, shown in Details) and in one log line, so the next failure says why. */
+function noteDownloadFailure(job: Job, r: RouteDef, e: unknown) {
+  const last: any = (e as any)?.last; const p = last?.provider;
+  if (p) (job as any).providerError = { ...p, requestId: p.requestId ?? job.cloudJobId ?? null, model: r.routeId, at: Date.now() } as any;
+  console.error(`[openhiggsfield] download failed ${job.id} (${r.routeId}): ${String(last?.detail ?? last?.message ?? e).slice(0, 300)}`);
+}
 const failedNow = (job: Job) => job.status === 'failed' || job.status === 'blocked';
 export function alternativesFor(job: Job, tool: ToolDef): RouteOption[] {
   const tried = new Set((job.routeAttempts ?? []).map((a) => a.routeId));
@@ -206,7 +213,7 @@ export async function runRouted(job: Job, tool: ToolDef, opts: { only?: string; 
     try { await execute(job, tool, r, a); } catch (e) { err = e instanceof Error ? e.message : String(e); timeout = !!(e as any)?.timeout;
       if (e instanceof PlaceError) { const pf = placeErrorFields(e); if (pf) { job.reasonCode = pf.reasonCode; job.errorType = pf.errorType as any; } } // a place's own sorted failure (Sunra, kie)
       if ((e as any)?.busy) { job.reasonCode = 'queue_full'; job.errorType = 'temporary'; err = stillBusyMessage((e as any).busyTries ?? 1); } // provider stayed busy after the capped retries (busyRetry.ts)
-      if ((e as any)?.downloadFailed) { keepRemote = 'download'; job.reasonCode = 'download_failed'; job.errorType = 'temporary'; }
+      if ((e as any)?.downloadFailed) { keepRemote = 'download'; job.reasonCode = 'download_failed'; job.errorType = 'temporary'; noteDownloadFailure(job, r, e); }
       else if ((e as any)?.lostContact) { keepRemote = 'lost_contact'; job.reasonCode = 'lost_contact'; job.errorType = 'temporary'; }
       else if ((e as any)?.cannotPickUp && job.remote) { const h = job.remote; void cancelRemote(h).then((ok) => { (a as any).remoteCanceled = ok === true; }); } } // it can't be collected: don't leave it running and billing
     job.queueReason = null;

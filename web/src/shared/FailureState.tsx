@@ -5,9 +5,10 @@
  *  - variant "tile": mascot + title only (it sits inside the tile's own button); put <FailActions max={1}/> next to it for the one fix.
  *  - variant "full": mascot, title, line, actions and a Details toggle with the server's full message.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { JobState } from '../api';
-import { retryJob, newIdemKey, collectJob } from '../api';
+import { retryJob, newIdemKey, collectJob, retryQuote } from '../api';
+import { ledgerUsd } from './billing';
 import { useToast } from './Toast';
 import { navigate } from '../platform/router';
 import { useBilling, modeOf } from './billing';
@@ -39,6 +40,9 @@ export function FailActions({ job, view, max = 3, skip = [], onRetry, onLeave, o
   const toast = useToast(); const own = useFailView(job); const v = view ?? own; const [busy, setBusy] = useState(''); const j: any = job;
   const ok = v.actions.filter(a => !skip.includes(a) && (a !== 'details' || !!onDetails));
   const acts = (prefer && ok.includes(prefer) ? [prefer, ...ok.filter(a => a !== prefer)] : ok).slice(0, max);
+  // Run again shows its price on the button (asked once, nothing starts) and asks again in the confirm dialog before it runs
+  const wantsPrice = acts.includes('runAgain'); const [price, setPrice] = useState<number | null>(null);
+  useEffect(() => { if (!wantsPrice) return; let live = true; retryQuote(job.id).then(q => { if (live && !q.id) setPrice(q.free ? 0 : q.credits); }, () => {}); return () => { live = false; }; }, [wantsPrice, job.id]);
   if (!acts.length) return null;
   const go = (to: string) => goToWorkflow(to, onLeave ? () => onLeave() : null); /* shared/goToWorkflow: a viewer in the URL is left by the push, not closed first */
   const recreate = recreateHref(job)!;
@@ -46,6 +50,7 @@ export function FailActions({ job, view, max = 3, skip = [], onRetry, onLeave, o
     if (busy) return;
     switch (a) {
       case 'retry': if (onRetry) { onRetry(); return; } setBusy(a); try { const id = await retryJob(job.id); toast('Trying again with the same settings'); window.dispatchEvent(new Event('ohf:jobs-changed')); onLeave?.(id); } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(''); } return;
+      case 'runAgain': setBusy(a); try { const id = await retryJob(job.id, newIdemKey(), undefined, false, { madeAlready: true }); toast('Running it again'); window.dispatchEvent(new Event('ohf:jobs-changed')); onLeave?.(id); } catch (e) { if (!(e as any)?.declined) toast((e as Error).message, 'error'); } finally { setBusy(''); } return;
       case 'collect': setBusy(a); try { await collectJob(job.id); toast('Fetching the result again'); window.dispatchEvent(new Event('ohf:jobs-changed')); } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(''); } return;
       case 'runLocal': setBusy(a); try { const id = await retryJob(job.id, newIdemKey(), 'local', false); toast('Running locally'); window.dispatchEvent(new Event('ohf:jobs-changed')); onLeave?.(id); } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(''); } return;
       case 'recreate': case 'changePhoto': case 'otherModel': case 'download': case 'useCloud': return go(recreate);
@@ -64,7 +69,7 @@ export function FailActions({ job, view, max = 3, skip = [], onRetry, onLeave, o
     {acts.map((a, i) => a === 'addCredits'
       ? <a key={a} className={`fs-btn${i === 0 ? ' fs-btn-main' : ''}`} href={COMFY_CREDITS} target="_blank" rel="noreferrer" data-testid={`fs-act-${a}`} title="Opens comfy.org in a new tab" onClick={e => e.stopPropagation()}>{ACTION_LABEL[a]}<span aria-hidden className="fs-ext">↗</span></a>
       : <button key={a} type="button" className={`fs-btn${i === 0 ? ' fs-btn-main' : ''}`} data-testid={`fs-act-${a}`} disabled={!!busy} aria-busy={busy === a || undefined}
-        onClick={e => { e.stopPropagation(); e.preventDefault(); void run(a); }}>{busy === a ? 'Starting…' : ACTION_LABEL[a]}</button>)}
+        onClick={e => { e.stopPropagation(); e.preventDefault(); void run(a); }}>{busy === a ? 'Starting…' : a === 'runAgain' && price ? `${ACTION_LABEL[a]} · ${ledgerUsd(price)}` : ACTION_LABEL[a]}</button>)}
   </div>;
 }
 
