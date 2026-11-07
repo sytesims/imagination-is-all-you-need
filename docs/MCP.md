@@ -4,7 +4,7 @@
 
 ## Safety and scope
 
-Paid runs **ask** by default: a tool that can spend money (`run`, `retry`, the legacy `generate_*`, swap, restyle and story tools) needs the user's OK through MCP elicitation, and a client without elicitation is refused, with nothing run. `run` asks only when the quote costs money; free local runs go straight through. To let an agent start paid runs without asking, set `OPENHIGGSFIELD_MCP_SPEND=allow` (or `"spend": "allow"` in the permissions file). Other tools default to **allow** unless a permissions file or environment setting overrides it. Quotes and budgets are not themselves human approval. Direct MCP `run` calls follow configured permissions; they are not forced through the Canvas web **Go** button. Review the permission configuration and client behavior before granting an agent access to funded provider accounts. An `ask` policy needs compatible client elicitation; unsupported clients must not be described as having an automatic web approval handoff.
+Paid runs **ask** by default: a tool that can spend money (`run`, `retry`, the legacy `generate_*`, swap, restyle and story tools) needs the user's OK through MCP elicitation, and a client without elicitation is refused, with nothing run. `run` and `retry` ask only when the quote costs money; free local runs and samples go straight through. To let an agent spend inside limits you set, see [Letting Claude spend, safely](#letting-claude-spend-safely). Other tools default to **allow** unless a permissions file or environment setting overrides it. Quotes and budgets are not themselves human approval. Direct MCP `run` calls follow configured permissions; they are not forced through the Canvas web **Go** button. Review the permission configuration and client behavior before granting an agent access to funded provider accounts. An `ask` policy needs compatible client elicitation; unsupported clients must not be described as having an automatic web approval handoff.
 
 Keep HTTP MCP and the API on loopback. Localhost is a network boundary, not user authentication. Do not expose them to untrusted clients or the internet without a separate authentication/network review. Media passed to an AI client or a cloud model can leave your computer; local file paths refer to the MCP host, not necessarily the browser/client computer.
 
@@ -182,6 +182,36 @@ claude --dangerously-load-development-channels server:imagination   # each time 
 
 Sources: [Channels](https://code.claude.com/docs/en/channels), [Channels reference](https://code.claude.com/docs/en/channels-reference), [MCP prompts as commands](https://code.claude.com/docs/en/mcp#use-mcp-prompts-as-commands).
 
+## Letting Claude spend, safely
+
+The connector's spend setting decides what happens when an agent asks for a run that costs money. Set it in the `env` of the `imagination` entry in your MCP client's config, then restart or reconnect the connector (in Claude Code: `/mcp`, then reconnect).
+
+| `OPENHIGGSFIELD_MCP_SPEND` | Free runs (`run_on: "local"`, samples, $0 quotes) | Paid runs |
+|---|---|---|
+| `block` | Run. | Refused before anything is sent, with the price, the setting that blocked it and how to allow it. |
+| `ask` (default) | Run. | The agent quotes, tells you the price, then `run` asks you through an approval prompt (MCP elicitation) with the model, the place and the price. You say yes or no for each run. A client that can't show the prompt is refused; nothing runs. |
+| `allow` | Run. | Run with no question. **Don't use it** with funded accounts: it removes the per-run OK. `OPENHIGGSFIELD_MCP_ALLOW=*` does the same and more. |
+
+The safe way to let Claude spend: **`ask` plus a budget the agent can't change.**
+
+```json
+"imagination": {
+  "command": "node",
+  "args": ["<repo>/mcp/dist/index.js"],
+  "env": {
+    "OPENHIGGSFIELD_MCP_SPEND": "ask",
+    "OPENHIGGSFIELD_AGENT_BUDGET_USD": "2",
+    "OPENHIGGSFIELD_AGENT_NAME": "Claude"
+  }
+}
+```
+
+- `OPENHIGGSFIELD_AGENT_BUDGET_USD` pins a budget for the whole connector. The agent can't replace or raise it (`budget {action:"set"}` is refused), and the server refuses any run that would go over it before the job is created, so nothing is charged. Without a pinned budget, an agent can set its own with `budget {action:"set"}`, so only the pinned one is your limit.
+- Each paid run then goes: `quote` (the agent shows you the price) → `run {quote_id, max_usd}` → you approve the prompt → `status` → `budget {action:"receipt"}` at the end. A quote starts one run; a price that rose since the quote is refused (409 `route_changed`, nothing charged) and the agent quotes again.
+- `block` is right when the agent should only make free things: it still runs local models and samples, and tells you the price of anything paid instead of running it.
+- No approval prompt in your client? Keep `ask` or `block` and use the Canvas instead: `canvas_propose_run` puts a priced card on the board and you press **Go** in the app.
+- Check it with one cheap run before a big job: the receipt shows what was spent against the budget.
+
 ## Agent budgets
 
 An agent can be given a budget in USD (or in credits in team mode). **The server enforces it**, not the agent: every quote and run the MCP server makes carries the budget's id in an `X-OHF-Agent-Budget` header, and the API (`server/src/agentBudget.ts`) refuses a run that would go over it with `errorType: "limit"`, `code: "agent_budget"`, the amount left and the amount needed, **before the job is created**, so nothing is sent to a provider and nothing is charged. Local / your-GPU runs cost $0 and always fit.
@@ -350,12 +380,12 @@ Agent setup helpers and skills for Claude and ChatGPT: [`agent-skills/`](../agen
 
 ## Permissions (allow / ask / block per tool)
 
-Spend tier: `OPENHIGGSFIELD_MCP_SPEND=ask|allow|block` (or `"spend"` in the file), **ask by default**. With ask, the server asks before paid runs only; for `run` the question carries the model, place and price, and free local runs don't ask. Every MCP tool is gated. Read-only tools (`search_capabilities`, `describe`, `quote`, `status`, `get_outputs`, `history`, `list_workflows`, `next_actions`, `direct_a_shot_prep`, `server_status`, `get_spend`, the read-only canvas tools, and the legacy readers such as `get_job` and `quote_cost`; the full list is `READ_ONLY` in `mcp/src/permissions.ts`) default to **allow**; everything else follows `default` (allow unless you change it).
+Spend tier: `OPENHIGGSFIELD_MCP_SPEND=ask|allow|block` (or `"spend"` in the file), **ask by default**; what each does is in [Letting Claude spend, safely](#letting-claude-spend-safely). With ask, the server asks before paid runs only; for `run` and `retry` the question carries the model, place and price, and free local runs don't ask. With block, `run` and `retry` still start free runs (local, samples) and refuse paid ones with the price. Every MCP tool is gated. Read-only tools (`search_capabilities`, `describe`, `quote`, `status`, `get_outputs`, `history`, `list_workflows`, `next_actions`, `direct_a_shot_prep`, `server_status`, `get_spend`, the read-only canvas tools, and the legacy readers such as `get_job` and `quote_cost`; the full list is `READ_ONLY` in `mcp/src/permissions.ts`) default to **allow**; everything else follows `default` (allow unless you change it).
 
 - **Config file:** `OPENHIGGSFIELD_MCP_PERMISSIONS=/path/to/permissions.json`. If that's unset, the server uses `./openhiggsfield-mcp.json` in its working directory, then `mcp/permissions.json`. See `mcp/permissions.example.json`:
   `{ "default": "allow", "spend": "ask", "toolsets": ["core", "library"], "tools": { "run": "ask", "retry": "ask", … } }`
-- **Let agents spend without asking:** `OPENHIGGSFIELD_MCP_SPEND=allow` (or `"spend": "allow"`). `OPENHIGGSFIELD_MCP_ALLOW=*` also allows everything, spend included. `node mcp/dist/index.js setup claude` writes `OPENHIGGSFIELD_MCP_SPEND=ask` into the configs it makes, so you can see and change it there.
+- **Spending without asking:** `OPENHIGGSFIELD_MCP_SPEND=allow` (or `"spend": "allow"`, or `OPENHIGGSFIELD_MCP_ALLOW=*`) starts paid runs with no per-run OK. Prefer `ask` plus a pinned `OPENHIGGSFIELD_AGENT_BUDGET_USD`. `node mcp/dist/index.js setup claude` writes `OPENHIGGSFIELD_MCP_SPEND=ask` into the configs it makes, so you can see and change it there.
 - **Env (overrides the file):** `OPENHIGGSFIELD_MCP_DEFAULT=allow|ask|block`, plus comma lists `OPENHIGGSFIELD_MCP_ALLOW`, `OPENHIGGSFIELD_MCP_ASK`, `OPENHIGGSFIELD_MCP_BLOCK` (`*` = all tools).
-- **ask:** the server sends an MCP *elicitation* (an approve yes/no form showing the arguments) when the client supports it. If the client doesn't support elicitation, the call is refused with a message saying how to allow the tool. Declining also refuses, and nothing runs. In stateless HTTP mode some clients can't answer elicitations, so prefer stdio for `ask`.
-- **block:** the call is refused with a clear message. The tool stays listed, marked `[permission: block]` in its description.
+- **ask:** the server sends an MCP *elicitation* (an approve yes/no form showing the arguments) when the client supports it. If the client doesn't support elicitation, the call is refused; for a paid run the message points at a client that can ask or at the Canvas **Go**, never at `allow`. Declining also refuses, and nothing runs. In stateless HTTP mode some clients can't answer elicitations, so prefer stdio for `ask`.
+- **block:** the call is refused with a message naming the setting that blocked it (for example `OPENHIGGSFIELD_MCP_BLOCK=restyle`). The tool stays listed, marked `[permission: block …]` in its description. Under a spend-tier block (`OPENHIGGSFIELD_MCP_SPEND=block`), `run` and `retry` are marked `[permission: paid runs blocked — free, local and sample runs still work]` and only refuse paid runs; a per-tool block (`OPENHIGGSFIELD_MCP_BLOCK=run`) blocks every call.
 - Test: `npm run test:permissions --prefix mcp`.
