@@ -19,6 +19,7 @@ import { workflowHref } from './FeatureCredit';
 import { workflowName, type WorkflowSource } from './imageFeatures';
 import { jobTiming, durationText } from './jobTiming';
 import FailureState from './FailureState';
+import { MADE } from './failureReasons';
 import { Waveform, useWaveform } from './Waveform';
 import { PlayGlyph as CardPlay, PauseGlyph as CardPause, durLabel } from './AudioCard';
 import { AudioCover, AudioVizLayer, useAudioViz } from './AudioViz';
@@ -192,7 +193,7 @@ export function FailedViewer({ job, onClose, onPrev, onNext, pos, model, onGone 
   const trashed = !!(job as any).deletedAt;
   return <ViewerShell label="Failed result" media={media} who={{ name: 'You', role: 'Author', self: true }} badge={trashed ? <TrashChip /> : null} tabs={[{ id: 'info', label: 'Info' }]} tab="info" setTab={() => 0} onClose={onClose} onPrev={onPrev} onNext={onNext} pos={pos} testId="result-viewer-failed" fullscreen={false} itemKey={job.id}
     body={<><ViewerPrompt text={String(inp.prompt ?? '').trim()} onCopy={() => navigator.clipboard?.writeText(String(inp.prompt ?? '')).then(() => { toast('Prompt copied'); }, () => false)} /><ViewerDetails rows={rows} /></>}
-    footer={trashed ? <TrashActions job={job} onGone={onGone ?? onClose} /> : <><TryOnButtons job={job} onStarted={() => onClose()} /><button type="button" className="rvx-primary" data-testid="rvx-try-again" disabled={busy} onClick={retry}><RecreateGlyph />{busy ? 'Starting…' : 'Try again'}</button>
+    footer={trashed ? <TrashActions job={job} onGone={onGone ?? onClose} /> : <><TryOnButtons job={job} onStarted={() => onClose()} />{!MADE.has(String((job as any).reasonCode ?? '')) /* made but not saved: Retry download / Run again · $X sit on the stage */ && <button type="button" className="rvx-primary" data-testid="rvx-try-again" disabled={busy} onClick={retry}><RecreateGlyph />{busy ? 'Starting…' : 'Try again'}</button>}
       <div className="rvx-row2"><a className="rvx-second" href={recreate} data-testid="rvx-edit-settings" onClick={goClick(recreate, onClose)}>Change settings</a>
         <button type="button" className="rvx-second" data-testid="rvx-copy-support" onClick={() => copySupport(job.id, `job ${job.id} · ${job.toolId} · ${t} · ${job.error ?? ''}`).then(() => flash(), () => toast('Couldn’t copy the support info', 'error'))}>{copied ? <Copied /> : 'Copy support info'}</button></div></>} />;
 }

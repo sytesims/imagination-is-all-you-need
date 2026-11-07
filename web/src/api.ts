@@ -311,7 +311,31 @@ export async function retryFailedGroups(id: string, idemKey = newIdemKey()): Pro
 /** Retry / Try on. runOn = run this once on that place (pinned for this job only); remember = also save it as the tool + model's choice (S-02). */
 /** Retry download (server routing/reattach.ts): fetch a failed job's paid result again from its provider; nothing new is sent or charged. */
 export async function collectJob(id: string): Promise<void> { const r = await fetch(`/api/jobs/${encodeURIComponent(id)}/collect`, { method: 'POST' }); if (!r.ok) { const b = await r.json().catch(() => ({})); throw new Error(b?.error ?? `Retry download failed (${r.status})`); } }
-export async function retryJob(id: string, idemKey = newIdemKey(), runOn?: string, remember = false): Promise<string> { const r = await fetch(`/api/jobs/${encodeURIComponent(id)}/retry`, { method: 'POST', headers: { 'Idempotency-Key': idemKey, 'X-Client-Id': clientId(), ...(runOn ? { 'content-type': 'application/json' } : {}) }, ...(runOn ? { body: JSON.stringify({ runOn, ...(remember ? { remember: true } : {}) }) } : {}) }); const b = await r.json().catch(() => ({})); if (!r.ok) throw jobPostError(b, r.status, `Retry failed (${r.status})`); return b.id; }
+/** The price of re-running a failed job (POST …/retry {quote:true}: nothing starts). id = a retry that already exists for it (no new run). */
+export async function retryQuote(id: string, runOn?: string): Promise<{ credits: number; free: boolean; id?: string }> {
+  const r = await fetch(`/api/jobs/${encodeURIComponent(id)}/retry`, { method: 'POST', headers: { 'content-type': 'application/json', 'X-Client-Id': clientId() }, body: JSON.stringify({ quote: true, ...(runOn ? { runOn } : {}) }) });
+  const b = await r.json().catch(() => ({})); if (!r.ok) throw jobPostError(b, r.status, `Retry failed (${r.status})`);
+  return b.id ? { credits: 0, free: true, id: b.id } : { credits: Number(b.quote?.credits) || 0, free: !!b.quote?.free };
+}
+/** The money rule (2026-11-07): a paid re-run never starts on one click. The app's own confirm dialog shows the price; false = not now. */
+export async function confirmRerun(credits: number, opts: { madeAlready?: boolean } = {}): Promise<boolean> {
+  const { askConfirm } = await import('./shared/Dialog'); const { ledgerUsd } = await import('./shared/billing'); const usd = ledgerUsd(credits);
+  return askConfirm({ title: 'Run it again?', body: [`This starts a new run for about ${usd}.`, opts.madeAlready ? 'The first one may already be paid for. Retry download fetches it for free when it’s offered.' : 'Nothing is charged until you say yes.'], confirm: `Run again · ${usd}`, cancel: 'Not now' });
+}
+/** Retry / Try on. runOn = run this once on that place (pinned for this job only; the button already showed its price); remember = also save it
+ *  as the tool + model's choice (S-02). A plain retry that costs money asks first (confirmRerun) and sends the price the user OK'd (quotedCredits). */
+export async function retryJob(id: string, idemKey = newIdemKey(), runOn?: string, remember = false, o: { okCredits?: number; madeAlready?: boolean } = {}): Promise<string> {
+  let quotedCredits: number | undefined = o.okCredits;
+  if (!runOn && quotedCredits == null) { const q = await retryQuote(id); if (q.id) return q.id;
+    if (!q.free && q.credits > 0) { if (!(await confirmRerun(q.credits, { madeAlready: o.madeAlready }))) throw Object.assign(new Error('Not run. Nothing was charged.'), { code: 'declined', declined: true, calm: true, charged: false }); }
+    quotedCredits = q.credits; }
+  const body = { ...(runOn ? { runOn, ...(remember ? { remember: true } : {}) } : {}), ...(quotedCredits != null ? { quotedCredits } : {}) };
+  const r = await fetch(`/api/jobs/${encodeURIComponent(id)}/retry`, { method: 'POST', headers: { 'Idempotency-Key': idemKey, 'X-Client-Id': clientId(), 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const b = await r.json().catch(() => ({}));
+  if (r.status === 409 && b?.code === 'route_changed' && typeof b.credits === 'number' && quotedCredits != null && o.okCredits == null) { // dearer since the quote: ask again once
+    if (!(await confirmRerun(b.credits, { madeAlready: o.madeAlready }))) throw Object.assign(new Error('Not run. Nothing was charged.'), { code: 'declined', declined: true, calm: true, charged: false });
+    return retryJob(id, newIdemKey(), runOn, remember, { ...o, okCredits: b.credits }); }
+  if (!r.ok) throw jobPostError(b, r.status, `Retry failed (${r.status})`); return b.id; }
 
 /** One progress number for every surface (job card, canvas tile, Assets). */
 export const jobPct = (j: { percent?: number; progress?: number } | any) => Math.round(Math.max(0, Math.min(100, Number(j?.percent ?? j?.progress ?? 0) || 0)));
