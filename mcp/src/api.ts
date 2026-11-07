@@ -16,7 +16,8 @@ export class ApiError extends Error { constructor(msg: string, public status: nu
 async function parse(r: Response) {
   const t = await r.text(); let b: any; try { b = JSON.parse(t); } catch { b = t; }
   if (!r.ok) {
-    const issues = Array.isArray(b?.issues) && b.issues.length > 1 ? ` Issues: ${b.issues.map((i: any) => `${i.field}: ${i.message}`).join('; ')}` : '';
+    // every issue, a single one too (audit 2026-11-07 #4): the field name is what the agent must change (the message alone uses labels, not ids)
+    const issues = Array.isArray(b?.issues) && b.issues.length ? ` Issues: ${b.issues.map((i: any) => `${i.field ?? '?'}: ${i.message}${Array.isArray(i.allowed) ? ` (allowed: ${i.allowed.join(', ')})` : ''}`).join('; ')}` : '';
     throw new ApiError(`${r.status} ${b?.errorType ?? ''} ${b?.error ?? t}`.replace(/\s+/g, ' ').trim() + issues, r.status, b);
   }
   return b;

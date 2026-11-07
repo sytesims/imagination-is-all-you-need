@@ -11,6 +11,8 @@ import { issueQuote, useQuote, requestHash, fmtUsd } from './quotes.js';
 import { loadTools, findTool, knownToolIds, catalogSource, fieldSchema, isFileInput, modelCard, limitsOf, runOnPlaces, loadWorkflows, loadSearchWords, COMMON_JOB_FIELDS } from './catalog.js';
 import { buildIndex, search, toolModes, type Entry } from './search.js';
 import { parseRecipe, recipeToRun } from './recipe.js';
+import { quoteView } from './quoteView.js';
+import { issuesOf } from './issues.js';
 /** A tool's real presets: an app that locks its base tool's mode or style (Transitions, UGC Ad, Change Voice, Product Shot, Anime Restyle…) has none of
  *  its own; the base tool's modes (t2v, i2v, translate…) are not presets there, and the app always runs its locked one. */
 const toolPresets = (t: any): any[] => (t.app?.gallery?.locked?.types || t.app?.gallery?.locked?.preset ? [] : t.presets ?? []);
@@ -18,8 +20,12 @@ const toolPresets = (t: any): any[] => (t.app?.gallery?.locked?.types || t.app?.
 const text = (o: unknown) => ({ content: [{ type: 'text' as const, text: typeof o === 'string' ? o : JSON.stringify(o, null, 2) }] });
 /** Errors for agents: the plain message; an agent-budget refusal (errorType limit, code agent_budget) also carries the numbers and what to do next.
  *  There are no app spending limits (removed 2026-10-28): what keeps spend in check is the quote, the user's OK and an optional agent budget. */
-const fail = (e: unknown) => {
+const fail = (e: unknown, tool?: any) => {
   const b: any = e instanceof ApiError ? e.body : null;
+  // validation: every issue (a single one too) with its field, allowed ids and the next step (audit 2026-11-07 #4)
+  const issues = b && typeof b === 'object' ? issuesOf(b, tool) : [];
+  if (issues.length) return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, status: (e as ApiError).status, code: b.code ?? b.errorType ?? null, error: b.error ?? (e as Error).message,
+    issues, next: issues.length === 1 ? issues[0].next : `Fix each issue (${issues.map((i) => i.field ?? '?').join(', ')}), then quote and run again.` }, null, 2) }] };
   if (b && typeof b === 'object' && b.errorType === 'limit') return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, code: b.code, reason: b.error, charged: false,
     ...(b.code === 'agent_budget' ? { budgetUsd: b.budgetUsd, spentUsd: b.spentUsd, remainingUsd: b.remainingUsd, neededUsd: b.neededUsd, budgetCredits: b.budgetCredits, remainingCredits: b.remainingCredits, neededCredits: b.neededCredits,
       next: 'Nothing was run or charged. Use a cheaper model or run_on ("local" is free), fewer or shorter clips, or finish with what you have (stitch_video, then get_receipt).' } : {}),
@@ -91,16 +97,14 @@ async function quoteOne(tool_id: string, params: Record<string, string | number 
   const image = tool_id === 'create-image' && (params?.model != null || params?.imageResolution != null || params?.n != null);
   const q = image ? await get(`/api/models/quote?${qs}`) : await get(`/api/tools/${encodeURIComponent(tool_id)}/price${qs ? `?${qs}` : ''}`);
   const cfg = await get('/api/config').catch(() => null);
-  const credits = Number(q.credits ?? 0);
   const basis: string | null = q.basis ?? null;
-  const local = basis === 'open-weights' || q.cost?.billedTo === 'local';
   // prices in dollars (2026-10-26): the same words the app shows. priceUsd = the dollars to show; priceLabel = "≈ $0.76" / "Free · this computer";
   // priceDetail = the provider's own units, plan and price date ("160 Comfy credits · on your Creator plan · price checked 2026-10-26"). credits stays the internal unit (1 = $0.01).
-  const priceUsd = local ? 0 : typeof q.cost?.estUsd === 'number' && q.cost.estUsd > 0 ? q.cost.estUsd : Math.round(credits) / 100;
-  const priceLabel: string = typeof q.cost?.usdText === 'string' && q.cost.usdText ? q.cost.usdText : local ? 'Free · this computer' : priceUsd > 0 ? `≈ ${fmtUsd(priceUsd)}` : 'Free';
-  return { toolId: tool_id, endpoint: image ? '/api/models/quote' : `/api/tools/${tool_id}/price`, priceUsd, priceLabel, priceDetail: q.cost?.detail ?? null, credits, usd: Math.round(credits) / 100, costUsd: q.cost?.estUsd ?? null,
-    free: !!q.free || credits === 0, local, localFree: !!cfg?.localFree, basis, billedTo: q.cost?.billedToName ?? null, runnable: q.runnable !== false, blockedReason: q.runnable === false ? q.blockedReason ?? null : null,
-    estimated: typeof q.estimated === 'boolean' ? q.estimated : !(basis === 'hosted' || basis === 'open-weights'),
+  // quoteView (2026-11-07): never "Free" when it can't run, blockedReason always filled, sample + listPriceUsd for samples, estimated from cost.estimated.
+  const v = quoteView(q);
+  return { toolId: tool_id, endpoint: image ? '/api/models/quote' : `/api/tools/${tool_id}/price`, priceUsd: v.priceUsd, priceLabel: v.priceLabel, priceDetail: q.cost?.detail ?? null, credits: v.credits, usd: v.usd, costUsd: q.cost?.estUsd ?? null,
+    free: v.free, local: v.local, localFree: !!cfg?.localFree, basis, billedTo: q.cost?.billedToName ?? null, runnable: v.runnable, blockedReason: v.blockedReason,
+    estimated: v.estimated, sample: v.sample, listPriceUsd: v.listPriceUsd, chargeUsd: v.chargeUsd,
     modelKey: q.modelKey ?? null, runOn: q.runOn ?? null, route: q.route ?? null, draftCredits: q.draftCredits ?? null, breakdown: (q.breakdown ?? []).map((b: any) => b.label), ...(q.resolutionMapped ? { resolution: q.resolutionMapped.to, resolutionMapped: q.resolutionMapped } : {}),
     ...(q.agentBudget ? { agentBudget: q.agentBudget } : {}), raw: q };
 }
@@ -358,7 +362,8 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
     });
   // ---- core toolset: ten tools driven by the server's own catalogue (catalog.ts). New tools, models and workflows show up in
   //      search_capabilities / describe and run through run with no new MCP tool. Other toolsets: library, admin, canvas, legacy (toolsets.ts). ----
-  const quoteBrief = (q: Awaited<ReturnType<typeof quoteOne>>) => ({ priceUsd: q.priceUsd, priceLabel: q.priceLabel, credits: q.credits, usd: q.costUsd ?? q.usd, free: q.free, local: q.local, billedTo: q.local ? 'nobody (Local, free)' : q.billedTo, modelKey: q.modelKey, runOn: q.runOn, route: q.route, estimated: q.estimated, runnable: q.runnable,
+  const quoteBrief = (q: Awaited<ReturnType<typeof quoteOne>>) => ({ priceUsd: q.priceUsd, priceLabel: q.priceLabel, credits: q.credits, usd: q.costUsd ?? q.usd, free: q.free, local: q.local, billedTo: q.local ? 'nobody (Local, free)' : q.sample ? 'nobody (sample)' : q.billedTo, modelKey: q.modelKey, runOn: q.runOn, route: q.route, estimated: q.estimated, runnable: q.runnable,
+    ...(q.sample ? { sample: true, notice: 'A sample: a placeholder result, nothing is sent or billed. Tell the user it is not a real render.' } : {}), ...(q.listPriceUsd != null ? { listPriceUsd: q.listPriceUsd } : {}), chargeUsd: q.chargeUsd,
     ...(q.blockedReason ? { blockedReason: q.blockedReason } : {}), ...(q.breakdown?.length ? { breakdown: q.breakdown } : {}), ...(q.resolutionMapped ? { resolutionMapped: q.resolutionMapped } : {}), ...(q.agentBudget ? { agentBudget: q.agentBudget } : {}) });
   /** Job fields → price query params (arrays as JSON, actual media counts, and the same explicit option precedence as submit). */
   const priceParams = (fields: Record<string, unknown>, media: Record<string, string[]>, model?: string, run_on?: string, draft?: boolean, videoRef?: string, toolId?: string) => {
@@ -511,7 +516,7 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
           } catch { return null; } };
         if (!a.compare) { let q0: Awaited<ReturnType<typeof quoteOne>>; try { q0 = await quoteOne(r0.t.id, r0.params); } catch (e) { const f = await fitFor(); if (f) return text({ toolId: r0.t.id, runnable: false, error: e instanceof Error ? e.message : String(e), quote_id: null, ...f }); throw e; }
           const q = quoteBrief(q0); const paid = q.runnable && q.usd > 0; const f = q.runnable ? null : await fitFor();
-          return text({ toolId: r0.t.id, ...q, ...(f ?? {}), ...(paid ? issueQuote({ toolId: r0.t.id, hash: r0.hash, credits: q.credits, usd: q.usd, routeId: q.route ?? null }) : { quote_id: null, note: q.runnable ? 'Free: run needs no quote_id.' : 'Not runnable as asked: see blockedReason.' }),
+          return text({ toolId: r0.t.id, ...q, ...(f ?? {}), ...(paid ? issueQuote({ toolId: r0.t.id, hash: r0.hash, credits: q.credits, usd: q.usd, routeId: q.route ?? null }) : { quote_id: null, note: !q.runnable ? 'Not runnable as asked: see blockedReason.' : q.sample ? 'Sample (free, nothing billed): run needs no quote_id.' : 'Free: run needs no quote_id.' }),
             ...(r0.unlisted.length ? { mcpWarnings: [`Not listed inputs of ${r0.t.id}, sent anyway: ${r0.unlisted.join(', ')}.`] } : {}), estimateNote: 'An estimate of what the provider bills you; local runs are free.' }); }
         const p = priceParams(r0.form, r0.media, undefined, undefined, a.draft, r0.media.video?.[0], r0.t.id);
         const r: any = await post('/api/models/quotes', { toolId: r0.t.id, params: p, ...(a.models?.length ? { models: a.models } : {}) });
@@ -543,6 +548,9 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
         if (a.max_usd != null && q.runnable && q.usd > a.max_usd + 1e-9) return refuse({ reason: `The price is ${fmtUsd(q.usd)}, over max_usd ${fmtUsd(a.max_usd)}. Nothing was sent or charged.`, quote: q, next: 'Ask the user to approve this price, or pick a cheaper model / run_on ("local" is free).' });
         const paid = q.runnable && q.usd > 0; let quoted: { credits: number; routeId: string | null } | null = null; let taken: ReturnType<typeof useQuote> | null = null;
         // a quote starts ONE run (audit 2026-11-01 #6): taken here, before the submit; the same client_request_id again is a replay of that run
+        // spend block (permissions.ts): a paid run is refused here with its price; free, local and sample runs go on
+        if (paid && typeof extra?.blockPaid === 'function') return refuse({ reason: extra.blockPaid(`this ${fmtUsd(Number(q.usd))} run of ${t.name}${q.modelKey ? ` on ${q.modelKey}` : ''}`), price: { usd: q.usd, credits: q.credits, billedTo: q.billedTo }, quote: q,
+          next: 'Offer a free option (run_on "local", or quote compare:true for the cheapest), or ask the user to change the setting as above. Do not retry this call.' });
         if (paid) { const c = useQuote(a.quote_id, t.id, r0.hash, a.client_request_id); if (!c.ok) return refuse({ reason: `${c.reason} Nothing was sent or charged.`, price: { usd: q.usd, credits: q.credits, billedTo: q.billedTo } }); quoted = c.q; taken = c;
           if (typeof extra?.approve === 'function') { const no = await extra.approve(`run ${t.name}${q.modelKey ? ` on ${q.modelKey}` : ''}${q.billedTo ? ` (billed to ${q.billedTo})` : ''} for about ${fmtUsd(Number(q.usd))}${q.estimated ? ' (estimate)' : ''}`); if (no) { c.release(); return refuse({ reason: no }); } } }
         // free runs carry their price too (0): if the place flips to a paid one between quote and submit, the app refuses (409 route_changed, audit P3 #18)
@@ -560,7 +568,7 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
       } catch (e) {
         const b: any = e instanceof ApiError ? e.body : null;
         if (b?.code === 'route_changed') return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, reason: 'The price or the place changed since the quote, so the app refused the run. Nothing was charged.', newQuote: b.quote ? { credits: b.quote.credits, usd: (b.quote.credits ?? 0) / 100, runOn: b.quote.runOn, routeId: b.quote.routeId } : null, next: 'Quote again, tell the user the new price, then run with the new quote_id.' }, null, 2) }] };
-        return fail(e);
+        return fail(e, await findTool(a.tool_id).catch(() => undefined));
       }
     }));
 
@@ -643,7 +651,7 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
   s.registerTool('retry', { title: 'Retry job', description: 'Re-run a FAILED or BLOCKED job with the same inputs, optionally on another place (run_on from the failed job\'s tryOn, with its price). Priced like a new run: called without quote_id it answers the price and a quote_id and starts nothing (a free re-run starts at once); tell the user the price, then call again with the same arguments and that quote_id (one run per quote, 15 min). The agent budget applies when one is set. failed_only re-runs only the failed reference groups.', inputSchema: {
     id: z.string(), run_on: z.string().optional(), failed_only: z.boolean().optional(), quote_id: z.string().optional().describe('From the first retry call (the price the user OK\'d). Required when the re-run costs money'),
     budget_id: z.string().optional(), wait_sec: z.number().int().min(0).max(1800).default(30) } },
-    async ({ id, run_on, failed_only, quote_id, budget_id, wait_sec }) => withBudget(budget_id, async () => { try {
+    async ({ id, run_on, failed_only, quote_id, budget_id, wait_sec }, extra: any) => withBudget(budget_id, async () => { try {
       // a paid re-run needs a quote like run (audit 2026-11-01 #6): the server prices it first (quote:true starts nothing), the quote is single use
       const path = `/api/jobs/${encodeURIComponent(id)}/retry${failed_only ? '?failedOnly=1' : ''}`; const body = { ...(run_on ? { runOn: run_on } : {}) };
       const p: any = await post(path, { ...body, quote: true });
@@ -651,8 +659,12 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
       const credits = Number(p?.quote?.credits ?? 0); const hash = requestHash({ toolId: `retry:${id}`, form: { ...body, failedOnly: !!failed_only }, media: {} });
       let taken: ReturnType<typeof useQuote> | null = null;
       if (credits > 0) {
+        // spend block (permissions.ts): a paid re-run is refused with its price; a free one goes on
+        if (typeof extra?.blockPaid === 'function') return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, reason: extra.blockPaid(`this ${fmtUsd(credits / 100)} re-run of job ${id}`), price: { usd: credits / 100, credits, runOn: p.quote.runOn ?? null },
+          next: 'Offer a free option (retry with run_on "local" when the job\'s tryOn lists it), or ask the user to change the setting as above.' }, null, 2) }] };
         if (!quote_id) return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, reason: `This re-run costs about ${fmtUsd(credits / 100)}, so it was not started. Tell the user the price; with their OK, call retry again with the same arguments and quote_id.`, price: { usd: credits / 100, credits, routeId: p.quote.routeId ?? null, runOn: p.quote.runOn ?? null }, ...issueQuote({ toolId: `retry:${id}`, hash, credits, usd: credits / 100, routeId: p.quote.routeId ?? null }) }, null, 2) }] };
         taken = useQuote(quote_id, `retry:${id}`, hash); if (!taken.ok) return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, reason: `${taken.reason} Nothing was sent or charged.` }, null, 2) }] };
+        if (typeof extra?.approve === 'function') { const no = await extra.approve(`re-run job ${id}${p.quote.runOn ? ` on ${p.quote.runOn}` : ''} for about ${fmtUsd(credits / 100)}`); if (no) { taken.release(); return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, reason: no }, null, 2) }] }; } }
       }
       let r: any; try { r = await post(path, { ...body, quotedCredits: taken?.ok ? taken.q.credits : credits }); } catch (e) { if (taken?.ok && e instanceof ApiError && e.status < 500) taken.release(); throw e; }
       if (taken?.ok) taken.done(String(r.id ?? ''));

@@ -42,7 +42,8 @@
     "test:skills": "tsx test/skills.ts",
     "test:dist-fresh": "tsx test/dist-fresh.ts",
     "test:toolsets": "tsx test/toolsets.ts",
-    "test:local-only": "tsx test/local-only.ts"
+    "test:local-only": "tsx test/local-only.ts",
+    "test:agent-path": "tsx test/agent-path.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",

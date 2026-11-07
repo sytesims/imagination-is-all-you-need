@@ -69,7 +69,7 @@ await check(stdio, 'generate_audio', { prompt: 'lofi beat', mode: 'music', durat
 await check(stdio, 'object_swap', { video: V, refs: [PROD] }, done);
 await check(stdio, 'motion_transfer', { video: V, refs: Array(10).fill(IMG), pinned: [0] }, (r) => (r?.status === 'done' && r.outputs.length === 2 ? true : `want 2 group outputs, got ${r?.outputs?.length} (${r?.status})`));
 const noStyle: any = await stdio.callTool({ name: 'restyle', arguments: { video: V } });
-if (!noStyle.isError || !/style/i.test(parse(noStyle))) { failed++; console.log('FAIL restyle validation', parse(noStyle)); } else console.log('PASS restyle requires a style');
+if (!noStyle.isError || !/style/i.test(JSON.stringify(parse(noStyle)))) { failed++; console.log('FAIL restyle validation', parse(noStyle)); } else console.log('PASS restyle requires a style');
 const rs = await check(stdio, 'restyle', { video: V, preset: 'watercolor', wait: false }, (r) => (r?.submitted?.id ? true : 'no id'));
 if (rs?.submitted?.id) await check(stdio, 'job_status', { id: rs.submitted.id, wait: true, timeout_sec: 120 }, done);
 if (img?.id) await check(stdio, 'get_asset', { id: img.id, include_image: true }, (_r, raw) => (raw.content.some((c: any) => c.type === 'image') && raw.content.some((c: any) => c.type === 'resource_link' && c.uri.startsWith(`${WEB}/files/`)) ? true : 'no image / resource_link on the web app'));
