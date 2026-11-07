@@ -1,0 +1,211 @@
+/* The poster card (PosterCard.tsx; 2026-11-06, Canvas release 1, Option C with T1 soft scrims). React Flow engine only.
+   The picture fills the card. Text sits on two light scrims that cover only where text is, so a white studio shot stays white in the
+   middle; the title also carries a soft shadow, so the scrims can stay light. One ring, one chip, one pill style. */
+.pc{--pc-r:18px;--pc-acc:var(--accent,#FF7A1A);--pc-k:#FF8A3D;--pc-ok:#3DDC97;--pc-warn:#E8B44A;--pc-bad:#FF6B6B;
+  position:absolute;inset:0;border-radius:var(--pc-r);background:#0B0C0D;color:#fff;font-family:var(--font-ui,Inter,system-ui,sans-serif);
+  box-shadow:0 1px 2px rgba(0,0,0,.5),0 22px 56px rgba(0,0,0,.46);transition:box-shadow 160ms ease,filter 160ms ease}
+.pc.pc-m-video{--pc-k:#A98BFF}.pc.pc-m-audio{--pc-k:#4FC9B8}.pc.pc-m-3d{--pc-k:#7FB2FF}
+.pc::after{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);pointer-events:none;z-index:6}
+.pc.hot:not(.sel){box-shadow:0 0 0 1px rgba(255,255,255,.24),0 26px 60px rgba(0,0,0,.56)}
+.pc.sel{box-shadow:0 0 0 calc(2px * max(1, var(--tl-scale,1))) var(--pc-acc),0 0 0 calc(9px * max(1, var(--tl-scale,1))) rgba(255,122,26,.14),0 24px 60px rgba(0,0,0,.55)}
+.pc.sel::after{box-shadow:none}
+.pc.r-dim{filter:saturate(.5) brightness(.55)}
+.pc.r-ok{box-shadow:0 0 0 calc(1.5px * max(1, var(--tl-scale,1))) rgba(255,255,255,.4),0 22px 56px rgba(0,0,0,.46)}
+.pc.r-drop{box-shadow:0 0 0 calc(2px * max(1, var(--tl-scale,1))) var(--pc-acc),0 0 30px rgba(255,122,26,.35)}
+.pc-shell{background:#16181B;box-shadow:none}
+.react-flow__node.dragging .pc{box-shadow:0 0 0 1px rgba(255,122,26,.55),0 40px 90px rgba(0,0,0,.62)}
+
+/* the picture and what replaces it */
+.pc-clip{position:absolute;inset:0;border-radius:inherit;overflow:hidden;isolation:isolate}
+.pc-pic{position:absolute;inset:0}
+.pc-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#0B0C0D}
+.pc-live{z-index:1}
+.pc-noimg,.pc-blank{position:absolute;inset:0;background:radial-gradient(120% 90% at 20% 0%,color-mix(in srgb,var(--pc-k) 18%,transparent),transparent 60%),#121417}
+.pc-blur{position:absolute;inset:-12%;background-size:cover;background-position:center;filter:blur(18px) brightness(.62) saturate(.9)}
+.pc-outdated .pc-img{filter:saturate(.55) brightness(.92)}
+
+/* T1 soft scrims: light, short, only where the text sits */
+.pc-scr-t,.pc-scr-b{position:absolute;left:0;right:0;pointer-events:none;z-index:2}
+.pc-scr-t{top:0;height:76px;background:linear-gradient(rgba(5,6,7,.56),rgba(5,6,7,.22) 55%,rgba(5,6,7,0))}
+.pc-scr-b{bottom:0;height:62px;background:linear-gradient(rgba(5,6,7,0),rgba(5,6,7,.24) 45%,rgba(5,6,7,.56))}
+
+/* top: the title and the ring */
+.pc-head{position:absolute;left:0;right:0;top:0;display:flex;align-items:flex-start;gap:8px;padding:12px 10px 0 14px;z-index:5;pointer-events:none}
+.pc-t{flex:1;min-width:0;text-shadow:0 1px 2px rgba(0,0,0,.45),0 1px 10px rgba(0,0,0,.5)}
+.pc-t .pc-name{all:unset;display:block;font:600 calc(15px * var(--pc-zk,1))/1.22 var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.01em;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:all;cursor:default}
+.pc-t input.pc-name{width:100%;box-sizing:border-box;background:rgba(14,15,17,.85);border-radius:6px;padding:1px 6px;margin-left:-6px;cursor:text;text-shadow:none;box-shadow:0 0 0 1px rgba(255,122,26,.6)}
+.pc-t small{display:block;margin-top:2px;font:500 11.5px/1.3 var(--font-ui,Inter,sans-serif);color:rgba(255,255,255,.86);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-draft .pc-t,.pc-running .pc-t,.pc-queued .pc-t,.pc-failed .pc-t{text-shadow:none}
+
+/* the status ring */
+.pc-ring{position:relative;flex:none;width:32px;height:32px;display:grid;place-items:center;pointer-events:all}
+.pc-ring svg{position:absolute;inset:0;width:32px;height:32px;overflow:visible}
+.pc-ring-bg{fill:rgba(12,13,15,.42);stroke:rgba(255,255,255,.28);stroke-width:1.6}
+.pc-ring-fg{fill:none;stroke:var(--pc-acc);stroke-width:2.6;stroke-linecap:round;transition:stroke-dasharray 400ms ease}
+.pc-ring-ic{fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.pc-ring b{position:relative;font:700 9.5px/1 var(--font-mono,ui-monospace,monospace);color:#fff;letter-spacing:-.02em}
+.pc-ring-draft .pc-ring-bg{fill:rgba(255,255,255,.03);stroke:rgba(255,255,255,.22)}
+.pc-ring-queued .pc-ring-bg{stroke-dasharray:3 3;stroke:rgba(255,255,255,.55)}
+.pc-ring-done .pc-ring-bg{fill:rgba(16,40,30,.55);stroke:rgba(61,220,151,.5)}.pc-ring-done .pc-ring-ic{stroke:var(--pc-ok)}
+.pc-ring-failed .pc-ring-bg{fill:rgba(70,16,16,.6);stroke:rgba(255,107,107,.65)}.pc-ring-failed b{font-size:14px;color:#FFB3B3}
+.pc-ring-outdated .pc-ring-bg{fill:rgba(60,44,10,.6);stroke:rgba(232,180,74,.7)}.pc-ring-outdated .pc-ring-ic{stroke:var(--pc-warn)}
+
+/* bottom: take dots (left) and the price chip (right) */
+.pc-foot{position:absolute;left:10px;right:10px;bottom:10px;display:flex;align-items:flex-end;justify-content:space-between;gap:8px;z-index:5;pointer-events:none}
+.pc-foot>span{display:flex;align-items:center;gap:6px;pointer-events:all;min-width:0}
+.pc-fr{margin-left:auto;flex:none}
+.pc-chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:8px;font:600 11.5px/1 var(--font-mono,ui-monospace,monospace);color:#fff;white-space:nowrap;background:rgba(12,13,15,.5);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.pc-chip.free{color:#7CF0BE}
+.pc-price .gp-g{opacity:.7}
+.pc-dots{display:flex;align-items:center;gap:5px;height:20px;padding:0 4px}
+.pc-dots i{position:relative;display:block;width:7px;height:7px;border-radius:9px;background:rgba(255,255,255,.62);box-shadow:0 0 0 1px rgba(0,0,0,.18)}
+.pc-dots i.on{width:18px;background:var(--pc-acc)}
+.pc-dots i.rv-fits::after,.pc-dots i.rv-check::after{content:'';position:absolute;left:50%;top:-6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--pc-ok);box-shadow:0 0 0 1.5px rgba(0,0,0,.5)}
+.pc-dots i.rv-check::after{background:var(--pc-warn)}
+.pc-dots small{font:600 10.5px/1 var(--font-ui,Inter,sans-serif);color:rgba(255,255,255,.8)}
+
+/* hover: the dots rise into a filmstrip */
+.pc-strip{display:flex;gap:5px;align-items:center;padding:5px;border-radius:12px;background:rgba(12,13,15,.62);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);animation:pc-rise 150ms ease-out}
+@keyframes pc-rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.pc-tk{all:unset;position:relative;box-sizing:border-box;width:40px;height:40px;border-radius:8px;overflow:visible;cursor:pointer;opacity:.78;background:#1A1C1F;transition:opacity 120ms ease,transform 120ms ease}
+.pc-tk img{width:100%;height:100%;object-fit:cover;border-radius:8px;display:block}
+.pc-tk>i{display:grid;place-items:center;width:100%;height:100%;font:600 11px/1 var(--font-ui);color:rgba(255,255,255,.7);font-style:normal}
+.pc-tk:hover{opacity:1;transform:translateY(-1px)}
+.pc-tk.on{opacity:1;box-shadow:0 0 0 2px rgba(12,13,15,.9),0 0 0 3.5px var(--pc-acc)}
+.pc-tk.pc-more{display:grid;place-items:center;font:600 11.5px/1 var(--font-ui);color:rgba(255,255,255,.8);background:rgba(255,255,255,.06)}
+.pc-pin{position:absolute;right:-4px;top:-4px;width:14px;height:14px;border-radius:50%;display:grid;place-items:center;background:var(--pc-acc);color:#14151A;font:800 8px/1 var(--font-ui);font-style:normal;box-shadow:0 0 0 1.5px rgba(12,13,15,.9)}
+.pc-rv{position:absolute;left:-3px;bottom:-3px;width:14px;height:14px;border-radius:50%;display:grid;place-items:center;font:800 8.5px/1 var(--font-ui,Inter,sans-serif);color:#0b1a12;background:var(--pc-ok);box-shadow:0 0 0 1.5px rgba(12,13,15,.9);cursor:help}
+.pc-rv.check{background:var(--pc-warn);color:#1d1503}
+
+/* draft: the prompt is the poster */
+.pc-draftbg{position:absolute;inset:0;background:
+  radial-gradient(120% 80% at 0% 0%,color-mix(in srgb,var(--pc-k) 22%,transparent),transparent 60%),
+  radial-gradient(90% 70% at 100% 100%,rgba(255,122,26,.09),transparent 60%),
+  radial-gradient(rgba(255,255,255,.06) 1px,transparent 1.2px) 0 0/12px 12px,#121417}
+.pc-dq{position:absolute;left:16px;right:16px;top:64px;bottom:96px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 78%,transparent);mask-image:linear-gradient(#000 78%,transparent)}
+.pc-dq::before{content:'“';display:block;font:700 30px/0.5 var(--font-display,'Space Grotesk',sans-serif);color:color-mix(in srgb,var(--pc-k) 75%,white);margin:6px 0 4px}
+.pc-dq p{margin:0;font:500 calc(17px * var(--pc-zk,1))/1.32 var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.01em;color:#F3F3F5;overflow-wrap:anywhere;white-space:pre-wrap}
+.pc-dq p.pc-dq-soft{color:rgba(255,255,255,.45);font-size:15px}
+.pc-draftfoot{position:absolute;left:12px;right:12px;bottom:12px;display:flex;flex-direction:column;gap:10px;z-index:5}
+.pc-chips{display:flex;flex-wrap:wrap;gap:5px}
+.pc-ich{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px 0 3px;border-radius:8px;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);font:600 10.5px/1 var(--font-ui,Inter,sans-serif);color:#E9E9EC;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-ich img,.pc-ich>i{flex:none;width:18px;height:18px;border-radius:5px;object-fit:cover;background:rgba(255,255,255,.12)}
+.pc-ich.need{padding-left:8px;color:rgba(255,255,255,.58);box-shadow:none;border:1px dashed rgba(255,255,255,.28);background:transparent;cursor:pointer}
+.pc-ich.need:hover{color:#fff;border-color:rgba(255,255,255,.55)}
+.pc-gorow{display:flex;align-items:center;gap:8px}
+.pc-model{flex:1;min-width:0;font:500 11.5px/1.2 var(--font-ui);color:rgba(255,255,255,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-gorow .pc-chip{background:none;box-shadow:none;padding:0 2px}
+.pc-go{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:9px;background:var(--pc-acc);color:#14151A;font:700 12px/1 var(--font-ui,Inter,sans-serif);cursor:pointer;white-space:nowrap;box-shadow:inset 0 -2px 0 rgba(0,0,0,.18),0 4px 14px rgba(0,0,0,.35)}
+.pc-go svg{width:10px;height:10px;fill:currentColor}
+.pc-go:hover{filter:brightness(1.08)}.pc-go:disabled{opacity:.55;cursor:default}
+.pc-go .pc-chip{height:auto;padding:0;background:none;box-shadow:none;color:inherit;font-size:11px;margin-left:2px}
+.pc-ghost{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:9px;color:#fff;font:600 12px/1 var(--font-ui);cursor:pointer;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);background:rgba(14,15,17,.5)}
+.pc-ghost:hover{background:rgba(255,255,255,.1)}
+
+/* running, queued */
+.pc-mid{position:absolute;inset:0;padding-top:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;z-index:3}
+.pc-big{font:600 calc(32px * var(--pc-zk,1))/1 var(--font-display,'Space Grotesk',sans-serif);letter-spacing:-.02em;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+.pc-big-s{font-size:24px}
+.pc-mid small{font:500 11.5px/1.2 var(--font-ui);color:rgba(255,255,255,.75)}
+.pc-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.12);z-index:4}
+.pc-bar i{position:absolute;left:0;top:0;bottom:0;background:var(--pc-acc);box-shadow:0 0 10px var(--pc-acc);transition:width 400ms ease}
+.pc-bar.ind i{width:30%;animation:pc-ind 1.4s ease-in-out infinite}
+@keyframes pc-ind{from{left:-30%}to{left:100%}}
+
+/* failed */
+.pc-failwrap{padding:56px 12px 12px}
+.pc-fail{width:100%;box-sizing:border-box;padding:12px;border-radius:12px;text-align:left;background:rgba(40,14,14,.62);box-shadow:inset 0 0 0 1px rgba(255,107,107,.35);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.pc-fail b{display:flex;gap:6px;font:600 13.5px/1.3 var(--font-ui);color:#FFC2C2}
+.pc-fail p{margin:6px 0 0;font:400 11.5px/1.45 var(--font-ui);color:rgba(255,255,255,.84);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.pc-fail p.pc-charge{margin-top:4px;color:rgba(255,255,255,.62)}
+.pc-fixes{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.pc-fixes button:not(.pc-ghost):not(.pc-go){height:28px;border-radius:9px}
+
+/* outdated tag; 3D chip */
+.pc-tag{position:absolute;left:12px;top:62px;z-index:5;display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:8px;font:600 11px/1 var(--font-ui)}
+.pc-tag.warn{background:rgba(40,30,8,.72);box-shadow:inset 0 0 0 1px rgba(232,180,74,.55);color:#F3C766;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.pc-3d{all:unset;position:absolute;left:10px;bottom:10px;z-index:5;display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:8px;background:rgba(12,13,15,.55);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);font:600 11px/1 var(--font-ui);color:#fff;cursor:pointer}
+.pc-m-3d .pc-foot .pc-fl{display:none}
+
+/* a sound: its waveform */
+.pc-wave{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:0 18px;background:radial-gradient(100% 80% at 30% 20%,rgba(79,201,184,.18),transparent 60%),#0E1214}
+.pc-bars{display:flex;align-items:center;gap:2px;width:100%;height:42%}
+.pc-bars i{flex:1;max-width:4px;border-radius:2px;background:#4FC9B8;opacity:.9}
+.pc-play{all:unset;position:absolute;left:50%;top:50%;width:38px;height:38px;margin:-19px 0 0 -19px;border-radius:50%;display:grid;place-items:center;background:rgba(12,13,15,.75);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);cursor:pointer}
+.pc-play svg{width:14px;height:14px;fill:#fff}
+.pc-m-audio .pc-scr-t,.pc-m-audio .pc-scr-b{display:none}
+
+/* ports: small coloured dots; labels only on hover, when selected, or while a link is dragged */
+.pc .pc-port{position:absolute;z-index:7;width:0;height:0;min-width:0;min-height:0;padding:0;margin:0;border:0;background:none;box-shadow:none;pointer-events:all;--pk:#9AA0A6}
+.pc-port.k-image{--pk:#FF8A3D}.pc-port.k-video{--pk:#A98BFF}.pc-port.k-audio{--pk:#4FC9B8}.pc-port.k-text{--pk:#C9CBD0}
+.pc-in{left:0}.pc-out{right:0;top:50%}
+.pc-port>i{position:absolute;left:-7px;top:-7px;width:14px;height:14px;box-sizing:border-box;border-radius:50%;background:#131517;border:2.5px solid var(--pk);box-shadow:0 0 0 2px rgba(12,13,15,.85);transition:transform 120ms ease,background 120ms ease;transform:scale(max(1, min(var(--tl-scale,1), 3)))}
+.pc-port.filled>i{background:var(--pk)}
+.pc-out>i{cursor:crosshair}
+.pc-port:hover>i,.pc-port.want>i{transform:scale(calc(1.25 * max(1, min(var(--tl-scale,1), 3))))}
+.pc-pl{position:absolute;top:-11px;height:22px;display:inline-flex;align-items:center;gap:3px;padding:0 9px;border-radius:999px;white-space:nowrap;font:600 11px/1 var(--font-ui,Inter,sans-serif);color:#fff;
+  background:rgba(14,15,17,.86);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pk) 55%,transparent);opacity:0;visibility:hidden;transform:translateX(4px);transition:opacity 150ms ease,transform 150ms ease,visibility 0s linear 150ms;pointer-events:none;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.pc-in .pc-pl{right:14px}.pc-out .pc-pl{left:14px;transform:translateX(-4px)}
+.pc-pl em{font-style:normal;font-weight:500;color:rgba(255,255,255,.5)}
+.pc.labels .pc-pl,.pc.r-ok .pc-in.want .pc-pl,.pc.r-drop .pc-in.want .pc-pl{opacity:1;visibility:visible;transform:none;transition:opacity 150ms ease,transform 150ms ease}
+.pc.r-dim .pc-port{opacity:.4}
+
+/* zoomed out: the moodboard (pictures only), and far: no shadows */
+.cv-rf[data-far] .pc{box-shadow:0 0 0 1px rgba(255,255,255,.05)}
+.cv-rf[data-far] .pc.sel{box-shadow:0 0 0 calc(2px * max(1, var(--tl-scale,1))) var(--pc-acc)}
+.cv-rf[data-far] .pc-t small,.cv-rf[data-far] .pc-foot,.cv-rf[data-far] .pc-pl{display:none}
+.cv-rf[data-far] .pc{--pc-zk:min(2.4, max(1, calc(var(--tl-scale,1) * .62)))}
+.cv-rf[data-mood] .pc-head,.cv-rf[data-mood] .pc-scr-t,.cv-rf[data-mood] .pc-scr-b,.cv-rf[data-mood] .pc-draftfoot,.cv-rf[data-mood] .pc-mid small,.cv-rf[data-mood] .pc-port>i{display:none}
+.cv-rf[data-mood] .pc-dq{bottom:16px;top:20px}
+.cv-rf[data-mood] .pc-dq::before{display:none}
+@media (prefers-reduced-motion:reduce){.pc,.pc-pl,.pc-port>i,.pc-tk,.pc-bar i{transition:none}.pc-strip{animation:none}.pc-bar.ind i{animation:none;left:0}}
+
+/* a light picture (a white studio shot) where the text sits: dark text, no scrim, so the white stays white (poster.ts toneOf) */
+.pc[data-tone-top=light] .pc-scr-t{display:none}
+.pc[data-tone-top=light] .pc-t{text-shadow:0 0 12px rgba(255,255,255,.6)}
+.pc[data-tone-top=light] .pc-t .pc-name{color:#15171A}
+.pc[data-tone-top=light] .pc-t small{color:rgba(21,23,26,.66)}
+.pc[data-tone-top=light] .pc-ring-done .pc-ring-bg{fill:rgba(255,255,255,.7);stroke:rgba(25,150,95,.55)}.pc[data-tone-top=light] .pc-ring-done .pc-ring-ic{stroke:#16A066}
+.pc[data-tone-bottom=light] .pc-scr-b{display:none}
+.pc[data-tone-bottom=light] .pc-dots i{background:rgba(21,23,26,.32);box-shadow:none}.pc[data-tone-bottom=light] .pc-dots i.on{background:var(--pc-acc)}
+.pc[data-tone-bottom=light] .pc-dots small{color:rgba(21,23,26,.6)}
+.pc[data-tone-bottom=light] .pc-chip{background:rgba(255,255,255,.72);color:#15171A;box-shadow:inset 0 0 0 1px rgba(21,23,26,.1)}
+.pc[data-tone-bottom=light] .pc-chip.free{color:#0E8F57}
+
+/* Prompt and Note cards as posters (user, 6 Nov): the text is the picture; a prompt is warm orange, a note soft yellow */
+.pc-text{--pc-k:#FF7A1A}.pc-text.pc-k-note{--pc-k:#F2C94C}
+.pc-textbg{position:absolute;inset:0;background:
+  radial-gradient(120% 85% at 0% 0%,color-mix(in srgb,var(--pc-k) 24%,transparent),transparent 62%),
+  radial-gradient(90% 70% at 100% 100%,color-mix(in srgb,var(--pc-k) 10%,transparent),transparent 60%),
+  radial-gradient(rgba(255,255,255,.06) 1px,transparent 1.2px) 0 0/12px 12px,#121417}
+.pc-k-note .pc-textbg{background:
+  linear-gradient(color-mix(in srgb,var(--pc-k) 10%,transparent),color-mix(in srgb,var(--pc-k) 4%,transparent)),
+  repeating-linear-gradient(transparent 0 27px,rgba(242,201,76,.07) 27px 28px),#15140F}
+.pc-text .pc-dq{top:58px;bottom:16px;cursor:text}
+.pc-text .pc-dq-l p{font-size:calc(22px * var(--pc-zk,1))}.pc-text .pc-dq-s p{font-size:calc(14.5px * var(--pc-zk,1));line-height:1.4}
+.pc-k-note .pc-dq::before{content:'';display:block;width:22px;height:3px;border-radius:2px;background:var(--pc-k);margin:2px 0 12px;opacity:.8}
+.pc-k-note .pc-dq p{font-family:var(--font-ui,Inter,sans-serif);font-weight:500;color:#F1EEE4}
+.pc-tedit{all:unset;display:block;box-sizing:border-box;width:100%;height:100%;white-space:pre-wrap;overflow:auto;font:500 calc(17px * var(--pc-zk,1))/1.32 var(--font-display,'Space Grotesk',Inter,sans-serif);color:#fff;cursor:text;caret-color:var(--pc-k)}
+.pc-text .pc-dq:has(.pc-tedit){-webkit-mask-image:none;mask-image:none;box-shadow:0 0 0 1px color-mix(in srgb,var(--pc-k) 45%,transparent);border-radius:10px;padding:6px 8px;margin:-6px -8px}
+.cv-rf[data-mood] .pc-text .pc-dq{top:16px}
+
+/* a sticky note as a text poster, tinted by its colour (rf/views.tsx StickyNode, the default look on this board) */
+.cv-rf .cv-sticky.as-poster{--st:#FEE590;position:relative;background:
+  radial-gradient(130% 90% at 0% 0%,color-mix(in srgb,var(--st) 26%,transparent),transparent 64%),
+  radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.2px) 0 0/12px 12px,#141517;
+  color:#F3F3F5;border-radius:18px;font-family:var(--font-display,'Space Grotesk',Inter,sans-serif);font-weight:500;letter-spacing:-.01em;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),inset 4px 0 0 color-mix(in srgb,var(--st) 85%,transparent),0 18px 44px rgba(0,0,0,.42)}
+.cv-rf .cv-sticky.as-poster.sel{box-shadow:0 0 0 calc(2px * max(1, var(--tl-scale,1))) var(--accent,#FF7A1A),inset 4px 0 0 color-mix(in srgb,var(--st) 85%,transparent),0 18px 44px rgba(0,0,0,.42)}
+.cv-rf .cv-sticky.as-poster .cv-sticky-ph{opacity:.42}
+.cv-rf .cv-sticky.as-poster.c-yellow{--st:#FEE590}.cv-rf .cv-sticky.as-poster.c-orange{--st:#F2913F}.cv-rf .cv-sticky.as-poster.c-red{--st:#FF9D9D}.cv-rf .cv-sticky.as-poster.c-green{--st:#A9E8B4}
+.cv-rf .cv-sticky.as-poster.c-blue{--st:#9CC6FF}.cv-rf .cv-sticky.as-poster.c-violet{--st:#D0B6FF}.cv-rf .cv-sticky.as-poster.c-grey{--st:#D7D9DC}.cv-rf .cv-sticky.as-poster.c-black{--st:#8A8D93}.cv-rf .cv-sticky.as-poster.c-white{--st:#F7F7F8}
+.cv-rf .cv-sticky.as-poster.c-light-blue{--st:#BEE3FF}.cv-rf .cv-sticky.as-poster.c-light-green{--st:#CDEFC7}.cv-rf .cv-sticky.as-poster.c-light-red{--st:#FFC6C6}.cv-rf .cv-sticky.as-poster.c-light-violet{--st:#E6D6FF}
+/* release 1: drops onto a port. While a file or an Assets item is over the board, the ports that take it glow (with a bigger target) and
+   show their labels; the others go quiet. The wrong kind shakes. */
+.pc-port.pc-in.want::after{content:'';position:absolute;left:-22px;top:-22px;width:44px;height:44px;border-radius:50%;pointer-events:all}
+.pc-port.pc-in.want>i{box-shadow:0 0 0 2px rgba(12,13,15,.85),0 0 0 6px color-mix(in srgb,var(--pk) 35%,transparent),0 0 18px 4px color-mix(in srgb,var(--pk) 55%,transparent)}
+.pc-port.pc-in.want .pc-pl{opacity:1;visibility:visible;transform:none}
+.pc-port.pc-in.quiet{opacity:.3}
+.pc-port.shake>i{animation:pc-shake 560ms cubic-bezier(.36,.07,.19,.97) both;border-color:#E8B44A}
+@keyframes pc-shake{10%,90%{translate:-1px 0}20%,80%{translate:2px 0}30%,50%,70%{translate:-4px 0}40%,60%{translate:4px 0}}
+@media (prefers-reduced-motion:reduce){.pc-port.shake>i{animation:none}}

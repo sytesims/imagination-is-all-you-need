@@ -11,8 +11,16 @@
  * The reactive pieces (atom, useValue, useReactor) and useBoardApi come from the engine too: a value read inside useValue re-renders the
  * component when the board (or an atom) changes.
  */
-import { createContext } from 'react';
-export { atom, useValue, useReactor, useBoardApi, useToolButton, type Atom } from './boardApiTldraw';
+import { createContext, useContext } from 'react';
+import { useToolButton as useTldrawToolButton } from './boardApiTldraw';
+import { atom } from './boardApiTldraw';
+export { atom, useValue, useReactor, useBoardApi, type Atom } from './boardApiTldraw';
+
+/** A toolbar button's tool: is it there, is it on, pick it. */
+export interface ToolButtonState { available: boolean; on: boolean; pick: () => void }
+/** The engine's own tool hook (the React Flow board provides one; without it, tldraw's tool list). Fixed for a mounted board. */
+export const ToolHookContext = createContext<((id: string) => ToolButtonState) | null>(null);
+export function useToolButton(id: string): ToolButtonState { const own = useContext(ToolHookContext); return (own ?? useTldrawToolButton)(id); }
 
 export type NodeId = string;
 export type LinkId = string;
@@ -131,6 +139,13 @@ export interface BoardApi {
   /** the agent's cursor (only the hand, agentHand.ts, writes it) */
   presence: { has(): boolean; put(p: Partial<AgentPresence>, create?: boolean): void; remove(): void };
 }
+
+/** How the card views tune a few details per engine (the React Flow board raises them; tldraw keeps today's): the source size of the
+ *  version thumbnails (page px; the grid service rounds it), and whether hovering a version previews it on the card's picture. */
+export interface ViewTune { takeThumbPx: number; takePeek: boolean }
+export const ViewTuneContext = createContext<ViewTune>({ takeThumbPx: 28, takePeek: false });
+/** The version being hovered on a card's strip (the card shows it while the pointer is there). */
+export const takePeekAtom = atom<{ id: string; k: number } | null>('ohf-take-peek', null);
 
 /** The board for components outside the engine's own tree (the card panel beside it). Inside it, useBoardApi finds it on its own. */
 export const BoardContext = createContext<BoardApi | null>(null);

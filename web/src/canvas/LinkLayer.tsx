@@ -38,7 +38,8 @@ export function readLinks(board: BoardApi): { boxes: LBox[]; links: (Link & { ar
 let styleEl: HTMLStyleElement | null = null; const rules = new Map<string, string>();
 const flush = () => { if (!styleEl || !styleEl.isConnected) { styleEl = document.createElement('style'); styleEl.id = 'ohf-link-fx'; document.head.appendChild(styleEl); } styleEl.textContent = [...rules.values()].join('\n'); };
 const rule = (k: string, css: string | null, ms?: number) => { if (css == null) rules.delete(k); else rules.set(k, css); flush(); if (css && ms) window.setTimeout(() => { if (rules.get(k) === css) rule(k, null); }, ms); };
-const sel = (id: string) => `.tl-shape[data-shape-id="${id.replace(/"/g, '')}"]`;
+/* tldraw's shape wrapper, and the React Flow board's node (its transform is on .react-flow__node) */
+const sel = (id: string) => { const k = id.replace(/"/g, ''); return `.tl-shape[data-shape-id="${k}"],.react-flow__node[data-id="${k}"]`; };
 /** The cards glide to where they are going (one CSS transition on their transform; nothing under reduced motion). */
 export function glide(ids: string[], ms = 420) { if (reducedMotion()) return; rule('glide', `${ids.map(sel).join(',')}{transition:transform ${ms}ms cubic-bezier(.2,.8,.2,1)}`, ms + 120); }
 const goldRing = (id: string) => { if (reducedMotion()) return; rule(`gold:${id}`, `${sel(id)} > *{animation:ohf-gold 900ms ease-out both}`, 1000); };
@@ -76,7 +77,7 @@ export function magnetDrop(board: BoardApi, id: string): 'snapped' | 'unlinked' 
   board.mark('unlink'); board.removeLinks(gone.map((l) => l.arrow)); for (const l of gone) stretchAtom.set({ ...l, at: Date.now() });
   return 'unlinked';
 }
-function Magnet() {
+export function Magnet() {
   const board = useBoardApi();
   useEffect(() => {
     let dragging: string | null = null;

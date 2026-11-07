@@ -1,5 +1,6 @@
 /** Canvas boards API (server canvasBoards.ts). No tldraw import here: the snapshot is opaque JSON to this file. */
-export interface BoardSummary { id: string; name: string; createdAt: number; updatedAt: number; rev: number; shapes: number; /** the board's project (null = All generations) */ projectId?: string | null }
+export interface BoardSummary { id: string; name: string; createdAt: number; updatedAt: number; rev: number; shapes: number; /** the board's project (null = All generations) */ projectId?: string | null;
+  /** the board budget in USD (release 1; set by the person only), null = none */ budgetUsd?: number | null }
 export interface Board extends BoardSummary { snapshot: { store: Record<string, unknown>; schema: unknown } | null }
 export class BoardError extends Error { constructor(message: string, public status: number, public code?: string, public rev?: number) { super(message); } }
 
@@ -15,6 +16,8 @@ export const createBoard = (name?: string) => call<Board>(B, { method: 'POST', b
 export const getBoard = (id: string) => call<Board>(`${B}/${encodeURIComponent(id)}`);
 export const renameBoard = (id: string, name: string) => call<BoardSummary>(`${B}/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ name }) });
 export const setBoardProject = (id: string, projectId: string | null) => call<BoardSummary>(`${B}/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ projectId }) });
+/** The board budget (people only: the server refuses an agent). null removes it. */
+export const setBoardBudget = (id: string, usd: number | null) => call<{ id: string; budget: { usd: number; spentUsd: number; leftUsd: number } | null }>(`${B}/${encodeURIComponent(id)}/budget`, { method: 'PUT', body: JSON.stringify({ usd }) });
 export const deleteBoard = (id: string) => call<{ ok: true }>(`${B}/${encodeURIComponent(id)}`, { method: 'DELETE' });
 export const saveBoard = (id: string, snapshot: unknown, rev?: number) =>
   call<{ id: string; rev: number; updatedAt: number; shapes: number }>(`${B}/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify({ snapshot, ...(rev != null ? { rev } : {}) }) });

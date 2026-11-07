@@ -13,6 +13,9 @@
 import { rect, rectHasPoint, unionRects, richText, type BoardApi, type NodeId, type Rect } from './boardApi';
 import { createCard, setCard, connect, describeCard, quoteCard, submit, listFlows } from './agentApi';
 import { submitInOrder } from './nodeRun';
+import type { RunFailure } from './nodeLogic';
+import type { PriceLock } from './priceLock';
+import { boardCtx } from './boardCtx';
 import { handOf, fx, workArea, boundsOf, animOK } from './agentHand';
 import { freeSpot } from './placement';
 import { readableArea } from './FollowAgent';
@@ -27,7 +30,7 @@ import { cardState, missingOf } from './cardState';
 import { batchIdsOf } from './genRun';
 import { compactQuote } from './genRun';
 import { setAgentBudgetHeader, getJob } from '../api';
-import { ownAccountsNow } from '../shared/billing';
+import { ownAccountsNow, usdPrice } from '../shared/billing';
 import { resultMedia } from '../shared/resultMedia';
 import { portInfoOf, outKindOfShape } from './ports';
 import { canFeed, takesLine, PORT_WORDS, settleProposal, type ProposalCard } from './nodeLogic';
@@ -42,12 +45,13 @@ export interface AgentOp {
   kind: 'say' | 'add_card' | 'update_card' | 'connect' | 'remove_card' | 'propose_run' | 'summary' | 'run_proposal' | 'free_area' | 'add_note' | 'add_frame' | 'move_into' | 'point_at' | 'next_steps' | 'place_result' | 'batch' | 'review_versions' | 'add_from_job' | 'add_upload' | 'spread_versions';
   text?: string; workflow?: string; prompt?: string; name?: string; model?: string; ids?: string[]; frame_id?: string; around?: string[]; color?: string; settings?: Record<string, string>; inputs_from?: string[];
   at?: { x: number; y: number }; card_id?: string; from_id?: string; to_id?: string; card_ids?: string[]; note?: string;
-  proposal_id?: string; budget_id?: string | null; out?: number; w?: number; h?: number; version?: number; job_id?: string; url?: string; title?: string; items?: BatchItem[]; cards?: { card_id: string; reviews: { version: number; verdict: 'fits' | 'check'; reason?: string }[]; recommend?: number | null }[]; by?: string;
+  proposal_id?: string; budget_id?: string | null; /** run_proposal: each card's approved price (the price lock) */ locks?: Record<string, PriceLock | null>; out?: number; w?: number; h?: number; version?: number; job_id?: string; url?: string; title?: string; items?: BatchItem[]; cards?: { card_id: string; reviews: { version: number; verdict: 'fits' | 'check'; reason?: string }[]; recommend?: number | null }[]; by?: string;
 }
 export interface FeedEntry { seq: number; id: string; at: number; type: 'message' | 'activity' | 'decision' | 'proposal'; text: string; from?: 'agent' | 'user'; cardId?: string; fromId?: string; toId?: string; proposalId?: string; decision?: 'go' | 'cancel'; meta?: any;
   /** your message reached your agent (read), or a channel pushed it into its session (sent) */ readAt?: number; readVia?: 'wait' | 'inbox' | 'channel'; pushedAt?: number }
-export interface ProposalItem { cardId: string; title: string; workflow: string; model: string | null; status: string; usd: number | null; credits: number | null; quote: any; problem: string | null }
-export interface Proposal { id: string; boardId: string; cardIds: string[]; note: string | null; items: ProposalItem[]; totalUsd: number; totalCredits: number; budget: any; overBudget: boolean; overByUsd: number | null; reason: string | null; runCardIds?: string[]; skipped?: { cardId: string; title: string; problem: string }[]; status: 'pending' | 'running' | 'approved' | 'cancelled' | 'failed' | 'drafts'; createdAt: number; decidedAt: number | null; jobIds: string[]; error: string | null }
+export interface ProposalItem { cardId: string; title: string; workflow: string; model: string | null; status: string; usd: number | null; credits: number | null; quote: any; problem: string | null;
+  quotedCredits?: number | null; routeId?: string | null; priceChanged?: { wasUsd: number | null; nowUsd: number | null; reason: 'dearer' | 'route' } | null }
+export interface Proposal { id: string; boardId: string; cardIds: string[]; note: string | null; items: ProposalItem[]; totalUsd: number; totalCredits: number; budget: any; boardBudget?: { usd: number; spentUsd: number; leftUsd: number } | null; overBudget: boolean; overByUsd: number | null; reason: string | null; runCardIds?: string[]; skipped?: { cardId: string; title: string; problem: string }[]; failedIds?: string[]; /** asks again for rows of that proposal Go stopped on a price change */ repriceOf?: string | null; status: 'pending' | 'running' | 'approved' | 'cancelled' | 'failed' | 'drafts'; createdAt: number; decidedAt: number | null; jobIds: string[]; error: string | null }
 export interface PickAsk { id: string; boardId: string; cardIds: string[]; text: string; chosen: string | null; status: 'waiting' | 'picked' | 'cancelled'; createdAt: number }
 export interface BridgeHandlers {
   onConnection?: (open: boolean) => void;
@@ -80,7 +84,7 @@ export function priceView(q: any) {
   const local = q.localRun === true || cost?.billedTo === 'local';
   const demo = q.demo === true;
   return { usd: usd == null ? null : r4(usd), credits: typeof q.credits === 'number' ? q.credits : null,
-    label: demo ? 'Sample' : local ? 'Free' : usd != null ? `≈ $${usd.toFixed(2)}` : null, demo, local, runnable: q.runnable !== false };
+    label: demo ? 'Sample' : local ? 'Free' : usd != null ? usdPrice(usd, { approx: cost?.estimated !== false }) : null, /* the app's one $ format ($0.039, $0.46) */ demo, local, runnable: q.runnable !== false };
 }
 
 /** The workflow an MCP op names: an id from canvas_list_workflows or the workflow's shown name. */
@@ -249,15 +253,24 @@ async function summarize(board: BoardApi) {
   return { nodes };
 }
 
+/** Cards Go stopped because their price moved (priceLock.ts): a fresh proposal for them asks again (prices first; it waits for Go too). */
+function askAgain(cardIds: string[], proposalId: string | undefined, note: string) {
+  const boardId = boardCtx().boardId; if (!boardId || !cardIds.length) return;
+  void fetch(`/api/canvas/boards/${encodeURIComponent(boardId)}/agent/proposals`, { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ card_ids: [...new Set(cardIds)].slice(0, 20), note: note.slice(0, 400), ...(proposalId ? { reprice_of: proposalId } : {}) }) }).catch(() => undefined);
+}
 async function runProposal(board: BoardApi, op: AgentOp) {
-  const ids = op.card_ids ?? []; const jobIds: string[] = []; const failed: { cardId: string; error: string }[] = []; let firstError: Error | null = null;
+  const ids = op.card_ids ?? []; const jobIds: string[] = []; const failed: RunFailure[] = []; let firstError: Error | null = null;
   setAgentBudgetHeader(op.budget_id ?? null);
   try {
     /* one card the server refuses doesn't stop the others; a budget stop does (nothing after it may spend). Graph order (2026-10-28): a card
      * fed by another card in this proposal starts when that one is done, so it gets its input (it used to start at once, without it). */
-    const r = await submitInOrder(board, ids, { stop: e => /budget/i.test(e.message),
-      onLater: (id, x) => { if (x.error) handOf(board).say(`${titleOf(board, id as NodeId)} didn’t start: ${x.error}`); } });
-    jobIds.push(...r.jobIds); failed.push(...r.failed); if (r.failed.length) firstError = new Error(r.failed[0].error);
+    const r = await submitInOrder(board, ids, { stop: e => /budget/i.test(e.message), locks: op.locks ?? {},
+      onLater: (id, x) => { if (!x.error) return; handOf(board).say(`${titleOf(board, id as NodeId)} didn’t start: ${x.error}`);
+        if (x.failure?.code === 'price_changed') askAgain([id], op.proposal_id, `${titleOf(board, id as NodeId)}: ${x.error}. Asking again.`); } });
+    jobIds.push(...r.jobIds); failed.push(...r.failed); if (r.failed.some((f) => f.code !== 'price_changed')) firstError = new Error(r.failed.find((f) => f.code !== 'price_changed')!.error);
+    const repriced = r.failed.filter((f) => f.code === 'price_changed');
+    if (repriced.length) askAgain(repriced.map((f) => f.cardId), op.proposal_id, repriced.length === 1 ? `${titleOf(board, repriced[0].cardId as NodeId)}: ${repriced[0].error}. Asking again with the new price.` : `${repriced.length} prices changed since you approved them. Asking again with the new prices.`);
     for (const cid of ids) for (const j of batchIdsOf(board.getNode(cid as NodeId))) if (!jobIds.includes(j)) jobIds.push(j); /* Material Swap: every swatch's run */
   } finally { setAgentBudgetHeader(null); }
   if (firstError && !jobIds.length) { (firstError as any).jobIds = jobIds; throw firstError; }

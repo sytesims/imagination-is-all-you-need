@@ -141,7 +141,7 @@ export function jobPostError(b: any, status: number, fallback: string): Error {
 export async function createJob(toolId: string, fd: FormData, opts: { idemKey?: string; showsIssues?: boolean; /** D3: the user already said yes to a higher price once */ priceAsked?: boolean } = {}): Promise<{ id: string; provider: string; warnings: string[]; cost: number; free?: boolean; freeGensLeft?: number; balance: number; seed: number; idempotentReplay?: boolean }> {
   if (isOffline()) throw Object.assign(new Error(OFFLINE_MESSAGE), { errorType: 'offline', status: 0, issues: [{ code: 'offline', field: '', message: OFFLINE_MESSAGE }] });
   // [R23] One Idempotency-Key per Generate click, reused on a network retry so a dropped response can't double-submit.
-  { const pv = String(fd.get('provider') ?? ''); if (pv && !fd.has('route')) {
+  { const pv = String(fd.get('provider') ?? ''); if (pv && !fd.has('route') && !fd.has('priceLock') /* a canvas price lock sends its own approved price */) {
       // Quote = charge: the run-on choice (per tool + model, shared/models.ts) goes as model + runOn from the fetch guard, exactly as on the quote.
       // Send what the quote said too, so a divergence comes back as 409 route_changed instead of a different charge.
       // (The old per-engine browser pins, ohf:route:<engine>, are migrated into the per-tool choice once and no longer sent.)
@@ -172,7 +172,7 @@ export async function createJob(toolId: string, fd: FormData, opts: { idemKey?: 
     /* B18 (item 8): the server's sentence as is ("The price changed. Nothing was charged."); our own copy only when it sends none. */
     const m = String(b.message || b.error && b.error !== 'route_changed' && b.error || 'The price changed since you last saw it. Nothing was charged. Check the new price, then press Generate again.').trim();
     noteError(m, { calm: true, detail: b.detail ?? null });
-    throw Object.assign(new Error(m), { code: 'route_changed', errorType: 'route_changed', status: 409, quote: b.quote ?? null, calm: true, charged: b.charged ?? false, idemKey: key, issues: [] }); }
+    throw Object.assign(new Error(m), { code: 'route_changed', errorType: 'route_changed', status: 409, quote: b.quote ?? null, calm: true, charged: b.charged ?? false, idemKey: key, issues: [], lock: b.lock === true, reason: b.reason ?? null, quotedCredits: b.quotedCredits ?? null }); }
     if (b?.code === 'route_not_runnable') { const pv = String(fd.get('provider') ?? ''); forgetQuote(toolId, pv); requestRequote(); }
   }
   if (!r.ok) { const b = await r.json().catch(() => ({})); const ra = Number(r.headers.get('Retry-After')) || Number(b.retryAfterSec) || 0;

@@ -9,7 +9,7 @@
  * tldraw's Duplicate), Enter generates the selected card. Cards that were running when the board closed follow their job again.
  */
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Tldraw, getSnapshot, useEditor, useValue, DefaultColorStyle, DefaultFontStyle, AssetRecordType, getHashForString, type Editor, type TLAssetStore, type TLComponents, type TLAsset, type TLUiOverrides, type TLShapeId } from 'tldraw';
+import { Tldraw, getSnapshot, createTLStore, defaultShapeUtils, defaultBindingUtils, useEditor, useValue, DefaultColorStyle, DefaultFontStyle, AssetRecordType, getHashForString, type Editor, type TLAssetStore, type TLComponents, type TLAsset, type TLUiOverrides, type TLShapeId } from 'tldraw';
 import 'tldraw/tldraw.css';
 import { uploadMedia } from '../shared/batch1';
 import { gridSrc, thumbable } from '../shared/thumbs';
@@ -46,6 +46,7 @@ import { pictureName } from '../../../server/src/shared/canvasPictures';
 import { CARD_H } from './cardModel';
 import { saveBoard, saveBoardOnExit, BoardError, type Board as BoardDoc } from './boardsApi';
 import { OVERVIEW_ZOOM } from './cardLook';
+import { isV2, boardDocOf, docToTldraw } from '../../../server/src/shared/boardDoc';
 
 const Viewer3D = lazy(() => import('../shared/Viewer3D').then(m => ({ default: m.Viewer3D })));
 export type SaveState = 'saved' | 'saving' | 'error' | 'conflict';
@@ -60,6 +61,14 @@ const assetStore: TLAssetStore = {
   },
 };
 const SHAPE_UTILS = [ResultCardShapeUtil, GenCardShapeUtil, PromptNodeUtil, UploadNodeUtil, NoteNodeUtil, CompareNodeUtil, GroupNodeUtil, AdNodeUtil];
+/** A board saved by the React Flow engine (board document v2, behind the switch) opens here as a tldraw snapshot in today's schema
+ *  (docToTldraw), so going back to this engine is always safe. Its next save here writes version 1 again. */
+let schemaNow: unknown = null;
+function snapshotOf(saved: unknown): unknown {
+  if (!isV2(saved)) return saved;
+  schemaNow ??= createTLStore({ shapeUtils: [...defaultShapeUtils, ...SHAPE_UTILS], bindingUtils: defaultBindingUtils }).schema.serialize();
+  return docToTldraw(boardDocOf(saved), schemaNow);
+}
 const THEMES = { default: BRAND_THEME };
 /* No tldraw main menu, page menu, toolbar, style panel or navigation clutter: our toolbar, zoom and switcher replace them.
    Context menu, keyboard shortcuts dialog, rich text / image / video toolbars, toasts and dialogs stay tldraw's. */
@@ -149,7 +158,7 @@ export function Board({ board, onSaveState, onSaved, drawerOpen, setDrawerOpen, 
   board: BoardDoc; /** the card panel beside the board reads it through this */ onBoard?: (b: BoardApi | null) => void; onProject: (id: string | null) => void; onSaveState: (s: SaveState) => void; onSaved: (r: { rev: number; updatedAt: number; shapes: number }) => void; drawerOpen: boolean; setDrawerOpen: (v: boolean) => void;
 }) {
   const toast = useToast(); const [view3d, setView3d] = useState<any | null>(null);
-  const snapshot = useMemo(() => (board.snapshot ? { document: board.snapshot } as any : undefined), [board.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const snapshot = useMemo(() => (board.snapshot ? { document: snapshotOf(board.snapshot) } as any : undefined), [board.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const f = (e: Event) => { const id = (e as CustomEvent).detail?.jobId; if (!id) return;
     void Promise.all([getJob(id), import('../shared/Viewer3D')]).then(([j, m]) => setView3d(m.jobItem3d(j))).catch(() => toast('This 3D result is no longer available.', 'error')); };
     addEventListener(OPEN_3D_EVENT, f); return () => removeEventListener(OPEN_3D_EVENT, f); }, [toast]);

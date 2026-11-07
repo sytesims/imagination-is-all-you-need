@@ -96,6 +96,9 @@ registerLicenseComponents('canvas', [
   { model: 'tldraw 5.5.2 (the Canvas board: @tldraw/editor, @tldraw/store, @tldraw/tlschema, @tldraw/state, @tldraw/driver). Local use needs no key; a public deployment needs a tldraw licence key (VITE_TLDRAW_LICENSE_KEY). Full text: licenses/tldraw-LICENSE.md', license: 'tldraw license', commercial: 'restricted', url: 'https://github.com/tldraw/tldraw/blob/v5.5.2/LICENSE.md', terms: ['Development use only without a licence key; production use needs a trial, hobby or commercial key.', 'Do not disable or interfere with licence key enforcement or the watermark.', 'Include a verbatim copy of the licence with any distribution.'] },
   { model: 'Tiptap 3 (rich text inside tldraw text shapes, via tldraw)', license: 'MIT', commercial: 'yes', url: 'https://github.com/ueberdosis/tiptap/blob/develop/LICENSE.md' },
   { model: 'Radix UI (menus and popovers inside tldraw, via tldraw)', license: 'MIT', commercial: 'yes', url: 'https://github.com/radix-ui/primitives/blob/main/LICENSE' },
+  { model: 'React Flow 12.12.1 (@xyflow/react, @xyflow/system: the new Canvas engine, behind a switch while it is tested)', license: 'MIT', commercial: 'yes', url: 'https://github.com/xyflow/xyflow/blob/main/LICENSE' },
+  { model: 'zustand 4.5.7 (the board store of the new Canvas engine; also used inside React Flow)', license: 'MIT', commercial: 'yes', url: 'https://github.com/pmndrs/zustand/blob/main/LICENSE' },
+  { model: 'd3-zoom, d3-drag, d3-selection, d3-interpolate and their d3 helpers (pan and zoom inside React Flow, via React Flow)', license: 'ISC', commercial: 'yes', url: 'https://github.com/d3/d3-zoom/blob/main/LICENSE' },
 ]);
 /** Audio player (2026-10-25): the dancing bean hears a track's style in the browser. YAMNet ships in web/public/models/yamnet (uint8-quantized
  *  copy of Google's TF.js model; LICENSE + NOTICE.md in that folder), run with TensorFlow.js in a Web Worker. Nothing leaves the browser. */

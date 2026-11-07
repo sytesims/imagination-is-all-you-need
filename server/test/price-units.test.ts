@@ -22,21 +22,21 @@ const localQ = { credits: 0, runOn: 'local', routeKind: 'local', cost: cost('loc
 
 // 1. Own accounts: the Generate button's token.
 assert.equal(comfyCr(0.08, COMFY_CREDITS_PER_USD), 17); assert.equal(comfyCr(0.01, COMFY_CREDITS_PER_USD), 3, '2.11 → 3: rounded up, never below the bill'); assert.equal(comfyCr(17 / COMFY_CREDITS_PER_USD, COMFY_CREDITS_PER_USD), 17, 'a whole figure stays whole');
-assert.equal(priceToken({ q: comfyQ, own: true, credits: 8 }), '≈ $0.08');
+assert.equal(priceToken({ q: comfyQ, own: true, credits: 8 }), '≈ $0.080');
 assert.equal(priceToken({ q: falQ, own: true, credits: 42 }), '≈ $0.42');
 assert.equal(priceToken({ q: directQ, own: true, credits: 42 }), '≈ $0.42', 'a direct lab API (BFL credits are not shown on the button)');
 assert.equal(priceToken({ q: localQ, own: true, credits: 0 }), 'Free · on your computer');
 assert.equal(priceToken({ q: comfyQ, own: true, demo: true, credits: 0 }), 'Sample');
-ok('own accounts: "≈ $0.08" on Comfy, fal and a direct API, "Free · this computer" locally, "Sample" for a sample');
+ok('own accounts: "≈ $0.080" on Comfy, fal and a direct API, "Free · this computer" locally, "Sample" for a sample');
 
 // 2. Team mode: the ledger amount in dollars (exact, no ≈), everywhere.
-assert.equal(priceToken({ q: comfyQ, own: false, credits: 8 }), '$0.08');
-assert.equal(runPrice({ own: false, credits: 8, runOn: 'comfy-cloud' }), '$0.08');
-assert.equal(listPrice(8, 'fal', false), '$0.08');
-assert.equal(optionPrice({ ...comfyQ, billingMode: 'team' }, false, 8), '$0.08');
-assert.equal(priceText({ free: false, usd: 0.08, credits: 8, estimated: true, sample: false } as any, false, 'comfy-cloud'), '$0.08');
+assert.equal(priceToken({ q: comfyQ, own: false, credits: 8 }), '$0.080');
+assert.equal(runPrice({ own: false, credits: 8, runOn: 'comfy-cloud' }), '$0.080');
+assert.equal(listPrice(8, 'fal', false), '$0.080');
+assert.equal(optionPrice({ ...comfyQ, billingMode: 'team' }, false, 8), '$0.080');
+assert.equal(priceText({ free: false, usd: 0.08, credits: 8, estimated: true, sample: false } as any, false, 'comfy-cloud'), '$0.080');
 assert.equal(runPrice({ own: false, credits: 1234, runOn: 'fal' }), '$12.34');
-ok('team mode: "$0.08" on the button, the place rows, the menus and the queue');
+ok('team mode: "$0.080" on the button, the place rows, the menus and the queue');
 
 // 3. The menus, rows and queue agree with the Generate button for the same run (own accounts).
 for (const [q, c] of [[comfyQ, 8], [falQ, 42], [directQ, 42]] as const) {
@@ -46,7 +46,7 @@ for (const [q, c] of [[comfyQ, 8], [falQ, 42], [directQ, 42]] as const) {
   assert.equal(priceToken({ q: { runOn: placeOfQuote(q) }, own: true, credits: c }), btn, 'without a cost object (Recreate, older quotes) the same text');
   assert.equal(priceText({ free: false, usd: c / 100, credits: c, estimated: true, sample: false } as any, true, placeOfQuote(q)), btn, 'queue activity = Generate');
 }
-assert.equal(listPrice(8, 'comfy-cloud', true), '≈ $0.08'); assert.equal(listPrice(42, 'fal', true), '≈ $0.42');
+assert.equal(listPrice(8, 'comfy-cloud', true), '≈ $0.080'); assert.equal(listPrice(42, 'fal', true), '≈ $0.42');
 assert.equal(listPrice(42, 'fal', null), '≈ $0.42', 'billing still loading: dollars');
 for (const credits of [1, 3, 8, 12, 18, 64, 120, 253, 1999]) { const q = { credits, runOn: 'comfy-cloud', cost: cost('comfy', credits, 'Comfy') };
   assert.equal(optionPrice(q, true, credits), priceToken({ q, own: true, credits }), `Comfy ${credits} credits`); }
@@ -55,8 +55,8 @@ ok('resolution menu, place rows, Recreate and queue read exactly like the Genera
 // 4. Places, long forms and job costs.
 assert.equal(placeOfQuote({ routeKind: 'comfy-router' }), 'comfy-cloud'); assert.equal(placeOfQuote({ routeId: 'local:comfy-x' }), 'local');
 assert.equal(placeOfQuote({ cost: { billedTo: 'comfy' } }), 'comfy-cloud'); assert.equal(placeOfQuote({ runOn: 'replicate' }), 'replicate'); assert.equal(placeOfQuote(null), null);
-assert.equal(costShort(comfyQ.cost), '≈ $0.08 on Comfy'); assert.match(costTitle(comfyQ.cost), /about \$0\.08; .*\(17 Comfy credits\)/);
-assert.equal(jobCostText(8, 'comfy-cloud'), '≈ $0.08'); assert.equal(jobCostText(42), '≈ $0.42');
+assert.equal(costShort(comfyQ.cost), '≈ $0.080 on Comfy'); assert.match(costTitle(comfyQ.cost), /about \$0\.080; .*\(17 Comfy credits\)/);
+assert.equal(jobCostText(8, 'comfy-cloud'), '≈ $0.080'); assert.equal(jobCostText(42), '≈ $0.42');
 assert.equal(runPrice({ own: true, credits: 0, runOn: 'fal' }), 'Free'); assert.equal(runPrice({ own: true, credits: null, runOn: 'fal' }), null);
 ok('placeOfQuote, tooltips with "(17 Comfy credits)", job cost text');
 
@@ -71,5 +71,5 @@ ok('no ✦ or credits in prices; team mode says "$0.12 went back to your balance
 
 // 6. The server's per-route note ("…; ✦5 went back to your balance, trying the next route."): own accounts drop that part, team mode shows it in dollars.
 { const w = 'Comfy Cloud failed (timeout); ✦5 went back to your balance, trying the next route.';
-  assert.equal(shownNote(w, true), 'Comfy Cloud failed (timeout); trying the next route.'); assert.equal(shownNote(w, false), 'Comfy Cloud failed (timeout); $0.05 went back to your balance, trying the next route.');
+  assert.equal(shownNote(w, true), 'Comfy Cloud failed (timeout); trying the next route.'); assert.equal(shownNote(w, false), 'Comfy Cloud failed (timeout); $0.050 went back to your balance, trying the next route.');
   ok('route notes: no ✦ in own accounts, dollars in team mode'); }

@@ -179,7 +179,7 @@ try {
   // ---- the agent budget: a proposal over it is shown but Go is refused ----
   const budget = (await send('POST', '/api/agent/budgets', { name: 'Tiny budget', budgetUsd: 0.01 })).body;
   const prop4r = await send('POST', `/api/canvas/boards/${board.id}/agent/ops`, { ops: [{ kind: 'propose_run', card_ids: [cardId] }] }, { 'x-ohf-agent-budget': budget.id });
-  const prop4 = prop4r.body.results[0].result.proposal; assert.equal(prop4.overBudget, true); assert.match(String(prop4.reason), /over the \$0\.01 left/);
+  const prop4 = prop4r.body.results[0].result.proposal; assert.equal(prop4.overBudget, true); assert.match(String(prop4.reason), /over the \$0\.010 left/);
   const before4 = await jobCount(); const go4 = await send('POST', `/api/canvas/boards/${board.id}/agent/proposals/${prop4.id}/decision`, { decision: 'go' });
   assert.equal(go4.status, 409); assert.equal(go4.body.code, 'over_budget'); assert.equal(await jobCount(), before4, 'over-budget Go submits nothing');
   ok('over the agent budget: the proposal shows why and Go is refused with nothing submitted');

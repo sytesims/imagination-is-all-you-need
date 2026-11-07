@@ -9,6 +9,11 @@
 import { randomBytes, createHash } from 'node:crypto';
 
 export const QUOTE_TTL_MS = 15 * 60_000;
+
+/** $ amounts with the app's rule (a copy of server/src/shared/runCost.ts fmtUsd: mcp/ builds on its own, rootDir src, so it can't import
+ *  server/src; test/quotes.ts checks the two agree): 3 decimals under 10 cents ('$0.030', '$0.045'), else 2 ('$0.42', '$5.00'); '—' for no value. */
+export const fmtUsd = (n: number | null | undefined): string => { if (n == null || !Number.isFinite(n)) return '—'; const a = Math.abs(n); if (a === 0) return '$0.00';
+  if (a < 0.1) { const s = a.toFixed(3); return s === '0.000' ? '$0.00' : `${n < 0 ? '-' : ''}$${s}`; } return `${n < 0 ? '-' : ''}$${a.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; };
 type Stored = { toolId: string; hash: string; credits: number; usd: number; routeId: string | null; at: number; /** set once a run took it: the job id, or 'pending' while its submit is on the way */ usedBy?: string; /** the client_request_id of that run: the same id again is a replay of it (the app returns the first job), never a second run */ clientKey?: string };
 const quotes = new Map<string, Stored>();
 

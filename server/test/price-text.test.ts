@@ -7,8 +7,8 @@ import { planInReply } from '../src/billing.ts';
 const ok = (m: string) => console.log('ok ' + m);
 
 // 1. Tokens, balances, ledger amounts.
-assert.equal(usdToken(0.76, { approx: true }), '≈ $0.76'); assert.equal(usdToken(0.76), '$0.76'); assert.equal(usdToken(0.05, { upTo: true }), '≈ up to $0.05');
-assert.equal(ledgerUsd(8), '$0.08'); assert.equal(ledgerUsd(1234), '$12.34'); assert.equal(ledgerUsd(null), '—');
+assert.equal(usdToken(0.76, { approx: true }), '≈ $0.76'); assert.equal(usdToken(0.76), '$0.76'); assert.equal(usdToken(0.05, { upTo: true }), '≈ up to $0.050');
+assert.equal(ledgerUsd(8), '$0.080'); assert.equal(ledgerUsd(1234), '$12.34'); assert.equal(ledgerUsd(null), '—');
 assert.equal(balanceText(5.72, 'Comfy'), '$5.72 left on Comfy'); assert.equal(balanceText(5.72), '$5.72 left');
 assert.equal(LOCAL_FREE, 'Free · on your computer');
 ok('"≈ $0.76", "$12.34" (ledger 1234), "$5.72 left on Comfy", "Free · this computer"');

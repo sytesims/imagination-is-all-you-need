@@ -33,9 +33,9 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { getBoard, summary as boardSummary } from './canvasBoards.js';
+import { getBoard, summary as boardSummary, boardBudgetView, boardBudgetBlock } from './canvasBoards.js';
 import { jobs } from './jobs.js';
-import { budgetOfRequest, budgetView, type AgentBudget } from './agentBudget.js';
+import { budgetOfRequest, budgetById, budgetView, type AgentBudget } from './agentBudget.js';
 import { getTool } from './tools/registry.js';
 import { imageWorkflowsPayload } from './shared/workflows.js';
 import { DEMO_STARTERS, isChip, demoPlan, demoCardAt, demoPlanSize, demoFrameOf, demoNoteAt, demoGridOffset, detectStarter, isStarterId, demoReply, DEMO_GRID, type DemoPlan, type DemoCard } from './canvasDemo.js';
@@ -44,6 +44,7 @@ import { tagDemoCard, demoProviderOf } from './shared/demoMedia.js';
 import { config } from './config.js';
 import { freeSamples } from './routing/select.js';
 import { LOCAL_FREE } from './shared/modelIds.js';
+import { fmtUsd } from './shared/runCost.js';
 import { toolDefaults, toolModes } from './routing/defaults.js';
 import { canvasDefaultModel } from './shared/cloudDefaults.js';
 import { validateBatch, batchLine, BATCH_MAX, type BatchItem } from './shared/canvasBatch.js';
@@ -96,7 +97,8 @@ export type Op =
   | { kind: 'review_versions'; cards: { card_id: string; reviews: { version: number; verdict: 'fits' | 'check'; reason?: string }[]; recommend?: number | null }[]; say?: string }
   /* an existing generation on the board (2026-10-28): the same result card the Assets drawer places, so the agent can wire it into a new card */
   | { kind: 'add_from_job'; job_id: string; out?: number; at?: { x: number; y: number } };
-type InternalOp = Op | { kind: 'run_proposal'; proposal_id: string; card_ids: string[]; budget_id?: string | null } | { kind: 'free_area'; w: number; h: number }
+export interface PriceLock { credits: number | null; routeId: string | null; usd: number | null }
+type InternalOp = Op | { kind: 'run_proposal'; proposal_id: string; card_ids: string[]; budget_id?: string | null; locks?: Record<string, PriceLock> } | { kind: 'free_area'; w: number; h: number }
   | { kind: 'place_result'; job_id: string; url: string; title: string; at: { x: number; y: number } }
   /* Sofa in every material (canvasDemo.materialPlan): the demo's own pictures as Upload nodes, then a card's versions side by side */
   | { kind: 'add_upload'; url: string; name: string; at: { x: number; y: number } } | { kind: 'spread_versions'; card_id: string; from_id?: string; at: { x: number; y: number } };
@@ -108,14 +110,21 @@ export interface BoardNode {
   prompt?: string | null; title?: string | null; status?: string | null; inputs?: string[]; results?: { url: string; kind?: string | null; poster?: string | null }[];
   price?: PriceView | null; jobId?: string | null; missing?: string | null; /** the ComfyUI API graph of jobId's result, when one exists (View workflow) */ workflowGraph?: string;
 }
-export interface ProposalItem { cardId: string; title: string; workflow: string; model: string | null; status: string; usd: number | null; credits: number | null; quote: any; problem: string | null }
+export interface ProposalItem { cardId: string; title: string; workflow: string; model: string | null; status: string; usd: number | null; credits: number | null; quote: any; problem: string | null;
+  /** Price lock (release 1, security VERIFIED #4): the exact price this row was approved at and where it runs. Go submits them (priceLock=1),
+   *  so a run that got 10% dearer or moved to another model or place stops instead of charging more. */
+  quotedCredits: number | null; routeId: string | null;
+  /** Go stopped this row: the price changed since it was approved ("Price changed · $0.46 (was $0.42)"); a fresh proposal asks again */
+  priceChanged?: { wasUsd: number | null; nowUsd: number | null; reason: 'dearer' | 'route' } | null }
 export interface ProposalBudget { id: string; name: string; budgetUsd: number | null; remainingUsd: number | null; spentUsd: number; budgetCredits: number | null; remainingCredits: number | null }
 export interface Proposal {
   id: string; boardId: string; cardIds: string[]; note: string | null; items: ProposalItem[]; totalUsd: number; totalCredits: number;
   budget: ProposalBudget | null; overBudget: boolean; overByUsd: number | null; reason: string | null;
+  /** the board budget the person set (release 1), as it stood when this was priced; null = none */ boardBudget?: { usd: number; spentUsd: number; leftUsd: number } | null;
   /** The cards Go starts: every item without a problem. A row that can't run here (a model not on this server, a missing input) is skipped, not a
    *  blocker for the rest; the total counts only these. `reason` is set (and Go is off) only when NONE can run, or the batch is over budget. */
   runCardIds: string[]; skipped: { cardId: string; title: string; problem: string }[]; /** cards Go tried that the server refused (they stay drafts) */ failedIds?: string[];
+  /** Go stopped a row of that proposal because its price changed, and this one asks again (the dock shows the pair as ONE card, 2026-11-06) */ repriceOf?: string | null;
   status: 'pending' | 'running' | 'approved' | 'cancelled' | 'failed' | /** nothing in it can run here: the cards stay drafts, nothing to approve (never shown as Cancelled) */ 'drafts'; createdAt: number; decidedAt: number | null; jobIds: string[]; error: string | null;
 }
 export interface FeedEntry {
@@ -330,11 +339,18 @@ function rememberProposal(p: Proposal) {
   broadcast(p.boardId, 'proposal', p);
 }
 function updateProposal(p: Proposal) { broadcast(p.boardId, 'proposal_update', p); }
-/** Ask the user to pick one of these cards: the page pulses them and a click is the choice. A newer ask replaces a waiting one. */
+/** How long a pick waits for the user before it closes by itself (the page's badge and pulse go with it). */
+export const PICK_TTL_MS = Math.max(1000, Number(process.env.OPENHIGGSFIELD_PICK_TTL_MS) || 15 * 60_000);
+/** A waiting pick older than the time it may wait. */
+export const pickExpired = (p: Pick<PickAsk, 'status' | 'createdAt'> | null | undefined, at: number, ttl = PICK_TTL_MS) => !!p && p.status === 'waiting' && at - p.createdAt >= ttl;
+/** Ask the user to pick one of these cards: the page pulses them and a click is the choice. A newer ask replaces a waiting one; an ask nobody
+ *  answers closes after PICK_TTL_MS. */
 function startPick(boardId: string, cardIds: string[], text: string, by: PickAsk['by']): PickAsk {
   const s = stateOf(boardId); endPick(boardId);
   const p: PickAsk = { id: uid('pick'), boardId, cardIds: [...new Set(cardIds)], text, chosen: null, status: 'waiting', createdAt: now(), by };
-  s.pick = p; broadcast(boardId, 'pick', p); return p;
+  s.pick = p; broadcast(boardId, 'pick', p);
+  setTimeout(() => { if (s.pick === p && pickExpired(p, now())) endPick(boardId); }, PICK_TTL_MS + 50).unref?.();
+  return p;
 }
 /** A waiting pick ends unanswered (Stop, or a newer ask). */
 function endPick(boardId: string) { const s = states.get(boardId); if (s?.pick?.status === 'waiting') { s.pick.status = 'cancelled'; broadcast(boardId, 'pick', s.pick); } }
@@ -384,7 +400,8 @@ const messageBody = z.object({ text: z.string().trim().max(4000).default(''), /*
   /** pictures attached in the dock (2026-11-03): already Upload cards on the board, in order */ pictures: z.array(zPicture).max(MAX_DOCK_PICTURES).optional() }).strict()
   .refine((b) => b.text.length > 0 || !!b.pictures?.length, { message: 'Type a message or add a picture.', path: ['text'] });
 const decisionBody = z.object({ decision: z.enum(['go', 'cancel']) }).strict();
-const userProposalBody = z.object({ card_ids: z.array(z.string().trim().min(1)).min(1).max(20), note: z.string().max(400).optional() }).strict();
+const userProposalBody = z.object({ card_ids: z.array(z.string().trim().min(1)).min(1).max(20), note: z.string().max(400).optional(),
+  /** a row of this proposal stopped at Go because its price changed: the new proposal asks again under the same agent budget */ reprice_of: z.string().max(80).optional() }).strict();
 const demoBody = z.object({ prompt: z.string().trim().min(1).max(4000), starter: z.string().max(40).optional() }).strict();
 const pickBody = z.object({ pick_id: z.string().trim().min(1), card_id: z.string().trim().min(1), title: z.string().trim().max(140).optional() }).strict();
 const zodText = (e: z.ZodError) => { const i = e.issues[0]; return i ? `${i.path.join('.') || 'body'}: ${i.message}` : 'Invalid request.'; };
@@ -448,7 +465,7 @@ export function priceOfQuote(q: any): PriceView | null {
   const local = q.localRun === true || cost?.billedTo === 'local';
   const demo = q.demo === true;
   return { usd: usd == null ? null : r4(usd), credits: typeof q.credits === 'number' ? q.credits : null,
-    label: demo ? 'Sample' : local ? 'Free' : usd != null ? `≈ $${usd.toFixed(2)}` : null, demo, local, runnable: q.runnable !== false };
+    label: demo ? 'Sample' : local ? 'Free' : usd != null ? `≈ ${fmtUsd(usd)}` : null, demo, local, runnable: q.runnable !== false };
 }
 /** The saved board (either format: a version-1 tldraw snapshot is read through boardDocOf) as the same node list the live page returns
  *  (used when no page is open). Nodes in draw order; links are a card's inputs. */
@@ -555,8 +572,8 @@ async function executePublicOp(boardId: string, op: Op, req: FastifyRequest | nu
 
 /** The demo's line when nothing in a step can run here (the proposal's own reason already starts "None of these…" when several cards are skipped). */
 const noneRunWords = (reason: string | null | undefined) => { const why = String(reason ?? 'no model for them on this server').replace(/\.$/, ''); return /^None of these/.test(why) ? `${why}.` : `None of these can run here yet: ${why}.`; };
-async function proposeRun(boardId: string, op: { card_ids: string[]; note?: string }, req: FastifyRequest | null, by: 'mcp' | 'demo' | 'user' = 'mcp'): Promise<OpResult> {
-  const budget = req ? budgetOfRequest(req) : null;
+async function proposeRun(boardId: string, op: { card_ids: string[]; note?: string; repriceOf?: string | null }, req: FastifyRequest | null, by: 'mcp' | 'demo' | 'user' = 'mcp', budgetId?: string | null): Promise<OpResult> {
+  const budget = req ? budgetOfRequest(req) : budgetId ? budgetById(budgetId) : null;
   if (budget && 'error' in budget) return { ok: false, error: budget.error, code: 'agent_budget_unknown' };
   const r = await sendOp(boardId, { kind: 'propose_run', card_ids: op.card_ids, note: op.note }, OP_TIMEOUT_MS);
   if (!r.ok) return r;
@@ -565,6 +582,8 @@ async function proposeRun(boardId: string, op: { card_ids: string[]; note?: stri
     cardId: String(x.cardId ?? ''), title: String(x.title ?? 'Card').slice(0, 140), workflow: String(x.workflow ?? ''), model: x.model ? String(x.model) : null,
     status: String(x.status ?? 'draft'), usd: typeof x.usd === 'number' ? r4(x.usd) : null, credits: typeof x.credits === 'number' ? x.credits : null,
     quote: x.quote ?? null, problem: x.problem ? String(x.problem) : (x.missing ? String(x.missing) : null),
+    quotedCredits: typeof x.credits === 'number' && Number.isFinite(x.credits) ? x.credits : typeof x.quote?.credits === 'number' ? x.quote.credits : null,
+    routeId: typeof x.quote?.routeId === 'string' && x.quote.routeId ? x.quote.routeId : null,
   }));
   if (!items.length) return { ok: false, error: 'None of those cards could be priced. Add a card first.', code: 'no_cards' };
   const runs = items.filter((i) => !i.problem); const skipped = items.filter((i) => !!i.problem).map((i) => ({ cardId: i.cardId, title: i.title, problem: i.problem! }));
@@ -572,23 +591,37 @@ async function proposeRun(boardId: string, op: { card_ids: string[]; note?: stri
   const bv = budget && !('error' in budget) ? budgetView(budget as AgentBudget) : null;
   const budgetViewOut: ProposalBudget | null = bv ? { id: bv.id, name: bv.name, budgetUsd: bv.budgetUsd, remainingUsd: bv.remainingUsd, spentUsd: bv.spentUsd, budgetCredits: bv.budgetCredits, remainingCredits: bv.remainingCredits } : null;
   const overBy = budgetViewOut?.remainingUsd != null ? r4(Math.max(0, totalUsd - budgetViewOut.remainingUsd)) : null;
-  const over = overBy != null && overBy > 1e-9;
-  const reason = over
-    ? `This is $${overBy!.toFixed(2)} over the $${(budgetViewOut!.remainingUsd ?? 0).toFixed(2)} left in the agent budget. Nothing will run.`
+  const agentOver = overBy != null && overBy > 1e-9;
+  /* the board budget (release 1): the person's own limit on this board, next to the agent budget */
+  const boardBudget = boardBudgetView(boardId); const boardBlock = boardBudgetBlock(boardId, totalUsd);
+  const over = agentOver || !!boardBlock;
+  const reason = agentOver
+    ? `This is ${fmtUsd(overBy!)} over the ${fmtUsd(budgetViewOut!.remainingUsd ?? 0)} left in the agent budget. Nothing will run.`
+    : boardBlock ? `This is ${fmtUsd(Math.max(0, boardBlock.spentUsd + totalUsd - boardBlock.budgetUsd))} over the ${fmtUsd(boardBlock.leftUsd)} left in this board's budget. Nothing will run.`
     : !runs.length ? (skipped.length === 1 ? skipped[0].problem : `None of these cards can run here. ${skipped[0].problem}`) : null;
   const proposal: Proposal = { id: uid('prop'), boardId, cardIds: op.card_ids, note: op.note?.trim() || null, items, totalUsd, totalCredits,
-    budget: budgetViewOut, overBudget: over, overByUsd: overBy, reason, runCardIds: runs.map((i) => i.cardId), skipped, status: !runs.length && !over ? 'drafts' : 'pending', createdAt: now(), decidedAt: null, jobIds: [], error: null };
+    budget: budgetViewOut, overBudget: over, overByUsd: agentOver ? overBy : boardBlock ? r4(boardBlock.spentUsd + totalUsd - boardBlock.budgetUsd) : overBy, reason, boardBudget, runCardIds: runs.map((i) => i.cardId), skipped, ...(op.repriceOf ? { repriceOf: op.repriceOf } : {}), status: !runs.length && !over ? 'drafts' : 'pending', createdAt: now(), decidedAt: null, jobIds: [], error: null };
   rememberProposal(proposal);
-  addActivity(boardId, `Proposed ${runs.length} run${runs.length === 1 ? '' : 's'} · $${totalUsd.toFixed(2)}${skipped.length ? ` · ${skipped.length} skipped` : ''}`, { proposalId: proposal.id, meta: { tool: 'propose_run', by } });
+  addActivity(boardId, `Proposed ${runs.length} run${runs.length === 1 ? '' : 's'} · ${fmtUsd(totalUsd)}${skipped.length ? ` · ${skipped.length} skipped` : ''}`, { proposalId: proposal.id, meta: { tool: 'propose_run', by } });
   return { ok: true, result: { proposal } };
 }
 
+const PRICE_CHANGED_ALL = 'The price changed since you approved it, so nothing ran and nothing was charged. I asked again with the new price.';
+/** Go stopped rows whose price moved (the page's price lock, or the jobs route's 409): each says "Price changed · $0.46 (was $0.42)". */
+function markPriceChanged(p: Proposal, failed: any[]) {
+  for (const f of failed) { if (f?.code !== 'price_changed') continue; const it = p.items.find((i) => i.cardId === String(f.cardId ?? '')); if (!it) continue;
+    it.priceChanged = { wasUsd: typeof f.wasUsd === 'number' ? r4(f.wasUsd) : it.usd, nowUsd: typeof f.nowUsd === 'number' ? r4(f.nowUsd) : null, reason: f.reason === 'route' ? 'route' : 'dearer' }; }
+}
+/** Every row Go refused stopped on a price change (nothing else went wrong): the dock's one card says so, nobody repeats it. */
+const priceStopOnly = (p: Proposal) => { const f = p.failedIds ?? []; return f.length > 0 && f.every((id) => !!p.items.find((i) => i.cardId === id)?.priceChanged); };
 function finishRunProposal(p: Proposal, r: OpResult) {
   if (r.ok) { p.status = 'approved'; p.jobIds = Array.isArray(r.result?.jobIds) ? r.result.jobIds : []; const failed: any[] = Array.isArray(r.result?.failed) ? r.result.failed : [];
     p.error = failed.length ? `${failed.length} card${failed.length === 1 ? '' : 's'} didn’t start: ${String(failed[0]?.error ?? 'refused')}` : null; // the others still ran
-    p.failedIds = failed.map((f) => String(f?.cardId ?? '')).filter(Boolean);
+    p.failedIds = failed.map((f) => String(f?.cardId ?? '')).filter(Boolean); markPriceChanged(p, failed);
+    if (!p.jobIds.length && failed.length && failed.every((f) => f?.code === 'price_changed')) { p.status = 'failed'; p.error = PRICE_CHANGED_ALL; }
+    else if (failed.length && failed.every((f) => f?.code === 'price_changed')) p.error = `${failed.length === 1 ? 'One price' : `${failed.length} prices`} changed, so ${failed.length === 1 ? 'that card' : 'those cards'} didn’t start. I asked again with the new price.`;
     addActivity(p.boardId, `Started ${p.jobIds.length} run${p.jobIds.length === 1 ? '' : 's'}${failed.length ? ` · ${failed.length} didn’t start` : ''}`, { proposalId: p.id }); }
-  else { p.status = 'failed'; p.jobIds = Array.isArray(r.result?.jobIds) ? r.result.jobIds : []; p.error = r.error || 'The runs could not start.'; p.failedIds = [...(p.runCardIds ?? p.cardIds)]; addActivity(p.boardId, `Could not start the runs: ${p.error}`, { proposalId: p.id }); }
+  else { p.status = 'failed'; p.jobIds = Array.isArray(r.result?.jobIds) ? r.result.jobIds : []; p.error = r.error || 'The runs could not start.'; p.failedIds = [...(p.runCardIds ?? p.cardIds)]; markPriceChanged(p, Array.isArray(r.result?.failed) ? r.result.failed : []); addActivity(p.boardId, `Could not start the runs: ${p.error}`, { proposalId: p.id }); }
   p.decidedAt ??= now(); updateProposal(p);
 }
 
@@ -640,7 +673,7 @@ export function priceWords(p: Pick<Proposal, 'items' | 'totalUsd' | 'runCardIds'
   const run = new Set(p.runCardIds ?? []); const quotes = p.items.filter((i) => !i.problem && (!run.size || run.has(i.cardId))).map((i) => i.quote);
   if (quotes.length && quotes.every((q) => q?.demo === true)) return 'Sample: nothing is charged';
   if (p.totalUsd <= 0) return quotes.length && quotes.every((q) => q?.localRun === true || q?.cost?.billedTo === 'local') ? LOCAL_FREE : 'Free';
-  return `≈ $${p.totalUsd.toFixed(2)}`;
+  return `≈ ${fmtUsd(p.totalUsd)}`;
 }
 const firstSentence = (t: string) => (t.split(/(?<=[.!?])\s/)[0] ?? t).replace(/[.!?]+$/, '').trim();
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -712,7 +745,7 @@ async function runDemo(run: DemoRun, plan: DemoPlan) {
       while (p.status === 'running' && alive()) await wait(250);
       if (!alive()) return;
       const refused = new Set(p.failedIds ?? []); const started = p.runCardIds.filter((id) => !refused.has(id));
-      if (!started.length) { say(`Those didn’t start: ${String(p.error ?? 'the server said no').replace(/\.$/, '')}. Nothing was charged. The cards stay as drafts, so you can try again from each one.`, { error: true }); return; }
+      if (!started.length) { if (!priceStopOnly(p)) say(`Those didn’t start: ${String(p.error ?? 'the server said no').replace(/\.$/, '')}. Nothing was charged. The cards stay as drafts, so you can try again from each one.`, { error: true }); return; } /* a price stop: the dock's card says it once (New price · Run for $x) */
       if (refused.size) say(`${plural(refused.size, 'card')} didn’t start, so nothing was charged for ${refused.size === 1 ? 'it' : 'them'}. I’ll carry on with the rest.`, { error: true });
       const until = Date.now() + 15 * 60_000; let states: string[] = [];
       while (alive() && Date.now() < until) {
@@ -838,7 +871,7 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
     while (p.status === 'running' && alive()) await wait(250);
     if (!alive()) return null;
     const refused = new Set(p.failedIds ?? []); const started = p.runCardIds.filter((id) => !refused.has(id));
-    if (!started.length) { say(`Those didn’t start: ${String(p.error ?? 'the server said no').replace(/\.$/, '')}. Nothing was charged.`, { error: true }); return null; }
+    if (!started.length) { if (!priceStopOnly(p)) say(`Those didn’t start: ${String(p.error ?? 'the server said no').replace(/\.$/, '')}. Nothing was charged.`, { error: true }); return null; }
     if (refused.size) say(`${plural(refused.size, 'card')} didn’t start, so nothing was charged for ${refused.size === 1 ? 'it' : 'them'}. I’ll carry on with the rest.`, { error: true });
     return { started };
   };
@@ -946,7 +979,7 @@ async function runShortFilm(run: DemoRun, plan: ShortPlan) {
     if (clipIds.length && !videoOn) {
       const q = await sendOp(boardId, { kind: 'propose_run', card_ids: clipIds, note: 'quote only' }, OP_TIMEOUT_MS);
       const items: any[] = q.ok && Array.isArray(q.result?.items) ? q.result.items : []; const usd = r4(items.filter((x) => !x.problem).reduce((n, x) => n + (typeof x.usd === 'number' ? x.usd : 0), 0));
-      const words = items.length && items.every((x) => x.quote?.demo === true) ? 'Sample' : usd > 0 ? `≈ $${usd.toFixed(2)}` : items.length && items.every((x) => x.quote?.localRun === true || x.quote?.cost?.billedTo === 'local') ? LOCAL_FREE : 'Free';
+      const words = items.length && items.every((x) => x.quote?.demo === true) ? 'Sample' : usd > 0 ? `≈ ${fmtUsd(usd)}` : items.length && items.every((x) => x.quote?.localRun === true || x.quote?.cost?.billedTo === 'local') ? LOCAL_FREE : 'Free';
       say(`${plural(clipIds.length, 'clip card')} wired to your picks, priced at ${words} together. ${plan.videoOff}`, { cardId: clipIds[0] });
     }
     const runNow = [...(videoOn ? clipIds : []), voiceId, musicId].filter(Boolean);
@@ -1024,7 +1057,8 @@ export function registerCanvasAgent(app: FastifyInstance) {
     const b = getBoard(req.params.id); if (!b) return notFound(reply);
     const parsed = userProposalBody.safeParse(req.body); if (!parsed.success) return bad(reply, zodText(parsed.error), 'invalid_proposal');
     if (!hasCanvas(b.id)) return bad(reply, 'Open the board in the app first.', 'canvas_not_open', 409);
-    const r = await proposeRun(b.id, parsed.data, null, 'user');
+    const was = parsed.data.reprice_of ? proposalsById.get(parsed.data.reprice_of) : undefined; const origin = was && was.boardId === b.id ? was : undefined;
+    const r = await proposeRun(b.id, { card_ids: parsed.data.card_ids, note: parsed.data.note, repriceOf: origin?.id ?? null }, null, 'user', origin?.budget?.id ?? null);
     if (!r.ok) return bad(reply, r.error, r.code ?? 'not_priced', 409);
     return { ok: true, proposal: r.result.proposal };
   });
@@ -1201,9 +1235,12 @@ export function registerCanvasAgent(app: FastifyInstance) {
       return { ok: true, proposal: p };
     }
     if (p.reason) return bad(reply, p.reason, p.overBudget ? 'over_budget' : 'not_runnable', 409);
+    /* the board budget again at Go (runs may have started since this was priced); only the rows Go starts count */
+    { const bb = boardBudgetBlock(b.id, p.totalUsd); if (bb) { p.reason = bb.message; p.overBudget = true; p.boardBudget = boardBudgetView(b.id); updateProposal(p); return bad(reply, bb.message, 'board_budget', 409); } }
     if (!hasCanvas(b.id)) return bad(reply, 'Open the board in the app first.', 'canvas_not_open', 409);
     p.status = 'running'; p.decidedAt = now(); addDecision(b.id, 'go', p.id); updateProposal(p);
-    void sendOp(b.id, { kind: 'run_proposal', proposal_id: p.id, card_ids: p.runCardIds ?? p.cardIds, budget_id: p.budget?.id ?? null }, PROPOSAL_TIMEOUT_MS, (r) => finishRunProposal(p, r));
+    const locks: Record<string, PriceLock> = {}; for (const it of p.items) locks[it.cardId] = { credits: it.quotedCredits ?? null, routeId: it.routeId ?? null, usd: it.usd };
+    void sendOp(b.id, { kind: 'run_proposal', proposal_id: p.id, card_ids: p.runCardIds ?? p.cardIds, budget_id: p.budget?.id ?? null, locks }, PROPOSAL_TIMEOUT_MS, (r) => finishRunProposal(p, r));
     return { ok: true, proposal: p };
   });
 }
