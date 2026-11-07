@@ -98,7 +98,7 @@ Job-level failures are not HTTP errors: `GET /api/jobs/{id}` returns 200 with `s
 | POST /api/tools/{toolId}/jobs | 400 | Validation (all issues listed) |
 | POST /api/tools/{toolId}/jobs | 402 | Not enough credits: {code:"credits", needed, balance, affordableGroups, totalGroups, partialCost}. Resubmit with maxGroups=<affordableGroups> to run (and pay for) only the first k ref groups. |
 | POST /api/tools/{toolId}/jobs | 429 | code=queue_full {limit, queued} (MAX_QUEUED, default 20). Never charged. |
-| POST /api/tools/{toolId}/jobs | 409 | → 409 {"error":"route_changed","code":"route_changed","message":"The price changed |
+| POST /api/tools/{toolId}/jobs | 409 | → 409 {"error":"route_changed","code":"route_changed", quotedCredits, credits, quotedUsd, usd, why ("Not started: the price rose from $0.12 to $0.14; …"), next ("Re-quote … then submit again with quotedCredits=14"), quote}: only when the run would now cost MORE than quotedCredits (or, with no quotedCredits, run on another place); the same or a lower price runs. quotedRouteId is optional. message / detail are the app's words. Nothing charged |
 | POST /api/tools/{toolId}/jobs | 409 | → 409 {code:"route_not_runnable", routeId, reason} (402 needs_provider when only its key is missing), nothing charged |
 | POST /api/tools/{toolId}/jobs | 400 | → 400 invalid_language |
 | POST /api/tools/{toolId}/jobs | 409 | → 409 code too_heavy |

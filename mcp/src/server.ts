@@ -567,7 +567,8 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
           ...(done ? {} : { poll_after_sec: pollAfter(j), next: `Still ${j.status}. Call status {id:"${j.id}", wait_sec} in about ${pollAfter(j)} s. Do not call run again: that starts (and pays for) a second job.` }) }), isError: j.status === 'failed' || j.status === 'blocked' };
       } catch (e) {
         const b: any = e instanceof ApiError ? e.body : null;
-        if (b?.code === 'route_changed') return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, reason: 'The price or the place changed since the quote, so the app refused the run. Nothing was charged.', newQuote: b.quote ? { credits: b.quote.credits, usd: (b.quote.credits ?? 0) / 100, runOn: b.quote.runOn, routeId: b.quote.routeId } : null, next: 'Quote again, tell the user the new price, then run with the new quote_id.' }, null, 2) }] };
+        if (b?.code === 'route_changed') return { isError: true, content: [{ type: 'text' as const, text: JSON.stringify({ refused: true, charged: false, reason: b.why ?? 'The price went up since the quote, so the app refused the run. Nothing was charged.', quotedUsd: b.quotedUsd ?? (typeof b.quotedCredits === 'number' ? b.quotedCredits / 100 : null), usd: b.usd ?? (typeof b.credits === 'number' ? b.credits / 100 : null),
+          newQuote: b.quote ? { credits: b.quote.credits, usd: (b.quote.credits ?? 0) / 100, runOn: b.quote.runOn, routeId: b.quote.routeId } : null, next: 'Quote again (same arguments), tell the user the new price, then run with the new quote_id.' }, null, 2) }] };
         return fail(e, await findTool(a.tool_id).catch(() => undefined));
       }
     }));
