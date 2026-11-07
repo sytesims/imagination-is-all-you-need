@@ -66,6 +66,7 @@ export function ApiDocs() {
 
 /** Plugins: its own file (2026-11-01 redesign). */
 export { Plugins } from './PluginsPage';
+export { PluginsHub } from './PluginsHub';
 
 export function Presets({ tools }: { tools: ToolInfo[] }) {
   /* Page 16: GET /api/presets?source=&sort=&toolId=&media=&category=&q=&cursor= → {items[{id,toolId,label,mode,posterUrl,previewWebm,previewUrl,refThumbs[],uses,prefill}], nextCursor, communityAvailable, note, categories[], byTool{}}. Falls back to the tool registry.

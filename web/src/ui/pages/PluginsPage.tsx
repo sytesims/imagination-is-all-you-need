@@ -2,7 +2,7 @@
  * Your workflows (2026-11-01, was Plugins): the ComfyUI workflows you added. A big "Add a workflow" button (shared/AddWorkflow.tsx: drop a file,
  * check the guessed nodes, save; it shows up in its tab at once), then your workflows as cards (on/off, open, remove, licence, "Added by you").
  * The folder format, sample plugin.json / node-map.json, scripts and the add-ons and built-in apps sit under "For advanced users".
- * Route stays /plugins (old links keep working). Data: GET /api/workflow-folders (+ user), DELETE /api/workflows/:id, POST /api/workflow-folders/:id.
+ * Route /workflows/yours (was /plugins until 2026-11-07; /plugins is now the Plugins page, which links here). Data: GET /api/workflow-folders (+ user), DELETE /api/workflows/:id, POST /api/workflow-folders/:id.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { listTools, type ToolInfo } from '../../api';

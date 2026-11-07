@@ -52,7 +52,7 @@ export const ThreeDStudio = named(L.threeD, 'default');
 export const WorkflowPage = named(L.workflowPages, 'WorkflowPage');
 export const LookPage = named(L.workflowPages, 'LookPage');
 export const PageComps = {
-  ApiDocs: named(L.pages, 'ApiDocs'), Mcp: named(L.pages, 'Mcp'), Plugins: named(L.pages, 'Plugins'), Community: named(L.pages, 'Community'),
+  ApiDocs: named(L.pages, 'ApiDocs'), Mcp: named(L.pages, 'Mcp'), Plugins: named(L.pages, 'Plugins'), PluginsHub: named(L.pages, 'PluginsHub'), Community: named(L.pages, 'Community'),
   Workflows: named(L.pages, 'Workflows'), Models: named(L.pages, 'Models'),
   Profile: named(L.pages, 'Profile'), RecipeImport: named(L.pages, 'RecipeImport'),
   Canvas: named(L.canvas, 'default'), Film: named(L.film, 'default'), LearnEcom: named(L.learnEcom, 'default'),
@@ -66,7 +66,7 @@ export const SCREEN_CHUNK: Record<string, ChunkKey> = {
   'app-face-swap': 'faceSwap', 'app-person-swap': 'faceSwap', 'app-shots': 'shots', 'three-d': 'threeD',
 };
 const PAGE_CHUNK: Record<string, ChunkKey> = {
-  '/mcp': 'pages', '/api-docs': 'pages', '/plugins': 'pages', '/community': 'pages', '/workflows': 'pages', '/models': 'pages', '/presets': 'pages',
+  '/mcp': 'pages', '/api-docs': 'pages', '/plugins': 'pages', '/workflows/yours': 'pages', '/community': 'pages', '/workflows': 'pages', '/models': 'pages', '/presets': 'pages',
   '/profile': 'pages', '/settings': 'settings', '/licenses': 'licenses', '/canvas': 'canvas', '/film': 'film', '/learn/ai-ecommerce': 'learnEcom',
   '/account/usage': 'spend', '/usage': 'spend', '/spend': 'spend', '/terms': 'terms', '/usage-notes': 'terms',
 };

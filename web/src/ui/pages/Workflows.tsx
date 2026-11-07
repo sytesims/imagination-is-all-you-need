@@ -289,7 +289,7 @@ function Sheet({ r, rows, chains, s, onClose, onOpen, mock }: { r: Row; rows: Ro
       <p className="wv-kicker">{r.e.goal ? goalById(r.e.goal)?.label ?? '' : goalLabel(r.e.id)}</p>
       <h2 className="disp wv-ptitle">{r.e.name}{r.e.plugin && <PluginBadge b={r.e.plugin} />}</h2>
       <p className="wn-pline">{r.e.line}</p>
-      {r.e.plugin && <p className="wn-pline" data-testid="wn-plugin-meta"><PluginMeta b={r.e.plugin} /> · <Link to="/plugins">Your workflows</Link></p>}
+      {r.e.plugin && <p className="wn-pline" data-testid="wn-plugin-meta"><PluginMeta b={r.e.plugin} /> · <Link to="/workflows/yours">Your workflows</Link></p>}
       {r.e.tabName && <p className="wv-muted wn-tabname" data-testid="wn-tabname">In the {tab} menu: {r.e.tabName}</p>}
       <div className="wv-pills"><span className="wv-pill">Needs: {r.e.needs}</span><RunLine p={r.run} testId="wn-sheet-run" /></div>
       {mock && <p className="wv-muted wn-mocknote">Sample mode: you get a sample and pay nothing. Prices show what a real run costs.</p>}

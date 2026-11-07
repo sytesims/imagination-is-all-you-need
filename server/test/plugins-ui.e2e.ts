@@ -114,7 +114,6 @@ try {
     assert.ok(!/['"]\/plugins['"][^\n]{0,80}Your workflows/.test(fs.readFileSync(path.resolve(import.meta.dirname, '../..', f), 'utf8')), `${f}: Your workflows links go to /workflows/yours`);
   ok('the folder list is GET /api/workflow-folders; the web has /plugins (Plugins) and /workflows/yours (Your workflows)');
 } catch (e) { console.error(e); process.exit(1); } // (closing the server ends the process: fail before that)
-const { mounted } = await import('../src/kernel/index.js'); for (const m of mounted.filter((x) => x.name !== 'legacy')) await m.fiber.dispose().catch(() => {});
 const { currentHttp } = await import('../src/kernel/http.js'); currentHttp().app.server.close();
 
 // ---- choices survive a restart: two servers in turn on one data dir ----
