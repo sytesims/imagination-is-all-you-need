@@ -11,6 +11,10 @@
  */
 
 export const LAYERS_TOOL = 'layers';
+/** Render in the viewer: a split with your changes (layers/editTool.ts). */
+export const LAYERS_EDIT_TOOL = 'layers-edit';
+/** Jobs whose result is a split the viewer and the export read. */
+export const LAYER_JOB_TOOLS: readonly string[] = [LAYERS_TOOL, LAYERS_EDIT_TOOL];
 /** Your computer (your ComfyUI). */
 export const LAYERS_LOCAL = 'comfy-layers';
 /** Comfy Cloud (the same graph through the v2 jobs API). */
@@ -51,8 +55,9 @@ export type LayersOption = (typeof LAYERS_OPTIONS)[number]['field'];
 /** The clean background covers at most this many seconds (Footage Effects runs up to 5 s at a time). */
 export const LAYERS_PLATE_SECONDS = 5;
 
-/** A chip's words, tidied: one line, no commas or colons (SAM reads "a, b" as two prompts and "a:2" as a count). */
-export const cleanObjectName = (s: unknown): string => String(s ?? '').replace(/[,:;\n\r\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, LAYERS_MAX_NAME);
+/** A chip's words, tidied: one line, no commas or colons (SAM reads "a, b" as two prompts and "a:2" as a count), no picture references
+ *  ("@image1", "<Picture 1>": a name is plain words for SAM). */
+export const cleanObjectName = (s: unknown): string => String(s ?? '').replace(/@(image|video|audio)\d+\b|<(picture|video|audio) \d+>/gi, ' ').replace(/[,:;\n\r\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, LAYERS_MAX_NAME);
 
 /** The chips from a form value: a JSON list, or words split on commas / new lines. Empty names and repeats are dropped. */
 export function objectNames(raw: unknown): string[] {

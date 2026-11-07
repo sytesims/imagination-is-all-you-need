@@ -350,6 +350,10 @@ const VIDEO: PromptGrammar[] = [
   g({ key: 'flux-3-upscaler', name: 'FLUX 3 Upscaler', medium: 'video', kind: 'upscale', status: 'known', prompt: 'optional', refs: { style: 'none', note: 'Source clip only.', src: [NODE('FluxVideoUpscaleNode')] }, negative: 'none',
     special: ['Prompt only in creative mode'], structure: 'Creative mode: the detail to add.', example: 'Crisp fabric texture and sharp foliage.', code: [{ at: 'server/src/hostedRequests.ts:174', follows: 'yes' }], sources: [NODE('FluxVideoUpscaleNode')] }),
   noPrompt('birefnet', 'BiRefNet', 'video', 'utility', 'Background removal.', [{ at: 'server/src/comfy/plans.ts:238', follows: 'n/a' }], [REPO('workflows/remove-bg-birefnet-api.json')]),
+  // Video to layers (2026-11-07, server/src/layers): no prompt; each name typed in "Split out" is its own SAM 3.1 text prompt (one CLIPTextEncode
+  // per name, commas and ":N" counts taken out by layers/constants.ts cleanObjectName, at most 40 characters; SAM reads up to 32 tokens).
+  noPrompt('comfy-layers', 'Video to layers (SAM 3.1 + BiRefNet + Depth Anything 3)', 'video', 'layers', 'No prompt: each name you type ("woman", "neon sign") is its own SAM 3.1 text prompt, found on the first frame of every 2-second piece.',
+    [{ at: 'server/src/layers/graph.ts:1', follows: 'yes' }, { at: 'server/src/layers/constants.ts:1', follows: 'yes' }], [REPO('workflows/layers-split-api.json'), NODE('SAM3_Detect')]),
   noPrompt('bria-video-background-removal', 'Bria Video Background Removal', 'video', 'utility', 'Background removal.', [], [NODE('BriaRemoveVideoBackground')]),
   noPrompt('luma-ray-2-reframe', 'Luma Reframe', 'video', 'utility', 'Reframes to a new shape (Luma Ray 3.2).', [{ at: 'server/src/tools/editVideo/index.ts', follows: 'yes' }], [NODE('LumaRay32VideoReframeNode')],
     { prompt: 'optional', structure: 'What fills the new areas; empty sends a short default ("Extend the scene naturally").', example: 'Extend the beach and the sky naturally.' }),
