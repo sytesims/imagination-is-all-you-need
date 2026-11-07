@@ -20,7 +20,7 @@ export type { LayersManifest };
 export type LayersMode = 'layers' | 'depth' | 'background' | 'overview';
 
 export function useVideoLayers(job: { id: string; toolId?: string; status?: string } | null): LayersManifest | null {
-  const on = usePluginOn('studio-video'); /* Video to layers is part of the Video studio */ const [m, setM] = useState<LayersManifest | null>(null);
+  const on = usePluginOn('studio-edit'); /* Video to layers is part of the Edit studio, with Footage Effects */ const [m, setM] = useState<LayersManifest | null>(null);
   const want = !!job && job.toolId === LAYERS_TOOL && job.status === 'done' && on;
   useEffect(() => { setM(null); if (!want) return; const ac = new AbortController();
     fetch(`/api/layers/${encodeURIComponent(job!.id)}`, { signal: ac.signal }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.kind === 'video-layers') setM(d); }).catch(() => undefined);

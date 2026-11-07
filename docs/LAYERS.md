@@ -51,4 +51,4 @@ The graph is [`workflows/layers-split-api.json`](../workflows/layers-split-api.j
 - Layers are made at up to 1024 px on the long side and up to 24 frames per second.
 - The clean background covers the first 5 s; after that it holds its last frame.
 - Something that isn't in view at the start of a 2-second piece isn't found in that piece; the result says when. Glass, smoke and splashes stay in the background.
-- It is part of the Video studio: turn Video off on the Plugins page and it goes with the rest of Video; your results stay in your library as plain clips.
+- It is part of the Edit studio, with Footage Effects: turn Edit off on the Plugins page and it goes with the other edits; your results stay in your library as plain clips.

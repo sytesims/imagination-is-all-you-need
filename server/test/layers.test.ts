@@ -170,8 +170,8 @@ let man: any;
   const { PLUGIN_CATALOG } = await import('../src/shared/pluginCatalog.ts'); assert.ok(!PLUGIN_CATALOG.some((e) => e.id === 'layers'), 'not a plugin of its own');
   const { readProfile } = await import('../src/kernel/profile.ts'); assert.ok(!readProfile('desktop').plugins.includes('layers'));
   const { FEATURE_IDS } = await import('../src/plugins-builtin/features.ts'); assert.ok(!FEATURE_IDS.includes('layers'));
-  const { STUDIO_TOOLS } = await import('../src/tools/builtin.ts'); assert.ok(STUDIO_TOOLS['studio-video'].some((e) => e.tool.id === 'layers'), 'a tool of the Video studio');
-  ok('registration: Video to layers in the Video studio, two places, Cloud workflow + runner route, unmeasured price row, bill seconds');
+  const { STUDIO_TOOLS } = await import('../src/tools/builtin.ts'); assert.ok(STUDIO_TOOLS['studio-edit'].some((e) => e.tool.id === 'layers'), 'a tool of the Edit studio, with Footage Effects');
+  ok('registration: Video to layers in the Edit studio, two places, Cloud workflow + runner route, unmeasured price row, bill seconds');
 }
 // ---------------- 8. plan ----------------
 {
