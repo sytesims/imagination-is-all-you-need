@@ -1,6 +1,6 @@
 /**
  * Layers: the analysis graph (workflows/layers-split-api.json, our own, core ComfyUI nodes only), patched for one job. Proven chains only
- * (owner rule, 2026-11-07, after a text-only SAM3_VideoTrack graph hung twice on Comfy Cloud: research DIAGNOSIS.md, PROVEN-WORKFLOWS.md):
+ * (2026-11-07: a text-only SAM3_VideoTrack graph, which no proven graph uses, never finished on Comfy Cloud):
  *  - SAM 3.1: exactly the SAM part of Swap Two People (workflows/cloud/h3-two-person-swap-api.json, done on Comfy Cloud; nodes 42 → 143/243 →
  *    160/161 → 162 → 163 → 170 → 148/248), with one name per object instead of "person" + a half-frame: frame 0 → one SAM3_Detect per name
  *    (threshold 0.35, refine 2) → MaskToImage → BatchImagesNode → ImageToMask → ONE SAM3_VideoTrack seeded with those masks (no text detection,
