@@ -13,11 +13,15 @@
  *    (and while any of it is on screen); it gives the sound back when it ends, pauses or closes.
  *  - Muting from any clip's button mutes the page; unmuting from a clip's button brings the sound back there (it is preferred while in view).
  *  - A hidden tab: every clip is muted at once (shared/mediaPause pauses them); back on screen, the clip in view gets its sound back.
+ *  - Leaving the page (2026-11-07, useSoundScope): a route change first HIDES the page (React's Suspense keeps it mounted under
+ *    display:none while the next page's code loads, for as long as that takes) and only then removes it; a removed player is paused by the
+ *    browser some time later. So the page's own scope stops every player inside it the moment it leaves, and while it is away any play
+ *    inside it (a late play() promise, a watchdog, a timer) is paused at once. Coming back (the same page shown again) changes nothing else.
  *  - Opt-in hoverSound films: temporary pointer/keyboard attention wins while playing and visible, without changing mute or activation.
  *    Handoffs to/from that group fade out before fading in, so even rapid pointer moves never overlap two audible tracks.
  * Pure parts (shared/soundPick.ts: readSoundChoice, pickSound) are tested in server/test/sound-director.test.ts.
  */
-import { useCallback, useEffect, useId, useRef, useSyncExternalStore, type RefObject } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useSyncExternalStore, type RefObject } from 'react';
 
 import { MIN_SHARE, OLD_SOUND_KEYS, SOUND_KEY, FADE_MS, SETTLE_MS, pickSound, readSoundChoice, type SoundCandidate } from './soundPick';
 export { SOUND_KEY, OLD_SOUND_KEYS, readSoundChoice, pickSound } from './soundPick';
@@ -97,6 +101,38 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 /** apply after the view settles (scrolling, a clip starting or stopping) */
 function schedule() { if (timer) clearTimeout(timer); timer = setTimeout(() => { timer = null; apply(); }, SETTLE_MS); }
 
+/* ------------------------------------------------------------------ leaving a page ------------------------------------------------------------------ */
+/** pages that have left (hidden or unmounted): nothing inside them may play */
+const away = new Set<Element>();
+/** Pure core of leaving (tested in server/test/sound-scope.test.ts): pause every player in the list now and stop its running fade. */
+export function stopPlayers(list: Iterable<Pick<HTMLMediaElement, 'paused' | 'pause' | 'muted' | 'volume'>>) {
+  for (const el of list) {
+    const f = fades.get(el as HTMLMediaElement); if (f != null) { cancelAnimationFrame(f); fades.delete(el as HTMLMediaElement); if (el.muted || el.volume < 1) { el.muted = true; el.volume = 1; } }
+    if (!el.paused) { try { el.pause(); } catch { /* gone */ } }
+  }
+}
+/** Stop every sound `root` holds: its players pause now, the director forgets any pending move. */
+export function silence(root: Element) {
+  if (timer) { clearTimeout(timer); timer = null; } ++revision; exclusiveHandoff = false; attendedLast = false;
+  const inside = (e: Entry) => !!e.root && root.contains(e.root);
+  for (const e of entries.values()) if (inside(e)) { if (prefer === e.id) prefer = null; if (attention === e.id) attention = null; }
+  const own = new Set<HTMLMediaElement>(root.querySelectorAll<HTMLMediaElement>('video, audio'));
+  for (const e of entries.values()) { const el = inside(e) ? e.media() : null; if (el) own.add(el); }
+  stopPlayers(own);
+}
+/**
+ * A page's sound scope: put it on the page's outermost element. When the page leaves (a route change hides it, then removes it), every
+ * player inside stops at once and stays stopped while it is away. A layout effect, because React runs its cleanup the moment Suspense
+ * hides the page, not only when it unmounts.
+ */
+export function useSoundScope(root: RefObject<Element>) {
+  useEffect(() => { install(); }, []);
+  useLayoutEffect(() => {
+    const r = root.current; if (!r) return; away.delete(r);
+    return () => { away.add(r); silence(r); };
+  }, [root]);
+}
+
 let installed = false;
 function install() {
   if (installed || typeof document === 'undefined') return; installed = true; load();
@@ -106,6 +142,12 @@ function install() {
   /* a hidden tab: everything muted now; back: the clip in view gets its sound */
   document.addEventListener('visibilitychange', () => apply());
   /* a clip starting, pausing or ending can change who carries the sound (an explicit film, a remounted clip) */
+  /* a page that has left: whatever starts playing inside it stops again at once */
+  document.addEventListener('play', (e) => {
+    const t = e.target; if (!(t instanceof HTMLMediaElement) || !away.size) return;
+    away.forEach((r) => { if (!r.isConnected) away.delete(r); }); /* a removed page is the browser's to pause; forget it */
+    if ([...away].some((r) => r.contains(t))) { try { t.pause(); } catch { /* gone */ } }
+  }, true);
   const media = (e: Event) => { const t = e.target; if (t instanceof HTMLMediaElement && [...entries.values()].some((x) => x.media() === t)) schedule(); };
   ['play', 'pause', 'ended', 'emptied'].forEach((n) => document.addEventListener(n, media, true));
   if (typeof window !== 'undefined') (window as unknown as { __ohfSound?: unknown }).__ohfSound = { state: () => ({ ...snap, prefer, attention, clips: candidates() }) };
