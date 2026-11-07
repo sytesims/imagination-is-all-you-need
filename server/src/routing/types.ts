@@ -95,7 +95,7 @@ export interface RouteOption {
   sourceUrl: string;
   caps?: Record<string, unknown>;
   /** B6: 0 = Comfy Cloud workflow (open weights), 1 = Comfy Cloud · partner API (partner / API nodes), 2 = direct API (fal, Replicate, BFL, vendor), 3 = local. */
-  tier?: 0 | 1 | 2 | 3; tierLabel?: 'Comfy Cloud' | 'Comfy Router' | 'API' | 'Local';
+  tier?: 0 | 1 | 2 | 3; tierLabel?: 'Comfy Cloud' | 'Comfy Router' | 'Comfy Cloud · partner model' | 'API' | 'Local';
   /** B6: a live executor exists for this route (a key alone makes it run). false = only the mock executor (partner nodes until I1/I2). */
   wired?: boolean;
   twinOf?: string; twinProvider?: string;

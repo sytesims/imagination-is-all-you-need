@@ -27,3 +27,18 @@ export function priceLockStop(o: { quotedRoute?: string | null; quotedCredits?: 
   const now = Number.isFinite(o.credits) ? o.credits : Infinity;
   return now > qc + 1e-9 && now >= qc * (1 + PRICE_LOCK_TOLERANCE) - 1e-9 ? 'dearer' : null;
 }
+
+/**
+ * 409 route_changed for API callers (agent path audit 2026-11-07 #7): the app's message ("The price went up… press Generate again") is UI copy, and
+ * an agent read it as "a route id is missing". These fields say what moved and what to send next. Fired only when the run is dearer than
+ * quotedCredits (priceAskAgain), the place moved under a Canvas price lock, or the place changed with no quotedCredits sent; quotedRouteId is optional.
+ */
+export function routeChangedForApi(o: { quotedCredits?: number | null; credits: number; quotedRoute?: string | null; route?: string | null; lockReason?: 'dearer' | 'route' | null; resubmit?: string }) {
+  const usd = (cr: number) => { const v = Math.round(cr) / 100; return `$${v < 0.1 && v > 0 ? v.toFixed(3) : v.toFixed(2)}`; };
+  const qc = o.quotedCredits != null && Number.isFinite(o.quotedCredits) ? o.quotedCredits : null; const moved = !!o.quotedRoute && !!o.route && o.quotedRoute !== o.route;
+  const price = qc == null ? `no quotedCredits was sent and the place changed (now ${usd(o.credits)})` : o.credits > qc ? `the price rose from ${usd(qc)} to ${usd(o.credits)}` : `the price is ${usd(o.credits)} (quoted ${usd(qc)})`;
+  const cause = moved ? `it would now run on ${o.route} instead of ${o.quotedRoute}` : qc != null && o.credits > qc ? 'the request prices higher than the quote (prompt length, duration, resolution, inputs or the place)' : null;
+  return { quotedUsd: qc == null ? null : Math.round(qc) / 100, usd: Math.round(o.credits) / 100,
+    why: `Not started: ${price}${cause ? `; ${cause}` : ''}${o.lockReason === 'route' ? ' (Canvas price lock: another place asks again)' : ''}. Nothing was charged.`,
+    next: `Re-quote (${o.resubmit ?? 'GET /api/tools/{toolId}/price'} with the same fields; quote.credits here is the new price), show it, then submit again with quotedCredits=${Math.round(o.credits)}${o.route ? ` (quotedRouteId=${o.route} is optional)` : ''}.` };
+}

@@ -712,6 +712,7 @@ async function createJob(toolId: string, req: FastifyRequest, reply: FastifyRepl
       if (Number(inp.refVideoSeconds) > 0) qs.set('refVideoSeconds', String(inp.refVideoSeconds)); qs.set('provider', prov.id);
       const fresh = await app.inject({ method: 'GET', url: `/api/tools/${tool.id}/price?${qs}` }); let quote: any = null; try { quote = fresh.json(); } catch { /* */ }
       return reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: ROUTE_CHANGED_MSG, userMessage: ROUTE_CHANGED_MSG, detail: 'Review the new price and press Generate again.', charged: false, calm: true, quote, quotedCredits: qc, credits: nowCost, dearer: lockStop !== 'route',
+        ...PC.routeChangedForApi({ quotedCredits: qc, credits: nowCost, quotedRoute: qr || null, route: nowRoute, lockReason: lockStop, resubmit: `GET or POST /api/tools/${tool.id}/price` }) /* API callers: old → new price, why, next (2026-11-07) */,
         ...(lock ? { lock: true, reason: lockStop, quotedRouteId: qr || null, routeId: nowRoute } : {}),
         refund: { refunded: false, amount: 0, charged: false, note: 'Nothing was charged.' } }); // P2 (BUG-HUNT-8 #6): says nothing was charged; calm = not an error
     } }
@@ -1042,7 +1043,9 @@ app.post<{ Params: { id: string }; Querystring: { failedOnly?: string; runOn?: s
       // 2026-11-07 (jobs e47bb4e4 → 42a3ef5c): a failed job whose result was made (and maybe paid for) but not saved never starts a NEW paid run on
       // one click. Without the price the user OK'd (quotedCredits), it answers the price and starts nothing; Retry download (collect) is the free way.
       if (rerunNeedsPriceOk(j, rerunQuote.credits, qc)) return { sent: reply.code(409).send({ error: 'confirm_price', code: 'confirm_price', message: `This starts a new paid run (about ${ledgerUsdOf(rerunQuote.credits)}). Confirm the price to run it again. Nothing was charged.`, charged: false, quote: rerunQuote, credits: rerunQuote.credits, retryOf: j.id, canCollect: collectableJob(j) }) };
-      if (qc != null && Number.isFinite(qc) && (await import('./shared/priceChange.js')).priceAskAgain({ quotedCredits: qc, credits: rerunQuote.credits })) return { sent: reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: 'The price changed. Nothing was charged.', charged: false, quote: rerunQuote, quotedCredits: qc, credits: rerunQuote.credits, dearer: true }) }; }
+      const PCr = await import('./shared/priceChange.js');
+      if (qc != null && Number.isFinite(qc) && PCr.priceAskAgain({ quotedCredits: qc, credits: rerunQuote.credits })) return { sent: reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: 'The price changed. Nothing was charged.', charged: false, quote: rerunQuote, quotedCredits: qc, credits: rerunQuote.credits, dearer: true,
+        ...PCr.routeChangedForApi({ quotedCredits: qc, credits: rerunQuote.credits, route: rerunQuote.routeId ?? null, resubmit: `POST /api/jobs/${j.id}/retry with {"quote":true}` }) }) }; }
     const sg = await spendGuard(reply, { kind: routed ? routed.first.kind : isLocalFree(prov?.kind) ? 'local' : 'direct', routeId: routed?.first.routeId ?? null, credits: cost, demo: !!routed?.routing.demo, free });
     if ('sent' in sg) return { sent: sg.sent };
     const SG = await import('./spendGuard.js'); const bal = SG.admitStage('balance', { credits: cost, free }); if ('refused' in bal) return { sent: reply.code(bal.refused.status).send(bal.refused.body) }; // team mode: the balance covers it
