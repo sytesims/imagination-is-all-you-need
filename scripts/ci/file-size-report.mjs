@@ -2,7 +2,8 @@
 // Soft size check for source files (a warning, never a failure: always exits 0).
 //   node scripts/ci/file-size-report.mjs                 summary of the biggest files
 //   node scripts/ci/file-size-report.mjs --base <ref>    also warn about files changed since <ref> (CI passes the PR base)
-// A changed file gets a GitHub warning when it is over a limit and either just crossed it or grew while already over it.
+// A changed file gets a GitHub warning when it crosses a limit, or, already over it, grows by more than the allowed step
+// (25 lines / 5 new long lines), so small tweaks to files that are already big stay quiet.
 // The summary table (top 15 biggest files) goes to $GITHUB_STEP_SUMMARY in CI, or to the terminal locally.
 import { execFileSync } from 'node:child_process';
 import { readFileSync, appendFileSync } from 'node:fs';
@@ -10,6 +11,8 @@ import { readFileSync, appendFileSync } from 'node:fs';
 const MAX_LINES = 800; // a file over this many lines
 const LONG_LINE = 200; // a line longer than this many characters…
 const MAX_LONG_LINES = 20; // …more than this many times in one file
+const GROW_LINES = 25; // a file already over MAX_LINES warns again only when it grows by more than this
+const GROW_LONG = 5; // a file already over MAX_LONG_LINES warns again only when it adds more than this many long lines
 const TOP = 15;
 const ROOTS = ['server/src', 'web/src', 'mcp/src'];
 const EXTENSIONS = /\.(ts|tsx|mjs|css)$/;
@@ -48,11 +51,11 @@ try {
       const cur = now.get(f);
       const old = measure(tryGit('show', `${mergeBase}:${f}`) ?? '');
       const notes = [];
-      if (cur.lines > MAX_LINES && (old.lines <= MAX_LINES || cur.lines > old.lines))
+      if (cur.lines > MAX_LINES && (old.lines <= MAX_LINES || cur.lines - old.lines > GROW_LINES))
         notes.push(old.lines <= MAX_LINES
           ? `now ${cur.lines} lines (over ${MAX_LINES}; was ${old.lines})`
           : `grew ${old.lines} → ${cur.lines} lines (already over ${MAX_LINES})`);
-      if (cur.long > MAX_LONG_LINES && (old.long <= MAX_LONG_LINES || cur.long > old.long))
+      if (cur.long > MAX_LONG_LINES && (old.long <= MAX_LONG_LINES || cur.long - old.long > GROW_LONG))
         notes.push(`${cur.long} lines longer than ${LONG_LINE} characters (was ${old.long}; limit ${MAX_LONG_LINES})`);
       if (notes.length) {
         warnings.push({ f, notes });
@@ -63,10 +66,10 @@ try {
 
   const top = [...now].sort((a, b) => b[1].lines - a[1].lines).slice(0, TOP);
   out(`### Source file sizes\n`);
-  out(`Soft limits: ${MAX_LINES} lines per file; ${MAX_LONG_LINES} lines longer than ${LONG_LINE} characters. Warnings never fail the build.\n`);
+  out(`Soft limits: ${MAX_LINES} lines per file; ${MAX_LONG_LINES} lines longer than ${LONG_LINE} characters. Files already over a limit warn again only when they grow by more than ${GROW_LINES} lines or ${GROW_LONG} long lines. Warnings never fail the build.\n`);
   if (base) out(warnings.length
     ? `**${warnings.length} changed file(s) over a limit:**\n\n${warnings.map((w) => `- \`${w.f}\`: ${w.notes.join('; ')}`).join('\n')}\n`
-    : `No changed file crossed a limit or grew past one.\n`);
+    : `No changed file crossed a limit or grew much while over one.\n`);
   out(`| # | File | Lines | Lines > ${LONG_LINE} chars |\n| ---: | --- | ---: | ---: |`);
   top.forEach(([f, m], i) => out(`| ${i + 1} | \`${f}\` | ${m.lines}${m.lines > MAX_LINES ? ' (over)' : ''} | ${m.long}${m.long > MAX_LONG_LINES ? ' (over)' : ''} |`));
 } catch (err) {

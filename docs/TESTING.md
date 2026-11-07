@@ -103,7 +103,7 @@ Two workflows run on GitHub Actions. A newer push to the same pull request cance
 catalogue drift test with its own mock API (`mcp/test/{toolsets,accounts,parity,dist-fresh,catalog}.ts`), and the script
 tests outside `server/test` (`node --test scripts/*.test.mjs`: Mac launcher, Mac app build, CI smoke) on Ubuntu and macOS.
 `mcp/test/e2e.ts` and the MCP tests that need a sandbox API stay manual.
-`CI`'s Scope job also runs a soft size check (`scripts/ci/file-size-report.mjs`, locally `npm run size:report`): on a pull request it adds a warning to each changed source file in `server/src`, `web/src` or `mcp/src` that crosses or grows past 800 lines or 20 lines longer than 200 characters, and the run summary lists the 15 biggest files. It never fails a build.
+`CI`'s Scope job also runs a soft size check (`scripts/ci/file-size-report.mjs`, locally `npm run size:report`): on a pull request it adds a warning to each changed source file in `server/src`, `web/src` or `mcp/src` that crosses 800 lines or 20 lines longer than 200 characters (or, already over, grows by more than 25 lines or 5 long lines), and the run summary lists the 15 biggest files. It never fails a build.
 
 Pull requests run the full suite because `--changed` is a guess (see above): PR runs that used it let real breaks through
 to `main`/`v2`. The nightly run has its own group, so pushes never cancel it.
