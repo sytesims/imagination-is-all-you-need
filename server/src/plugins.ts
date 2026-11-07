@@ -1,7 +1,7 @@
 /**
  * Plugin loader (docs/PLUGINS.md). Each folder in PLUGINS_DIR (repo-root plugins/, shipped with the app) and USER_PLUGINS_DIR (<data>/plugins:
  * the workflows you added in the app, workflowImport.ts) with a plugin.json becomes a tool in the shared registry (nav, Explore, Assets, media
- * picker, pricing, model picker, generic web AppTool). Bad plugins are skipped with clear errors (GET /api/plugins); the server never crashes on
+ * picker, pricing, model picker, generic web AppTool). Bad plugins are skipped with clear errors (GET /api/workflow-folders); the server never crashes on
  * a plugin. A folder can also be loaded or removed while the app runs (addPluginFolder / removePlugin), with no restart.
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';

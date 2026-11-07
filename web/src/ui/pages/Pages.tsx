@@ -40,7 +40,7 @@ const API: [string, string, string][] = [
   ['GET', '/api/models?toolId=&q=&model=', 'Model cards per tool'],
   ['POST', '/api/mentions/validate', 'Validate @mentions against attached media'],
   ['GET', '/api/ledger', 'Team balance ledger (amounts in cents): charges, refunds, grants'], ['GET', '/api/usage', 'Usage summary'],
-  ['GET', '/api/plugins', 'Installed plugins'], ['GET', '/api/roadmap', 'Upcoming tools'],
+  ['GET', '/api/workflow-folders', 'Your workflows'], ['GET', '/api/plugins', 'Plugins'], ['GET', '/api/roadmap', 'Upcoming tools'],
 ];
 
 /** Driven by GET /api/config `hosted`: true = this API is reachable by other people, false = local-only install. */

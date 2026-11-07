@@ -55,7 +55,7 @@ try {
     const cam = tools.find((t) => t.id === 'camera'); assert.ok(cam, 'camera tool'); assert.ok((cam.presets ?? []).some((p: any) => p.id === 'ltx-dolly-in'), 'LTX camera preset (LTX-2 Community, non-OSI) listed');
     assert.ok(!tools.flatMap((t) => t.providers ?? []).some((p: any) => /^(fal|replicate|kling|runway|openai|google|minimax-api)/.test(p.id ?? p) && (p.kind ?? '') === 'hosted'), 'no hosted providers');
     const r = await O.form('/api/tools/camera/jobs', { rights: '1', types: '["ltx-dolly-in"]', provider: 'comfy-open', prompt: 'a room' }, [['image', png]]); assert.equal(r.status, 200, 'LTX preset submit in OW mode: ' + JSON.stringify(r.body));
-    const pl = (await O.get('/api/plugins')).body; const items = Array.isArray(pl) ? pl : pl.items ?? pl.plugins; const nc = items.find((x: any) => x.id === 'cutout-nc');
+    const pl = (await O.get('/api/workflow-folders')).body; const items = Array.isArray(pl) ? pl : pl.items ?? pl.plugins; const nc = items.find((x: any) => x.id === 'cutout-nc');
     assert.ok(nc && nc.ok, 'non-OSI plugin loaded in OW mode: ' + JSON.stringify(nc).slice(0, 300)); assert.ok(tools.some((t) => t.id === 'cutout-nc'), 'plugin tool listed');
     const pr = await O.form('/api/tools/cutout-nc/jobs', { rights: '1', types: '["green"]' }, [['video', mp4]]); assert.equal(pr.status, 200, 'non-OSI plugin submit in OW mode: ' + JSON.stringify(pr.body));
     const pe = await done(O, pr.body.id); assert.equal(pe.status, 'done', JSON.stringify(pe).slice(0, 300));

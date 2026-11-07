@@ -5,7 +5,7 @@
  * removing a folder ("Add a workflow" → Remove, a hub uninstall) disposes exactly what it added, with no restart.
  *
  * The reading, checks and handler adapter stay in plugins.ts (validateManifest, the generic app tool, handler.ts hooks), so every schema-1
- * folder loads unchanged. Leave this plugin out of the profile and no folder loads (GET /api/plugins lists none; adding one says it's off).
+ * folder loads unchanged. Leave this plugin out of the profile and no folder loads (GET /api/workflow-folders lists none; adding one says it's off).
  */
 import path from 'node:path';
 import { definePlugin } from '../kernel/index.js';
@@ -31,8 +31,8 @@ export default definePlugin({
     setFolderHost(host);
     ctx.effect(() => () => { setFolderHost(null); folderFibers.clear(); }, 'workflow folders host'); // the folder fibers are this plugin's children: disposed with it
     await loadPlugins();
-    // GET /api/plugins and the workflow import routes (Add a workflow). They stay on when this plugin is off and answer that folders are off
-    // (GET /api/plugins lists none, an import says so: #191); left out of the profile, legacy.ts registers them for the same answers.
+    // GET /api/workflow-folders and the workflow import routes (Add a workflow). They stay on when this plugin is off and answer that folders are off
+    // (GET /api/workflow-folders lists none, an import says so: #191); left out of the profile, legacy.ts registers them for the same answers.
     const W = await import('../routesWorkflowImport.js');
     await ctx.http.group((app) => { W.registerWorkflowImport(app); W.registerPluginList(app); }, { keepOn: true });
   },

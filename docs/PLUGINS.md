@@ -48,7 +48,7 @@ plugins/<folder>/
 
 - Plugins load once at server start, in folder-name order. Folders starting with `.` or `_` are ignored.
 - Each manifest and its files are validated. A bad plugin is **skipped with clear errors and the server keeps running**.
-- `GET /api/plugins` reports every plugin as `{ id, ok, errors[], warnings[], toolId, license, handler, dir }`. The same lines are printed to the server log.
+- `GET /api/workflow-folders` reports every plugin as `{ id, ok, errors[], warnings[], toolId, license, handler, dir }`. The same lines are printed to the server log.
 - `npm run plugins:check` validates all manifests, maps each preset onto the workflow, and posts the graphs to the local ComfyUI validator. Nothing is run.
 
 ## Manifest (`plugin.json`, schema 1)

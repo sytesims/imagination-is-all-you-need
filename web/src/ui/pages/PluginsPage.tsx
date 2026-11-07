@@ -2,7 +2,7 @@
  * Your workflows (2026-11-01, was Plugins): the ComfyUI workflows you added. A big "Add a workflow" button (shared/AddWorkflow.tsx: drop a file,
  * check the guessed nodes, save; it shows up in its tab at once), then your workflows as cards (on/off, open, remove, licence, "Added by you").
  * The folder format, sample plugin.json / node-map.json, scripts and the add-ons and built-in apps sit under "For advanced users".
- * Route stays /plugins (old links keep working). Data: GET /api/plugins (+ user), DELETE /api/workflows/:id, POST /api/plugins/:id.
+ * Route stays /plugins (old links keep working). Data: GET /api/workflow-folders (+ user), DELETE /api/workflows/:id, POST /api/workflow-folders/:id.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { listTools, type ToolInfo } from '../../api';
@@ -21,7 +21,7 @@ import { pluginHref, pluginLine, TAB_LABEL, type PluginTab } from '../../../../s
 import { toolPage } from '../../../../server/src/shared/pages';
 import './plugins.css';
 
-/** GET /api/plugins row (older servers omit the placement fields). */
+/** GET /api/workflow-folders row (older servers omit the placement fields). */
 type P = { id: string; ok: boolean; errors?: string[]; warnings?: string[]; toolId?: string; name?: string; description?: string | null; version?: string | null; icon?: string | null;
   homepageUrl?: string | null; enabled?: boolean; tab?: PluginTab | null; category?: string | null; goal?: string | null; author?: string | null; input?: 'image' | 'video' | 'none' | null;
   output?: 'image' | 'video' | null; runsCode?: boolean; license?: { id: string; name: string } | null; /** added in the app (Add a workflow) */ user?: boolean };
@@ -98,7 +98,7 @@ function PluginCard({ p, tool, onRemoved }: { p: P; tool?: ToolInfo; onRemoved?:
   const shownWarns = p.user ? [] : (p.warnings ?? []); /* a workflow you added: the folder hints (components…) are not yours to fix */
   const [on, setOn] = useState(p.enabled !== false); const [busy, setBusy] = useState(false); const [tErr, setTErr] = useState('');
   const toggle = async () => { if (busy) return; const next = !on; setOn(next); setBusy(true); setTErr('');
-    try { const r = await fetch(`/api/plugins/${encodeURIComponent(p.id)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: next }) });
+    try { const r = await fetch(`/api/workflow-folders/${encodeURIComponent(p.id)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: next }) });
       if (!r.ok) throw new Error(String(r.status)); const j = await r.json().catch(() => ({})); if (typeof j.enabled === 'boolean') setOn(j.enabled); refreshTools(); }
     catch { setOn(!next); setTErr(next ? 'Couldn’t turn it on. Try again.' : 'Couldn’t turn it off. Try again.'); } finally { setBusy(false); } };
   const like = { id: p.toolId ?? p.id, name, description: p.description ?? '', route: tool?.route, plugin: { id: p.id, tab: p.tab, category: p.category, input: p.input ?? undefined } };
@@ -181,7 +181,7 @@ const Sec = ({ h, p, children, id }: { h: string; p?: string; children: ReactNod
 export function Plugins() {
   const [ps, setPs] = useState<P[] | null>(null); const [tl, setTl] = useState<ToolInfo[] | null>(null);
   useEffect(() => { listTools().then(setTl).catch(() => setTl([])); }, []);
-  const load = () => fetch('/api/plugins', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])).then((j) => setPs(Array.isArray(j) ? j : j.plugins ?? [])).catch(() => setPs([]));
+  const load = () => fetch('/api/workflow-folders', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])).then((j) => setPs(Array.isArray(j) ? j : j.plugins ?? [])).catch(() => setPs([]));
   useEffect(() => { void load(); }, []);
   const tools = tl ?? []; const pluginIds = useMemo(() => new Set((ps ?? []).map((p) => p.toolId ?? p.id)), [ps]);
   const yours = ps && ps.filter((p) => p.user); const addons = ps && ps.filter((p) => !p.user);

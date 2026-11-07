@@ -316,7 +316,7 @@ export const pub = (j: Job) => ({
 });
 
 if (!(await import('./tools/registry.js')).toolRegistry.managed) await loadPlugins(); // booted: the workflow-folders plugin loaded them (or is off)
-// GET /api/plugins and the workflow import routes: plugin workflow-folders. Left out of the profile, they still answer that folders are off (#191).
+// GET /api/workflow-folders and the workflow import routes: plugin workflow-folders. Left out of the profile, they still answer that folders are off (#191).
 if (!http.routes.some((r) => r.owner === 'workflow-folders')) { const W = await import('./routesWorkflowImport.js'); const prev = http.owner; http.owner = 'workflow-folders';
   try { W.registerWorkflowImport(app); W.registerPluginList(app); } finally { http.owner = prev; } for (const r of http.routes) if (r.owner === 'workflow-folders') r.keepOn = true; }
 

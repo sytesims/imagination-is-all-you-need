@@ -99,7 +99,7 @@ ok('workflow-folders off: no folder loads, adding one says it is off and leaves 
     const h = await (await fetch(`${B}/api/health`)).json() as any; assert.equal(h.backend, 'mock');
     const tl = await (await fetch(`${B}/api/tools`)).json() as any[]; assert.ok(!tl.some((t) => ['create-image', 'image-upscale', 'app-product-shot'].includes(t.id)) && tl.some((t) => t.id === 'h3-video'));
     assert.equal((await fetch(`${B}/api/models/quote?model=comfy-qwen-image&toolId=create-image`)).status, 404, 'a quote on Create Image: unknown tool, never a 500');
-    for (const u of ['/api/models', '/api/capabilities', '/api/image-workflows', '/api/models/quote?model=comfy-acestep&toolId=audio', '/api/plugins']) assert.equal((await fetch(B + u)).status, 200, u);
+    for (const u of ['/api/models', '/api/capabilities', '/api/image-workflows', '/api/models/quote?model=comfy-acestep&toolId=audio', '/api/workflow-folders']) assert.equal((await fetch(B + u)).status, 200, u);
     const fd = new FormData(); fd.append('prompt', 'a fox in the snow'); fd.append('types', '["t2v"]');
     assert.ok((await fetch(`${B}/api/tools/h3-video/jobs`, { method: 'POST', body: fd })).status < 500, 'a video job is taken as before');
     assert.ok(((await fetch(`${B}/api/tools/create-image/jobs`, { method: 'POST', body: new FormData() })).status) < 500, 'a Create Image job is refused, not a crash');

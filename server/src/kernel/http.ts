@@ -47,7 +47,8 @@ export class Http {
   /** Who adds routes and hooks with plain app.* calls right now (the legacy plugin sets 'legacy' while it loads). */
   owner = 'kernel';
   private hooks = new Map<string, Record<HookStage, HookEntry[]>>();
-  private sealed = false;
+  /** set by seal(): no route or hook can be added after */
+  sealed = false;
   listening = false;
 
   constructor(app: FastifyInstance = Fastify({ logger: { level: 'info' } })) {
@@ -147,6 +148,11 @@ export class Http {
   async close() { await this.app.close(); this.listening = false; }
 }
 
+/** A plugin that adds routes was turned on while the server listens, and it had none from boot: it applies after a restart. */
+export class NeedsRestart extends Error {
+  constructor(readonly plugin: string) { super(`${plugin}: its routes can only be added when the app starts (applies after a restart)`); this.name = 'NeedsRestart'; }
+}
+
 /** The process's server: boot.ts makes it through HttpService; code without a ctx (legacy.ts) reads it here. Made on first use outside boot
  *  (tests that import legacy.ts on their own). */
 let current: Http | null = null;
@@ -158,9 +164,19 @@ export class HttpService extends Service {
   readonly server: Http;
   constructor(ctx: Context) { super(ctx, 'http'); this.server = new Http(); setCurrentHttp(this.server); }
   private get caller(): string { return (this.ctx as any).fiber?.name ?? 'kernel'; }
+  /** Whether each group owner's hooks run (a plugin turned off and on again reuses the same hooks). */
+  private on = new Map<string, boolean>();
+  /** A plugin turned on again while the server listens (Plugins page): Fastify can't add routes now, but the ones it added at boot are still
+   *  there (off). Reuse them; a plugin that never added them must wait for a restart (NeedsRestart). Before listen: null (add as usual). */
+  private again(owner: string, match: (r: RouteEntry) => boolean): RouteEntry[] | null {
+    if (!this.server.listening && !this.server.sealed) return null;
+    const prev = this.server.routes.filter((r) => r.owner === owner && match(r));
+    if (!prev.length) throw new NeedsRestart(owner);
+    return prev;
+  }
   get app() { return this.server.app; }
   route(opts: RouteOptions) {
-    const owner = this.caller; const entries = this.server.route(opts, owner);
+    const owner = this.caller; const entries = this.again(owner, (r) => [opts.method].flat().map(String).includes(r.method) && r.url === opts.url) ?? this.server.route(opts, owner);
     this.ctx.effect(() => { for (const e of entries) e.active = true; return () => { for (const e of entries) e.active = false; }; }, `route ${opts.method} ${opts.url}`);
     return entries;
   }
@@ -170,10 +186,10 @@ export class HttpService extends Service {
   /** A feature's route group (registerX(app)): see Http.group. Its routes and hooks go off when the plugin is disposed; with keepOn its routes
    *  stay on (they answer that the feature is off themselves: workflow-folders, as promised in #191). */
   async group(register: (app: FastifyInstance) => unknown, o: { keepOn?: boolean } = {}) {
-    const owner = this.caller; let on = true;
-    const entries = await this.server.group(register, owner, () => on);
+    const owner = this.caller; const on = () => this.on.get(owner) !== false;
+    const entries = this.again(owner, () => true) ?? await this.server.group(register, owner, on);
     if (o.keepOn) for (const e of entries) e.keepOn = true;
-    this.ctx.effect(() => { on = true; for (const e of entries) e.active = true; return () => { on = false; if (!o.keepOn) for (const e of entries) e.active = false; }; }, `routes of ${owner} (${entries.length})`);
+    this.ctx.effect(() => { this.on.set(owner, true); for (const e of entries) e.active = true; return () => { this.on.set(owner, false); if (!o.keepOn) for (const e of entries) e.active = false; }; }, `routes of ${owner} (${entries.length})`);
     return entries;
   }
   static(opts: { root: string; prefix: string; [k: string]: unknown }) { return this.server.static(opts, this.caller); }

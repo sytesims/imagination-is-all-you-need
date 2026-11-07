@@ -46,7 +46,7 @@ export function unregisterTool(id: string) {
   for (const [a, t] of [...aliases]) if (t === id) aliases.delete(a);
   hidden.delete(id); sorted = null; invalidateTools(); return true;
 }
-/** Disabled plugin tools (POST /api/plugins/:id {enabled:false}): hidden from lookups and lists without a restart. */
+/** Disabled plugin tools (POST /api/workflow-folders/:id {enabled:false}): hidden from lookups and lists without a restart. */
 const hidden = new Set<string>();
 export const setToolHidden = (id: string, on: boolean) => { if (on) hidden.add(id); else hidden.delete(id); sorted = null; };
 /** Hidden (turned off on the Plugins page), or a built-in tool whose studio plugin is off in this profile. */

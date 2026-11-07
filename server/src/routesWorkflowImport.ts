@@ -7,7 +7,7 @@
  *  GET    /api/workflows/:id/models  the model files it loads: { comfy, modelsDirSet, files[{ file, folder, state: have|missing|unknown, url, bytes, pageUrl, linkFrom }], missing, downloadId }
  *  PUT    /api/workflows/:id/models  { folder, file, url } a Hugging Face / Civitai link for a file the app's model list doesn't know (saved in its folder)
  *  Download: POST /api/local/downloads { downloadId: 'workflow:<id>' } (routesHardware.ts), progress GET /api/local/downloads/:id.
- * On / off stays POST /api/plugins/:id { enabled }.
+ * On / off stays POST /api/workflow-folders/:id { enabled }.
  */
 import type { FastifyInstance } from 'fastify';
 import { HOSTED } from './hosted.js';
@@ -95,9 +95,9 @@ export async function sourceLicence(raw: string, get: typeof fetch = fetch): Pro
   catch { return null; }
 }
 
-/** GET /api/plugins: the plugin load report (loaded + skipped, with validation errors). With folders off it lists none. */
+/** GET /api/workflow-folders: the plugin load report (loaded + skipped, with validation errors). With folders off it lists none. */
 export function registerPluginList(app: FastifyInstance) {
-  app.get('/api/plugins', async () => { const { isToolHidden } = await import('./tools/registry.js'); const { readFileSync: rf, existsSync: ex } = await import('node:fs');
+  app.get('/api/workflow-folders', async () => { const { isToolHidden } = await import('./tools/registry.js'); const { readFileSync: rf, existsSync: ex } = await import('node:fs');
     return pluginStatus().map(({ dir, ...s }) => { let m: any = {}; try { m = JSON.parse(rf(path.join(dir, 'plugin.json'), 'utf8')); } catch { /* invalid manifest: fields stay null */ }
       const t = s.toolId ? getTool(s.toolId) : undefined; const icon = m.icon ?? m.iconUrl ?? m.previewUrl ?? (t as any)?.app?.posterUrl ?? (ex(path.join(dir, 'icon.png')) ? `/plugins/${s.id}/icon.png` : null);
       // Name, description and version are always present (null when absent); icon and homepageUrl are optional.

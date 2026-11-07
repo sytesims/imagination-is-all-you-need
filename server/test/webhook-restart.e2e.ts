@@ -11,10 +11,10 @@ try {
   execFileSync('ffmpeg', ['-y', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc=size=854x480:rate=24', '-t', '5', '-pix_fmt', 'yuv420p', mp4]); execFileSync('ffmpeg', ['-y', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc=size=512x512', '-frames:v', '1', png]);
   const fd = new FormData(); for (const [k, v] of Object.entries({ rights: '1', prompt: 'x', provider: 'comfy-open', webhookUrl: `http://127.0.0.1:${testPort(8834)}/hook` })) fd.append(k, v); fd.append('video', new Blob([fs.readFileSync(mp4)]), 's.mp4'); fd.append('refs', new Blob([fs.readFileSync(png)]), 'r.png');
   const j = await (await fetch(`${B}/api/tools/object-swap/jobs`, { method: 'POST', body: fd })).json(); assert.ok(j.id, JSON.stringify(j));
-  const pid = (await (await fetch(`${B}/api/plugins`)).json())[0].id; await fetch(`${B}/api/plugins/${pid}`, json({ enabled: false }));
+  const pid = (await (await fetch(`${B}/api/workflow-folders`)).json())[0].id; await fetch(`${B}/api/workflow-folders/${pid}`, json({ enabled: false }));
   await stop(srv); srv = start(); await up();
   const w = await (await fetch(`${B}/api/jobs/${j.id}/webhook`)).json(); assert.equal(w.webhookUrl, `http://127.0.0.1:${testPort(8834)}/hook`);
-  assert.equal((await (await fetch(`${B}/api/plugins`)).json())[0].enabled, false);
-  await fetch(`${B}/api/plugins/${pid}`, json({ enabled: true }));
+  assert.equal((await (await fetch(`${B}/api/workflow-folders`)).json())[0].enabled, false);
+  await fetch(`${B}/api/workflow-folders/${pid}`, json({ enabled: true }));
   console.log('ok webhook + plugin toggle survive a restart'); console.log('ALL OK webhook-restart');
 } finally { await stop(srv); }

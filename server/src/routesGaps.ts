@@ -242,7 +242,7 @@ export function registerGaps(app: FastifyInstance) {
   startWebhookLoop();
 
   // ---- 26 Plugins: enable / disable without a restart (persisted; disabled tools vanish from /api/tools and job submit 404s) ----
-  app.post<{ Params: { id: string }; Body: { enabled?: boolean } }>('/api/plugins/:id', async (req, reply) => {
+  app.post<{ Params: { id: string }; Body: { enabled?: boolean } }>('/api/workflow-folders/:id', async (req, reply) => {
     const st = pluginStatus().find((p) => p.id === req.params.id); if (!st) return reply.code(404).send({ error: `unknown plugin ${req.params.id}` });
     if (typeof req.body?.enabled !== 'boolean') return reply.code(400).send(bad('enabled', 'enabled must be true or false.'));
     const off = new Set(getKv<string[]>('plugins_disabled', [])); if (req.body.enabled) off.delete(st.id); else off.add(st.id); setKv('plugins_disabled', [...off]);
