@@ -1,5 +1,5 @@
 /**
- * Layers: the shared tables it adds itself (imported once, when the layers plugin loads): its two places (your computer, Comfy Cloud), the
+ * Layers: the shared tables it adds itself (imported once with the built-in tools (tools/builtin.ts)): its two places (your computer, Comfy Cloud), the
  * Comfy Cloud workflow entry and its runner route, the Comfy Cloud price row (an estimate until one measured run: priceUnmeasured, the same
  * gate every Comfy Cloud workflow follows, routing/cloudRun.ts), model names, and licences.
  */
@@ -35,7 +35,7 @@ const PARTS = [
   { model: 'Depth Anything 3 Small (depth_anything_3_small.safetensors, Comfy-Org/Depth-Anything-3; ByteDance-Seed) · depth and layer order', license: 'Apache-2.0', commercial: 'yes' as const, url: 'https://huggingface.co/Comfy-Org/Depth-Anything-3', licenseId: 'apache-2.0' },
   { model: 'Depth Anything 3 Mono-Large (depth_anything_3_mono_large.safetensors, Comfy-Org/Depth-Anything-3) · depth on Comfy Cloud (the official template’s default)', license: 'Apache-2.0 (Hugging Face tag; upstream terms of the Large checkpoints not yet checked)', commercial: 'yes' as const, url: 'https://huggingface.co/Comfy-Org/Depth-Anything-3', licenseId: 'apache-2.0' },
   { model: 'Clean background: Footage Effects Vanish on your computer (LTX-2.5 + Clean Plate IC-LoRA); Comfy Cloud skips it for now; Lightricks', license: 'LTX-2.x Community License', commercial: 'restricted' as const, url: 'https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x', licenseId: 'ltx-2x-community' },
-  { model: 'Layers graph (workflows/layers-split-api.json): our own, core ComfyUI nodes, after the official Comfy-Org templates (SAM 3 video segmentation, BiRefNet remove background, Depth Anything 3 video depth)', license: 'MIT', commercial: 'yes' as const, url: 'https://github.com/Comfy-Org/workflow_templates', licenseId: 'mit' },
+  { model: 'Video to layers graph (workflows/layers-split-api.json): our own, core ComfyUI nodes, after the official Comfy-Org templates (SAM 3 video segmentation, BiRefNet remove background, Depth Anything 3 video depth)', license: 'MIT', commercial: 'yes' as const, url: 'https://github.com/Comfy-Org/workflow_templates', licenseId: 'mit' },
 ];
 
 registerWorkflowLicense(LAYERS_WORKFLOW, ['sam-license', 'mit', 'apache-2.0']);
@@ -48,20 +48,20 @@ registerProvider({ id: LAYERS_CLOUD, name: `${LAYERS_MODEL_LINE} · Comfy Cloud`
   workflows: [LAYERS_WORKFLOW], stages: [['uploading', 'Uploading your clip'], ['submitted', 'Submitted to Comfy Cloud'], ['rendering', 'Splitting on Comfy Cloud'], ['downloading', 'Downloading the layers']] } as any);
 registerModelInfo(LAYERS_LOCAL, { name: `${LAYERS_MODEL_LINE}`, speed: 'medium', quality: 'good', hint: 'Free on your computer · up to 15 s, up to 4 objects', badges: ['new'] } as any);
 registerModelInfo(LAYERS_CLOUD, { name: `${LAYERS_MODEL_LINE} · Comfy Cloud`, speed: 'fast', quality: 'good', hint: 'On rented graphics cards · up to 15 s, up to 4 objects', badges: ['new'] } as any);
-for (const id of [LAYERS_LOCAL, LAYERS_CLOUD]) MODEL_CATALOG[id] = { name: LAYERS_MODEL_LINE, family: 'Layers',
+for (const id of [LAYERS_LOCAL, LAYERS_CLOUD]) MODEL_CATALOG[id] = { name: LAYERS_MODEL_LINE, family: 'Video to layers',
   description: 'SAM 3.1 finds and tracks each thing you name, BiRefNet cleans the edges, Depth Anything 3 measures depth and orders the layers, and Footage Effects’ Vanish makes the clean background.',
   tech: 'SAM3_Detect on the first frame → one SAM3_VideoTrack (one object per name) → BiRefNet band refine (our own ffmpeg step) → DA3 Small depth, normalised over the clip → layers in depth order.' } as any;
 
 const D = '2026-11-06' as HostedPrice['checkedAt'];
 if (!HOSTED_BY_ID[LAYERS_CLOUD]) {
-  const row: HostedPrice = { providerId: LAYERS_CLOUD, model: `Layers (${LAYERS_MODEL_LINE}) on Comfy Cloud`, unit: 'second', usd: cloudGpuUsd(1) /* per GPU-second: the quote counts them (layersBillSeconds) */, sourceUrl: 'https://www.comfy.org/cloud/pricing',
+  const row: HostedPrice = { providerId: LAYERS_CLOUD, model: `Video to layers (${LAYERS_MODEL_LINE}) on Comfy Cloud`, unit: 'second', usd: cloudGpuUsd(1) /* per GPU-second: the quote counts them (layersBillSeconds) */, sourceUrl: 'https://www.comfy.org/cloud/pricing',
     checkedAt: D, estimated: true, priceUnmeasured: true,
     note: `An estimate from one measured Comfy Cloud run (2026-11-07): tracking a 2-second piece (48 frames, one name) took about ${LAYERS_GPU_SEC.piece} GPU-seconds, so a clip is quoted ${LAYERS_GPU_SEC.piece} GPU-seconds per 2-second piece plus about ${LAYERS_GPU_SEC.perSecond} per second for BiRefNet and Depth Anything 3. Comfy Cloud bills active GPU time (0.39 credits per GPU-second, 211 credits = $1), model load included. More names per piece are not measured yet; the full run is not measured yet either. No clean background on Comfy Cloud yet.` };
   HOSTED_PRICES.push(row); HOSTED_BY_ID[LAYERS_CLOUD] = row;
 }
 NATIVE_DIRECT[LAYERS_CLOUD] = { label: 'Comfy Cloud', sourceUrl: 'https://docs.comfy.org/tutorials/utility/video-segment-sam3', checkedAt: '2026-11-07', typicalLatencySec: 180, latencyEstimated: true, latencySource: 'estimated', output: 'video',
   priceInput: (i: Record<string, any>) => ({ ...i, duration: layersBillSeconds(i) }), caps: { maxSeconds: LAYERS_MAX_SECONDS, objects: 4 } } as any;
-CLOUD_WORKFLOWS[LAYERS_CLOUD_ROUTE] = { routeId: LAYERS_CLOUD_ROUTE, provider: LAYERS_CLOUD, standalone: true, target: 'cloud', label: 'Layers · Comfy Cloud',
+CLOUD_WORKFLOWS[LAYERS_CLOUD_ROUTE] = { routeId: LAYERS_CLOUD_ROUTE, provider: LAYERS_CLOUD, standalone: true, target: 'cloud', label: 'Video to layers · Comfy Cloud',
   graphs: [LAYERS_WORKFLOW],
   requires: { nodes: [...new Set(['LoadVideo', 'GetVideoComponents', 'CheckpointLoaderSimple', 'ImageFromBatch', 'CLIPTextEncode', 'SAM3_Detect', 'MaskToImage', 'SAM3_VideoTrack',
     'SAM3_TrackToMask', 'SaveImage', 'LoadBackgroundRemovalModel', 'RemoveBackground', 'LoadDA3Model', 'DA3Inference', 'DA3Render'])],

@@ -166,11 +166,12 @@ let man: any;
   assert.equal(layersBillSeconds({ duration: 40 }), 9 * 18 + 30, 'capped at 15 s'); assert.equal(layersBillSeconds({ duration: 5, frames: 48 }), 18 + 10, 'a job knows its frames');
   assert.equal(cloud.priceInput!({ duration: 5 }).duration, 64, 'the twin route bills the same GPU-seconds');
   assert.equal(HOSTED_BY_ID[K.LAYERS_CLOUD].usd, 0.002, 'per GPU-second (0.39 credits)');
-  const { PLUGIN_CATALOG } = await import('../src/shared/pluginCatalog.ts'); const row = PLUGIN_CATALOG.find((e) => e.id === 'layers');
-  assert.equal(row?.group, 'features'); assert.equal(row?.description, 'Split a video into separate layers');
-  const { readProfile } = await import('../src/kernel/profile.ts'); assert.ok(readProfile('desktop').plugins.includes('layers'), 'on in the desktop edition');
-  const { FEATURE_IDS } = await import('../src/plugins-builtin/features.ts'); assert.ok(FEATURE_IDS.includes('layers'), 'a feature plugin (routes after the core)');
-  ok('registration: tool, two places, Cloud workflow + runner route, unmeasured price row, bill seconds, catalogue row, profile');
+  assert.equal(t!.name, 'Video to layers');
+  const { PLUGIN_CATALOG } = await import('../src/shared/pluginCatalog.ts'); assert.ok(!PLUGIN_CATALOG.some((e) => e.id === 'layers'), 'not a plugin of its own');
+  const { readProfile } = await import('../src/kernel/profile.ts'); assert.ok(!readProfile('desktop').plugins.includes('layers'));
+  const { FEATURE_IDS } = await import('../src/plugins-builtin/features.ts'); assert.ok(!FEATURE_IDS.includes('layers'));
+  const { STUDIO_TOOLS } = await import('../src/tools/builtin.ts'); assert.ok(STUDIO_TOOLS['studio-video'].some((e) => e.tool.id === 'layers'), 'a tool of the Video studio');
+  ok('registration: Video to layers in the Video studio, two places, Cloud workflow + runner route, unmeasured price row, bill seconds');
 }
 // ---------------- 8. plan ----------------
 {

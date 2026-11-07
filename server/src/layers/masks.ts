@@ -51,5 +51,5 @@ export function occludeArgs(o: { matte: string; front: string[]; fps: number; ou
 
 export async function ff(args: string[], what: string): Promise<void> {
   const c = await runFfmpeg(args);
-  if (c !== 0) throw new Error(`Layers: ${what} failed (ffmpeg ${c})`);
+  if (c !== 0) throw new Error(`Video to layers: ${what} failed (ffmpeg ${c})`);
 }

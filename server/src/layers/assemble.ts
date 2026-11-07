@@ -48,7 +48,7 @@ export async function rawFromOuts(jobId: string, i: LayersJobInput, outs: string
   const ps = pieces(i.frames); const perPiece: string[][] = [];
   for (let k = 0; k < i.objects.length; k++) {
     const dirs: string[] = [];
-    for (let p = 0; p < ps.length; p++) { const d = await folder(maskNode(k, p), `mask${k}p${p}`); if (!d) throw new Error(`Layers: no matte came back for “${i.objects[k]}” (piece ${p + 1})`); dirs.push(d); }
+    for (let p = 0; p < ps.length; p++) { const d = await folder(maskNode(k, p), `mask${k}p${p}`); if (!d) throw new Error(`Video to layers: no matte came back for “${i.objects[k]}” (piece ${p + 1})`); dirs.push(d); }
     perPiece.push(dirs);
   }
   const { masks, notes } = await joinPieces(jobId, i, perPiece);
@@ -134,7 +134,7 @@ export async function assembleLayers(job: { id: string; input: Record<string, an
   const warn = order.filter((id) => cov[id] < 0.05).map((id) => `“${i.objects[id]}” was hardly found in the clip. Try other words, or check it is in the first frame.`);
   if (warn.length) ((job as any).warnings ??= []).push(...warn);
   return [
-    { label: 'Layers overview', file: ov, ready: true },
+    { label: 'Overview', file: ov, ready: true },
     ...[...order].reverse().map((id) => ({ label: i.objects[id], file: path.join(DATA_DIR, path.basename(preview[id])), ready: true as const })),
     ...(bgUrl ? [{ label: 'Clean background', file: out('background.mp4'), ready: true as const }] : []),
     ...(depthUrl ? [{ label: 'Depth', file: out('depth.mp4'), ready: true as const }] : []),

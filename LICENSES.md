@@ -436,7 +436,7 @@ Commercial: yes = OSI licence; no = non-commercial; restricted = custom terms (r
 | Depth Anything 3 Small (depth_anything_3_small.safetensors, Comfy-Org/Depth-Anything-3; ByteDance-Seed) · depth and layer order | Apache-2.0 | yes | [link](https://huggingface.co/Comfy-Org/Depth-Anything-3) |
 | Depth Anything 3 Mono-Large (depth_anything_3_mono_large.safetensors, Comfy-Org/Depth-Anything-3) · depth on Comfy Cloud (the official template’s default) | Apache-2.0 (Hugging Face tag; upstream terms of the Large checkpoints not yet checked) | yes | [link](https://huggingface.co/Comfy-Org/Depth-Anything-3) |
 | Clean background: Footage Effects Vanish on your computer (LTX-2.5 + Clean Plate IC-LoRA); Comfy Cloud skips it for now; Lightricks | LTX-2.x Community License | restricted | [link](https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x) |
-| Layers graph (workflows/layers-split-api.json): our own, core ComfyUI nodes, after the official Comfy-Org templates (SAM 3 video segmentation, BiRefNet remove background, Depth Anything 3 video depth) | MIT | yes | [link](https://github.com/Comfy-Org/workflow_templates) |
+| Video to layers graph (workflows/layers-split-api.json): our own, core ComfyUI nodes, after the official Comfy-Org templates (SAM 3 video segmentation, BiRefNet remove background, Depth Anything 3 video depth) | MIT | yes | [link](https://github.com/Comfy-Org/workflow_templates) |
 
 ## Credits and NOTICE texts
 

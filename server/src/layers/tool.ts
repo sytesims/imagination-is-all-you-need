@@ -1,5 +1,5 @@
 /**
- * Layers (tool id layers, Edit Video): your clip + up to four names ("woman", "steam", "neon sign") → a see-through layer per name, a depth pass,
+ * Video to layers (tool id layers, Edit Video): your clip + up to four names ("woman", "steam", "neon sign") → a see-through layer per name, a depth pass,
  * a clean background and an export for editors. Opened on the Video page (/video?workflow=layers; recipe in shared/videoBar.ts, the names chip in
  * web ui/video/barExtras/LayersExtra.tsx); the clip comes from an upload, your media or a result.
  *
@@ -44,7 +44,7 @@ async function plateInput(fields: Record<string, string>, video: string, seconds
 
 
 export const layersTool: ToolDef = {
-  id: LAYERS_TOOL, name: 'Layers', category: 'Edit Video', status: 'new', route: `/tools/${LAYERS_TOOL}`, ui: 'app',
+  id: LAYERS_TOOL, name: 'Video to layers', category: 'Edit Video', status: 'new', route: `/tools/${LAYERS_TOOL}`, ui: 'app',
   description: `Split any video into separate layers: name up to ${LAYERS_MAX_OBJECTS} things and get each one on its own see-through layer, plus depth and a clean background, ready for your editor. Free on your computer, or on Comfy Cloud.`,
   inputs: [{ name: 'video', kind: 'file', required: true, accept: 'video/mp4,video/quicktime,video/webm', label: 'Your clip' },
     { name: 'objects', kind: 'list', required: true, max: LAYERS_MAX_OBJECTS, label: 'What to split out' },
@@ -59,13 +59,13 @@ export const layersTool: ToolDef = {
   routeInput: (i) => ({ types: [layersMode(i)] }),
   async parseInput(fields, files) {
     const vf = files.video?.[0]; if (!vf) return bad('video', 'Add a clip to split into layers.', 'required');
-    if (/\.(png|jpe?g|webp|gif)$/i.test(vf)) return bad('video', 'Layers takes a video clip, not a photo.', 'format');
+    if (/\.(png|jpe?g|webp|gif)$/i.test(vf)) return bad('video', 'Video to layers takes a video clip, not a photo.', 'format');
     const objects = objectNames(fields.objects ?? fields.prompt);
     if (!objects.length) return bad('objects', 'Name at least one thing to split out, like “woman” or “neon sign”.', 'required');
     if (objects.length > LAYERS_MAX_OBJECTS) return bad('objects', `Up to ${LAYERS_MAX_OBJECTS} things per clip. Remove ${objects.length - LAYERS_MAX_OBJECTS}.`, 'too_many');
     const src = path.join(DATA_DIR, vf); const p = await probe(src);
     if (!p) return bad('video', 'That clip could not be read. Re-export it as MP4 (H.264) and try again.', 'unreadable');
-    if (p.duration > LAYERS_MAX_SECONDS + 0.05) return bad('video', `Your clip is ${p.duration.toFixed(1)} s. Layers takes up to ${LAYERS_MAX_SECONDS} s: trim it first.`, 'too_long');
+    if (p.duration > LAYERS_MAX_SECONDS + 0.05) return bad('video', `Your clip is ${p.duration.toFixed(1)} s. Video to layers takes up to ${LAYERS_MAX_SECONDS} s: trim it first.`, 'too_long');
     if (p.duration < LAYERS_MIN_SECONDS) return bad('video', `That clip is too short (${p.duration.toFixed(1)} s).`, 'too_short');
     if (Math.min(p.width, p.height) < 64) return bad('video', `That clip is too small (${p.width}×${p.height}).`, 'too_small');
     const edges = optionOn(fields.edges); const depth = optionOn(fields.depth); let background = optionOn(fields.background);
@@ -80,15 +80,15 @@ export const layersTool: ToolDef = {
       const r = await plateInput(fields, vf, p.duration, 'vanish');
       if ('why' in r) { background = false; warnings.push(`No clean background for this clip: ${r.why}`); } else plate = r.input; }
     if (plate && p.duration > LAYERS_PLATE_SECONDS + 0.05) warnings.push(`The clean background covers the first ${LAYERS_PLATE_SECONDS} s; after that it holds its last frame.`);
-    if (p.width > LAYERS_LONG_SIDE || p.height > LAYERS_LONG_SIDE || (p.fps ?? 0) > LAYERS_FPS + 0.01) warnings.push(`Layers are made at ${size.width}×${size.height}, ${fps} fps.`);
+    if (p.width > LAYERS_LONG_SIDE || p.height > LAYERS_LONG_SIDE || (p.fps ?? 0) > LAYERS_FPS + 0.01) warnings.push(`The layers are made at ${size.width}×${size.height}, ${fps} fps.`);
     const seconds = Math.round((frames / fps) * 100) / 100;
     return { mode: 'layers', outKind: 'video', ownSample: true, objects, edges, depth, background, plate, types: background ? ['with-plate'] : ['split'],
       prompt: objects.join(', '), videoPath: out, videoUrl: `/files/${name}`, originalVideoUrl: `/files/${vf}`, width: size.width, height: size.height, fps, frames,
-      duration: seconds, hasAudio: false, outputLabel: 'Layers overview', warnings };
+      duration: seconds, hasAudio: false, outputLabel: 'Overview', warnings };
   },
   /** The sample (see the header): never a model, never sent anywhere; the same finish step as a real run. */
   async run(job: Job) {
-    await mockRun(job, LAYERS_STAGES, ['Layers overview'], 4000);
+    await mockRun(job, LAYERS_STAGES, ['Overview'], 4000);
     if (job.status !== 'done') return;
     try {
       job.status = 'running' as any; job.stage = 'saving' as any;

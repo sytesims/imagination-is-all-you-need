@@ -58,7 +58,7 @@ const isLink = (v: unknown): v is [string, number] => Array.isArray(v) && v.leng
 
 export function layersGraph(j: GraphJob): Record<string, any> {
   const n = j.objects.length;
-  if (n < 1 || n > LAYERS_MAX_OBJECTS) throw new Error(`Layers needs 1–${LAYERS_MAX_OBJECTS} objects`);
+  if (n < 1 || n > LAYERS_MAX_OBJECTS) throw new Error(`Video to layers needs 1–${LAYERS_MAX_OBJECTS} objects`);
   const g = load();
   g['1'].inputs.file = { __file: j.source } satisfies FileRef;
   for (let k = 0; k < LAYERS_MAX_OBJECTS; k++) {

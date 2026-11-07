@@ -15,7 +15,7 @@ plugins:
   # place-runpod is installable and off here: add a line `- place-runpod` above legacy to run our image workflows on your RunPod endpoint (docs/PROVIDERS-AND-MODELS.md)
   - place-direct        # the labs' own APIs: BFL, Google, OpenAI, BytePlus, MiniMax, LTX (their keys)
   - place-sample        # free samples, and samples on the mock backend
-  - studio-video      # the Video tab: create, extend, Camera Moves, Swap & Motion, Re-shoot
+  - studio-video      # the Video tab: create, extend, Camera Moves, Swap & Motion, Re-shoot, Video to layers
   - studio-image      # the Image tab: Create Image, Image Upscale
   - studio-audio      # the Audio tab: music, soundtrack, voice
   - studio-3d         # the 3D page: Image to 3D, turntable, Direct a Shot
@@ -45,7 +45,6 @@ plugins:
   - hub               # the workflow hub
   - share             # share cards, Add logo and text, branded export
   - captions          # captions + SRT / VTT, burn-in
-  - layers            # Layers: split a video into separate layers (Edit Video)
   - open-models       # Open models only (setting + quote check)
   - openapi           # /api/openapi.json and /api/docs
   - web-static        # the web build at / (npm start)

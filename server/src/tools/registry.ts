@@ -9,7 +9,7 @@
 import type { ToolDef } from './types.js';
 import { invalidateTools } from '../toolsCache.js';
 import { withClipTrim } from '../clipTrim.js';
-import { STUDIO_TOOLS, STUDIO_IDS, FEATURE_TOOLS, galleryEntries, BUILTIN_TOOL_STUDIO, SOON, type ToolEntry } from './builtin.js';
+import { STUDIO_TOOLS, STUDIO_IDS, galleryEntries, BUILTIN_TOOL_STUDIO, SOON, type ToolEntry } from './builtin.js';
 
 /** A workflow folder's tool (plugins/, <data>/plugins) lists after every built-in, in the order the folders load. */
 export const FOLDER_ORDER = 10_000;
@@ -29,7 +29,6 @@ function ensure() {
   if (toolRegistry.managed || filled) return; filled = true;
   for (const s of STUDIO_IDS) for (const e of STUDIO_TOOLS[s]) add(e);
   for (const e of galleryEntries((id) => tools.get(id)?.tool)) add(e); // after every base tool (Upscale is the gallery's own)
-  for (const list of Object.values(FEATURE_TOOLS)) for (const e of list) add(e); // the feature plugins' tools (Layers)
 }
 const add = (e: ToolEntry) => registerTool(e.tool, { order: e.order, aliases: e.aliases });
 

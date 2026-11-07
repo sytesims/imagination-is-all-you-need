@@ -6,7 +6,7 @@
  */
 import path from 'node:path';
 import { copyFile, mkdir, readdir, rm } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
+import { spawn } from '../security/childProcess.js';
 import { ff } from './masks.js';
 import type { Piece } from './graph.js';
 

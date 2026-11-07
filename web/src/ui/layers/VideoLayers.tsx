@@ -1,5 +1,5 @@
 /**
- * Layers result (2026-11-07; server/src/layers): the full-screen viewer's stage and panel for a split video, built on the image layer stack's
+ * Video to layers result (2026-11-07; server/src/layers): the full-screen viewer's stage and panel for a split video, built on the image layer stack's
  * pieces (shared/LayerStack: the same list rows, eye buttons, stage over a checkerboard and download buttons).
  *  - useVideoLayers(job): the split's layers.json (GET /api/layers/:id), or null (not a Layers job, not done, or the plugin is off: then the
  *    viewer shows the job's clips as usual).
@@ -20,7 +20,7 @@ export type { LayersManifest };
 export type LayersMode = 'layers' | 'depth' | 'background' | 'overview';
 
 export function useVideoLayers(job: { id: string; toolId?: string; status?: string } | null): LayersManifest | null {
-  const on = usePluginOn('layers'); const [m, setM] = useState<LayersManifest | null>(null);
+  const on = usePluginOn('studio-video'); /* Video to layers is part of the Video studio */ const [m, setM] = useState<LayersManifest | null>(null);
   const want = !!job && job.toolId === LAYERS_TOOL && job.status === 'done' && on;
   useEffect(() => { setM(null); if (!want) return; const ac = new AbortController();
     fetch(`/api/layers/${encodeURIComponent(job!.id)}`, { signal: ac.signal }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.kind === 'video-layers') setM(d); }).catch(() => undefined);
@@ -62,7 +62,7 @@ export function VideoLayersStage({ m, view }: { m: LayersManifest; view: VideoLa
   const bottomUp = [...m.layers].sort((a, b) => a.order - b.order); const shown = m.layers.filter((l) => view.visible(l.id)).length;
   const label = mode === 'depth' ? 'Depth (near is white)' : mode === 'background' ? 'Clean background' : mode === 'overview' ? 'Overview: each layer in its colour' : `${shown} of ${m.layers.length} layers shown`;
   return <div className="vly-stage" data-testid="vly-stage">
-    <div ref={box} className="rvx-media rvx-fit ly-canvas alpha-bg vly-canvas" style={{ ['--ar' as any]: m.width / m.height }} role="img" aria-label={`Layers: ${label}`} data-testid={`vly-canvas-${mode}`}>
+    <div ref={box} className="rvx-media rvx-fit ly-canvas alpha-bg vly-canvas" style={{ ['--ar' as any]: m.width / m.height }} role="img" aria-label={`Video to layers: ${label}`} data-testid={`vly-canvas-${mode}`}>
       {mode === 'layers' && <>
         {m.background.url && <video key="bg" src={m.background.url} {...vprops} className={view.bgOn && view.solo == null ? undefined : 'ly-off'} data-testid="vly-bg" />}
         {bottomUp.map((l) => <video key={l.id} src={l.previewUrl} {...vprops} className={view.visible(l.id) ? undefined : 'ly-off'} data-testid={`vly-video-${l.id}`} />)}
@@ -99,8 +99,8 @@ export function VideoLayersPanel({ m, view, onError }: { m: LayersManifest; view
       if (!r.ok || !d.url) throw new Error(d.error || 'The export could not be made');
       const a = document.createElement('a'); a.href = d.url; a.download = d.name ?? 'layers.zip'; document.body.appendChild(a); a.click(); a.remove(); setEx('done'); setTimeout(() => setEx(''), 2500); }
     catch (e) { setEx(''); onError?.(e instanceof Error ? e.message : 'The export could not be made'); } };
-  return <section className="rvx-sec ly-sec vly-sec" aria-label="Layers" data-testid="vly-panel">
-    <div className="rvx-sec-h"><span className="rvx-lbl"><LayerSheetsIcon size={16} />Layers <small className="ly-n">{m.layers.length}</small></span>
+  return <section className="rvx-sec ly-sec vly-sec" aria-label="Video to layers" data-testid="vly-panel">
+    <div className="rvx-sec-h"><span className="rvx-lbl"><LayerSheetsIcon size={16} />Video to layers <small className="ly-n">{m.layers.length}</small></span>
       {view.solo != null && <button type="button" className="rvx-copy" onClick={() => view.toggleSolo(view.solo!)} data-testid="vly-unsolo">Show all</button>}</div>
     <div className="vly-modes" role="tablist" aria-label="View">{modes.map((x) => <button key={x.id} type="button" role="tab" aria-selected={view.mode === x.id} className={`vly-mode${view.mode === x.id ? ' on' : ''}`}
       onClick={() => view.setMode(x.id)} data-testid={`vly-mode-${x.id}`} {...tip(x.tip)}>{x.label}</button>)}</div>

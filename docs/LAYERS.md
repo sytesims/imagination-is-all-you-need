@@ -1,6 +1,6 @@
-# Layers
+# Video to layers
 
-**Split any video into separate layers.** Name up to four things in your clip, like *woman*, *steam* or *neon sign*. Each one comes back on its own see-through layer, with a depth pass and a clean background, ready for your editor. It lives on the Video page under Edit (`/video?workflow=layers`).
+**Split any video into separate layers.** Name up to four things in your clip, like *woman*, *steam* or *neon sign*. Each one comes back on its own see-through layer, with a depth pass and a clean background, ready for your editor. It lives on the Video page under Edit as **Video to layers** (`/video?workflow=layers`).
 
 ## How to use it
 
@@ -51,4 +51,4 @@ The graph is [`workflows/layers-split-api.json`](../workflows/layers-split-api.j
 - Layers are made at up to 1024 px on the long side and up to 24 frames per second.
 - The clean background covers the first 5 s; after that it holds its last frame.
 - Something that isn't in view at the start of a 2-second piece isn't found in that piece; the result says when. Glass, smoke and splashes stay in the background.
-- Turn Layers off on the Plugins page and it leaves the Video page; your results stay in your library as plain clips.
+- It is part of the Video studio: turn Video off on the Plugins page and it goes with the rest of Video; your results stay in your library as plain clips.

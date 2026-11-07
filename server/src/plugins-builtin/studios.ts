@@ -11,11 +11,13 @@ import { STUDIO_TOOLS, galleryEntries, type StudioId } from '../tools/builtin.js
 import { soulUpscaleAddOn } from '../tools/soul/cloud.js';
 
 /** studio-image also owns OpenSoul's cloud upscale (a route add-on on its cloud routes: services/routeAddOns.ts). */
+/** studio-video also owns Video to layers' ComfyUI plan and its /api/layers routes (layers/studio.ts). */
 const studio = (id: Exclude<StudioId, 'apps-gallery'>): PluginDef => definePlugin({
-  name: id, inject: id === 'studio-image' ? ['tools', 'pricing'] : ['tools'],
-  apply(ctx) {
+  name: id, inject: id === 'studio-image' ? ['tools', 'pricing'] : id === 'studio-video' ? ['tools', 'http'] : ['tools'],
+  async apply(ctx) {
     for (const e of STUDIO_TOOLS[id]) ctx.tools.register(e.tool, { order: e.order, aliases: e.aliases });
     if (id === 'studio-image') ctx.pricing.addOn(soulUpscaleAddOn);
+    if (id === 'studio-video') await (await import('../layers/studio.js')).applyLayers(ctx);
   },
 });
 

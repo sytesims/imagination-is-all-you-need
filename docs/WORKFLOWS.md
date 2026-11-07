@@ -794,7 +794,7 @@ Lift the subject off the background Its tab calls it “Remove Background”.
 | Custom nodes (local) | [ComfyUI_BiRefNet_ll](https://github.com/lldacing/ComfyUI_BiRefNet_ll) |
 
 <a id="v-layers"></a>
-### Layers
+### Video to layers
 
 Every thing you name on its own layer.
 

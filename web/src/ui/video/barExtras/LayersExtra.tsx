@@ -1,5 +1,5 @@
 /**
- * Layers in the Video bar (2026-11-07; server/src/layers). The recipe (server/src/shared/videoBar.ts) gives the clip and the three options
+ * Video to layers in the Video bar (2026-11-07; server/src/layers). The recipe (server/src/shared/videoBar.ts) gives the clip and the three options
  * (Clean edges, Depth, Clean background, all on). This adds what a recipe can't say: "What to split out", up to four names typed as chips
  * (each becomes its own layer, in its own colour), sent as objects=["woman","steam"]. Generate waits until there is at least one name.
  */

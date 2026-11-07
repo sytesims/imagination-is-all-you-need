@@ -13,7 +13,6 @@
  */
 import type { FastifyInstance } from 'fastify';
 import { definePlugin, type PluginDef } from '../kernel/index.js';
-import layersPlugin from './layers.js';
 
 type Register = (app: FastifyInstance) => unknown;
 const feature = (name: string, register: Register): PluginDef => definePlugin({ name, inject: ['http'], async apply(ctx) { await ctx.http.group(register); } });
@@ -51,8 +50,6 @@ export const FEATURE_PLUGINS: Record<string, PluginDef> = {
   }),
   /** Captions + SRT / VTT (Whisper on this computer), burn-in. */
   captions: feature('captions', async (app) => (await import('../captions.js')).registerCaptions(app)),
-  /** Layers: split a video into separate layers (its tool, plan and /api/layers routes; plugins-builtin/layers.ts). */
-  layers: layersPlugin,
   /** Open models only: GET|PUT /api/settings/open-models, and the quote check that refuses a closed model while it is on. */
   'open-models': feature('open-models', async (app) => (await import('../routesOpenModels.js')).registerOpenModels(app)),
   /** The API description: /api/openapi.json (documented routes + every route that is on) and /api/docs. */

@@ -5,7 +5,7 @@
  *  - Order: for each object, the median depth inside its matte on every frame where it shows, then the median over the clip. Near = white =
  *    a higher value, so layers sort far (bottom) to near (top). Without depth, the first chip is on top.
  */
-import { spawn } from 'node:child_process';
+import { spawn } from '../security/childProcess.js';
 import { seq } from './masks.js';
 
 /** Grey frames of a sequence or clip, shrunk to w × h, as one byte per pixel. */
@@ -14,7 +14,7 @@ export function grabGrey(input: { dir?: string; file?: string; fps: number }, w:
   return new Promise((ok, no) => {
     const c = spawn('ffmpeg', ['-v', 'error', ...src, '-vf', `scale=${w}:${h}:flags=area,format=gray`, '-f', 'rawvideo', '-pix_fmt', 'gray', '-'], { stdio: ['ignore', 'pipe', 'ignore'] });
     const parts: Buffer[] = []; c.stdout.on('data', (d: Buffer) => parts.push(d));
-    c.on('error', no); c.on('close', (code) => (code === 0 ? ok(Buffer.concat(parts)) : no(new Error(`Layers: reading frames failed (ffmpeg ${code})`))));
+    c.on('error', no); c.on('close', (code) => (code === 0 ? ok(Buffer.concat(parts)) : no(new Error(`Video to layers: reading frames failed (ffmpeg ${code})`))));
   });
 }
 

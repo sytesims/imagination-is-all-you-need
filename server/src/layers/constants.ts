@@ -11,7 +11,6 @@
  */
 
 export const LAYERS_TOOL = 'layers';
-export const LAYERS_PLUGIN = 'layers';
 /** Your computer (your ComfyUI). */
 export const LAYERS_LOCAL = 'comfy-layers';
 /** Comfy Cloud (the same graph through the v2 jobs API). */

@@ -37,7 +37,7 @@ export const TOOL_SNAPSHOT: { id: string; name: string; media: string; listed?: 
   {"id":"h3-extend","name":"Extend","media":"video"},
   {"id":"h3-video","name":"Generate Video","media":"video"},
   {"id":"image-upscale","name":"Upscale","media":"image"},
-  {"id":"layers","name":"Layers","media":"video"},
+  {"id":"layers","name":"Video to layers","media":"video"},
   {"id":"make-it-real","name":"Render","media":"3d","listed":false},
   {"id":"motion-transfer","name":"Motion Transfer","media":"video"},
   {"id":"object-swap","name":"Object / Person Swap","media":"video"},

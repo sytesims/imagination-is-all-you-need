@@ -16,13 +16,13 @@ import { assembleLayers, rawFromOuts } from './assemble.js';
 type J = { id: string; toolId: string; provider: string; input: Record<string, any> };
 
 export function layersPlan(j: J, where: 'local' | 'cloud'): Plan {
-  const i = j.input; if (!i.videoPath || !Array.isArray(i.objects)) throw new Error('Layers: the clip was not prepared. Add it again and press Split');
+  const i = j.input; if (!i.videoPath || !Array.isArray(i.objects)) throw new Error('Video to layers: the clip was not prepared. Add it again and press Split into layers');
   const graph = layersGraph({ source: i.videoPath, objects: i.objects, edges: !!i.edges, depth: !!i.depth, frames: Number(i.frames) || 1 });
   if (where === 'cloud' && graph['400']) graph['400'].inputs.model_name = DA3_CLOUD_MODEL; // the official template's default on Comfy Cloud
   const outs = outputNodes({ objects: i.objects, edges: !!i.edges, depth: !!i.depth, frames: Number(i.frames) || 1 });
-  const passes: Plan['passes'] = [{ label: 'Layers', workflow: LAYERS_WORKFLOW, graph, output: outs[0].node, extraOutputs: outs.slice(1).map((o) => ({ node: o.node, label: o.role })),
+  const passes: Plan['passes'] = [{ label: 'Video to layers', workflow: LAYERS_WORKFLOW, graph, output: outs[0].node, extraOutputs: outs.slice(1).map((o) => ({ node: o.node, label: o.role })),
     expect: { objects: i.objects, edges: !!i.edges, depth: !!i.depth, frames: i.frames } }];
-  const notes = [`Layers: ${i.objects.length} object${i.objects.length === 1 ? '' : 's'} (${i.objects.join(', ')}), ${i.width}×${i.height}, ${i.fps} fps, ${i.frames} frames`];
+  const notes = [`Video to layers: ${i.objects.length} object${i.objects.length === 1 ? '' : 's'} (${i.objects.join(', ')}), ${i.width}×${i.height}, ${i.fps} fps, ${i.frames} frames`];
   if (i.background && i.plate && where === 'local') { // Comfy Cloud: skipped until its step is confirmed by a real run (CLOUD_PLATE_NOTE, said on the result)
     const p = buildPlan({ id: `${j.id}-plate`, toolId: 'footage-fx', input: i.plate, provider: FOOTAGE_FX_PROVIDER } as any);
     passes.push(...p.passes.map((x) => ({ ...x, label: 'Clean background' }))); notes.push(...p.notes);
