@@ -23,3 +23,13 @@ const root = { querySelectorAll: (s: string) => { assert.equal(s, 'video, audio'
 silence(root);
 assert.ok(a.paused && v.paused, 'the page’s players stop'); assert.equal(outside.paused, false, 'a player on another part of the app is not touched');
 ok('silence: the page that left goes quiet, the rest of the app keeps playing');
+
+// players outside the DOM (registerMedia: new Audio() voice and look previews) stop with the page; a closing viewer leaves them alone
+{
+  const { registerMedia } = await import('../../web/src/shared/mediaPause.ts');
+  const empty = { querySelectorAll: () => [], contains: () => false } as unknown as Element;
+  const preview = player(); const off = registerMedia(preview as never);
+  silence(empty, false); assert.equal(preview.paused, false, 'a viewer closing keeps the page’s preview going');
+  silence(empty); assert.ok(preview.paused, 'leaving the page stops its preview');
+  off(); ok('silence: previews outside the page stop when the page leaves, not when a viewer closes');
+}

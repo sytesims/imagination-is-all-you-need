@@ -6,6 +6,7 @@
  * with a Follow agent toggle in the top bar.
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useSoundScope } from '../shared/soundDirector';
 import { navigate, useSearch } from '../platform/router';
 import { BarPopover, PopSection, PopRow } from '../shared/BarPop';
 import { askConfirm, askText } from '../shared/Dialog';
@@ -84,6 +85,7 @@ function LookSection() {
 }
 
 export default function CanvasPage() {
+  const soundScope = useRef<HTMLDivElement>(null); useSoundScope(soundScope); /* leaving the page stops its sound (shared/soundDirector.ts) */
   const search = useSearch(); const toast = useToast(); const { top, bottom } = useHeaderBottom();
   const want = new URLSearchParams(search).get('board');
   const [boards, setBoards] = useState<BoardSummary[] | null>(null); const [board, setBoard] = useState<BoardDoc | null>(null);
@@ -121,7 +123,7 @@ export default function CanvasPage() {
   const onAgentOpen = useCallback((id: string, name: string, by: string) => { void refresh().catch(() => undefined); go(id); toast(`${by} opened “${name}”`); }, [refresh]); // eslint-disable-line react-hooks/exhaustive-deps
   const current = boards?.find(b => b.id === board?.id) ?? (board ? { ...board } : null);
   const rootStyle = { top, bottom, '--cv-agent-w': agentOpen ? `var(--cv-dock,${DOCK_W}px)` : '0px', '--cv-panel-w': panelOn && !drawer ? 'var(--cv-dock,380px)' : '0px' } as CSSProperties;
-  return <div className={`cv-root${agentOpen ? ' cv-agent-open' : ''}`} style={rootStyle} data-testid="canvas-page">
+  return <div ref={soundScope} className={`cv-root${agentOpen ? ' cv-agent-open' : ''}`} style={rootStyle} data-testid="canvas-page">
     {err ? <div className="cv-msg"><p>{err}</p><button type="button" className="cv-empty-btn" onClick={() => navigate(`/canvas${search}`, { replace: true })}>Try again</button></div>
       : board && current ? <>
         <Board key={board.id} onBoard={setBoardApi} board={board} onSaveState={setSave} onSaved={onSaved} drawerOpen={drawer} setDrawerOpen={setDrawer} onProject={onProject} />

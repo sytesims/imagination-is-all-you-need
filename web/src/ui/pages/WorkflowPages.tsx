@@ -1,5 +1,6 @@
 import { Notice } from '../../shared/Notice';
 import { useEffect, useRef, useState } from 'react';
+import { useSoundScope } from '../../shared/soundDirector';
 import { Link, navigate } from '../../platform/router';
 import { tip } from '../../shared/Tooltip';
 import { useOwnAccounts } from '../../shared/billing';
@@ -31,6 +32,7 @@ function usePoll(ms: number, f: () => void) { const ref = useRef(f); ref.current
 
 // ------------------------------------------------------------------ /workflows/:id
 export function WorkflowPage({ id }: { id: string }) {
+  const soundScope = useRef<HTMLDivElement>(null); useSoundScope(soundScope); /* leaving the page stops its sound (shared/soundDirector.ts) */
   const own = useOwnAccounts(); const [d, setD] = useState<WorkflowDetail | null>(null); const [err, setErr] = useState<{ status?: number; msg: string } | null>(null); const [tick, setTick] = useState(0);
   const [how, setHow] = useState(false); const [saving, setSaving] = useState(false); const howRef = useRef<HTMLElement>(null);
   useEffect(() => { let live = true; loadWorkflow(id).then(x => { if (live) { setD(x); setErr(null); } }).catch(e => live && setErr({ status: e?.status, msg: String(e?.message ?? 'Couldn’t load') })); return () => { live = false; }; }, [id, tick]);
@@ -42,7 +44,7 @@ export function WorkflowPage({ id }: { id: string }) {
   const w = d.workflow; const hw = w.howItWorks; const ex = showcaseExample(w.id) ?? w.example; const src = hw.source ? SRC[hw.source.kind] : null;
   const names = new Map<string, number>(); for (const l of d.looks) names.set(l.name.toLowerCase(), (names.get(l.name.toLowerCase()) ?? 0) + 1);
   const openHow = () => { setHow(true); requestAnimationFrame(() => howRef.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })); };
-  return <div className="wfh wfd" data-testid="workflow-page">
+  return <div ref={soundScope} className="wfh wfd" data-testid="workflow-page">
     <Crumb to="/workflows" label="Workflows" />
     <div className="wfd-hero">
       {ex?.kind === 'split' ? <SplitPreview className="wfd-hero-media" testId="wfd-hero-split" before={ex.before} after={ex.after} beforeLabel={ex.beforeLabel} afterLabel={ex.afterLabel} eager />
@@ -108,6 +110,7 @@ const Crumb = ({ to, label }: { to: string; label: string }) => <nav className="
 // ------------------------------------------------------------------ /workflows/:id/looks/:lookId
 const SHOWN = 3;
 export function LookPage({ id, lookId }: { id: string; lookId: string }) {
+  const soundScope = useRef<HTMLDivElement>(null); useSoundScope(soundScope); /* leaving the page stops its sound (shared/soundDirector.ts) */
   const own = useOwnAccounts(); const toast = useToast();
   const [d, setD] = useState<LookDetail | null>(null); const [err, setErr] = useState<{ status?: number; msg: string } | null>(null); const [tick, setTick] = useState(0);
   const [prompt, setPrompt] = useState<string | null>(null); const [all, setAll] = useState(false); const [wfName, setWfName] = useState<string>('');
@@ -127,7 +130,7 @@ export function LookPage({ id, lookId }: { id: string; lookId: string }) {
     try { await renameLook(l.id, n); toast(`Renamed to “${n}”`); } catch (e: any) { toast(String(e?.message ?? 'Couldn’t rename'), 'error'); } };
   const remove = async () => { if (!(await askConfirm({ title: `Delete “${l.name}”?`, body: 'The look goes. Its example image stays in your library.', confirm: 'Delete', danger: true }))) return;
     try { await deleteLook(l.id); toast(`Deleted “${l.name}”`); navigate(back.to); } catch (e: any) { toast(String(e?.message ?? 'Couldn’t delete'), 'error'); } };
-  return <div className="wfh wfl" data-testid="look-page">
+  return <div ref={soundScope} className="wfh wfl" data-testid="look-page">
     <Crumb {...back} />
     <div className="wfl-head"><div className="wfl-title"><h1 title={l.name}>{l.name}</h1>
       <p className="wfh-sub">{l.description ? `${l.description} ` : ''}{l.kind === 'mine' ? `Your ${wfName || ''} look, saved ${dateText(l.createdAt)}.` : `A ${wfName || ''} look.`} The same look on each model it ran on, so you can pick before you spend.</p></div>

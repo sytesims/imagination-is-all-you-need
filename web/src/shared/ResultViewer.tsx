@@ -2,6 +2,7 @@ import { recreateHref } from './workflowLinks';
 import { goClick } from './goToWorkflow';
 import { tip } from './Tooltip';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useSoundScope } from './soundDirector';
 import { createPortal } from 'react-dom';
 import { retryJob, restoreJob, purgeJob, fmtBytes, listTools, ERROR_LABELS, STATE_LABELS, type JobState } from '../api';
 import { askConfirm } from './Dialog';
@@ -88,6 +89,7 @@ export function ViewerShell({ label, bg, media, who, badge, tabs, tab, setTab, b
   /** Which item is showing (job id + output): a new item brings the details panel back. */ itemKey?: string;
 }) {
   const box = useRef<HTMLDivElement>(null); const stage = useRef<HTMLDivElement>(null);
+  useSoundScope(box, { detached: false }); /* every viewer is a portal outside its page: closing it, or leaving the page, stops its sound (shared/soundDirector.ts) */
   const [panel, setPanel] = useState(true);
   useEffect(() => { setPanel(true); }, [itemKey]);
   const togglePanel = () => setPanel(v => !v);

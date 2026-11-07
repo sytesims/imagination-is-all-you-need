@@ -16,13 +16,16 @@
  *  - Leaving the page (2026-11-07, useSoundScope): a route change first HIDES the page (React's Suspense keeps it mounted under
  *    display:none while the next page's code loads, for as long as that takes) and only then removes it; a removed player is paused by the
  *    browser some time later. So the page's own scope stops every player inside it the moment it leaves, and while it is away any play
- *    inside it (a late play() promise, a watchdog, a timer) is paused at once. Coming back (the same page shown again) changes nothing else.
+ *    inside it (a late play() promise, a watchdog, a timer) is paused at once. Players outside the DOM (registerMedia: new Audio() previews)
+ *    stop too. Every page that can play sound puts the scope on its root (Explore, Image/Audio/tools, Video, 3D, Assets, every viewer, Film,
+ *    Canvas, Workflows, Community, workflow and share pages). Coming back (the same page shown again) changes nothing else.
  *  - Opt-in hoverSound films: temporary pointer/keyboard attention wins while playing and visible, without changing mute or activation.
  *    Handoffs to/from that group fade out before fading in, so even rapid pointer moves never overlap two audible tracks.
  * Pure parts (shared/soundPick.ts: readSoundChoice, pickSound) are tested in server/test/sound-director.test.ts.
  */
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useSyncExternalStore, type RefObject } from 'react';
 
+import { detachedPlayers } from './mediaPause';
 import { MIN_SHARE, OLD_SOUND_KEYS, SOUND_KEY, FADE_MS, SETTLE_MS, pickSound, readSoundChoice, type SoundCandidate } from './soundPick';
 export { SOUND_KEY, OLD_SOUND_KEYS, readSoundChoice, pickSound } from './soundPick';
 
@@ -105,32 +108,33 @@ function schedule() { if (timer) clearTimeout(timer); timer = setTimeout(() => {
 /** pages that have left (hidden or unmounted): nothing inside them may play */
 const away = new Set<Element>();
 /** Pure core of leaving (tested in server/test/sound-scope.test.ts): pause every player in the list now and stop its running fade. */
-export function stopPlayers(list: Iterable<Pick<HTMLMediaElement, 'paused' | 'pause' | 'muted' | 'volume'>>) {
+export function stopPlayers(list: Iterable<{ paused: boolean; muted: boolean; volume?: number; pause(): void }>) {
   for (const el of list) {
-    const f = fades.get(el as HTMLMediaElement); if (f != null) { cancelAnimationFrame(f); fades.delete(el as HTMLMediaElement); if (el.muted || el.volume < 1) { el.muted = true; el.volume = 1; } }
+    const f = fades.get(el as HTMLMediaElement); if (f != null) { cancelAnimationFrame(f); fades.delete(el as HTMLMediaElement); if (el.muted || (el.volume ?? 1) < 1) { el.muted = true; el.volume = 1; } }
     if (!el.paused) { try { el.pause(); } catch { /* gone */ } }
   }
 }
 /** Stop every sound `root` holds: its players pause now, the director forgets any pending move. */
-export function silence(root: Element) {
+export function silence(root: Element, detached = true) {
   if (timer) { clearTimeout(timer); timer = null; } ++revision; exclusiveHandoff = false; attendedLast = false;
   const inside = (e: Entry) => !!e.root && root.contains(e.root);
   for (const e of entries.values()) if (inside(e)) { if (prefer === e.id) prefer = null; if (attention === e.id) attention = null; }
   const own = new Set<HTMLMediaElement>(root.querySelectorAll<HTMLMediaElement>('video, audio'));
   for (const e of entries.values()) { const el = inside(e) ? e.media() : null; if (el) own.add(el); }
-  stopPlayers(own);
+  /* players outside the page (new Audio() previews: voices, looks) belong to whatever page started them: they stop too */
+  stopPlayers(detached ? [...own, ...detachedPlayers()] : own);
 }
 /**
  * A page's sound scope: put it on the page's outermost element. When the page leaves (a route change hides it, then removes it), every
  * player inside stops at once and stays stopped while it is away. A layout effect, because React runs its cleanup the moment Suspense
  * hides the page, not only when it unmounts.
  */
-export function useSoundScope(root: RefObject<Element>) {
+export function useSoundScope(root: RefObject<Element>, { detached = true }: { /** also stop the page's players outside the DOM (a viewer passes false: closing it leaves the page's previews alone) */ detached?: boolean } = {}) {
   useEffect(() => { install(); }, []);
-  useLayoutEffect(() => {
-    const r = root.current; if (!r) return; away.delete(r);
-    return () => { away.add(r); silence(r); };
-  }, [root]);
+  /* the root can appear after the first render (a page that shows a skeleton first): pick it up after every commit */
+  const seen = useRef<Element | null>(null);
+  useLayoutEffect(() => { const r = root.current; if (r) { seen.current = r; away.delete(r); } });
+  useLayoutEffect(() => () => { const r = seen.current; if (r) { away.add(r); silence(r, detached); } else if (detached) stopPlayers(detachedPlayers()); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 let installed = false;
