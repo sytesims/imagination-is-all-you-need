@@ -32,6 +32,7 @@ import { videoFitBlock } from '../shared/videoFit.js';
 import { toolModes } from './defaults.js';
 import { canDownloadHere } from '../hardware/modelsTarget.js';
 import { places, PLACE_PLUGIN } from '../services/places.js';
+import { addOnCredits } from '../services/routeAddOns.js';
 
 /** Local ComfyUI available? Q5 (Oct 19): a real check. mock backend → yes (mock render). comfy backend → hardware.ts localReachable(): a cached
  * (30 s) /system_stats check of the ComfyUI address with a 1.5 s timeout, so an empty or Comfy Cloud address never counts as a local ComfyUI.
@@ -87,7 +88,7 @@ function routePriceOf(tool: ToolDef, r: RouteDef, input: Record<string, any>, pa
 /** The routed price in USD before rounding to whole credits (billing.ts shows Comfy credits from it, rounded up); null when the credits carry
  *  something else (reshoot angles, route add-ons) or the row has no exact figure. */
 export function routeExactUsd(tool: ToolDef, r: RouteDef, input: Record<string, any> = {}, passes = 1): number | null {
-  if (!r.priceRef || (tool.id === 'reshoot' && Math.round(Number(input.angleCount)) > 1) || (r.extraCredits?.(input) ?? 0) > 0) return null;
+  if (!r.priceRef || (tool.id === 'reshoot' && Math.round(Number(input.angleCount)) > 1) || addOnCredits(r, input) > 0) return null;
   const p = routePriceOf(tool, r, input, passes); return p.basis === 'hosted' && typeof p.exactUsd === 'number' ? p.exactUsd : null;
 }
 /** Credits for this route and job (same priceOf as the Generate button). */
@@ -95,7 +96,7 @@ export function routeCredits(tool: ToolDef, r: RouteDef, input: Record<string, a
   if (!r.priceRef) return 0;
   { const ac = Math.round(Number(input.angleCount)); if (tool.id === 'reshoot' && ac > 1) { const one = routeCredits(tool, r, { ...input, angleCount: 1 }, Math.max(1, passes / ac)); return one == null ? null : one * ac; } } // dp30 (d): N × the one-angle price (quote passes 1, submit passes N)
   const p = routePriceOf(tool, r, input, passes);
-  return p.basis === 'unavailable' ? null : p.credits + (r.extraCredits?.(input) ?? 0); // extraCredits: route add-ons (OpenSoul cloud upscale)
+  return p.basis === 'unavailable' ? null : p.credits + addOnCredits(r, input); // the route's add-ons (quote/compute route step: OpenSoul cloud upscale, H3 first frame)
 }
 /** I2: the user-facing name of the account a key belongs to (UI copy never names env vars; the env name stays in reasonDetail). */
 export const keyOwner = keyOwnerOf;

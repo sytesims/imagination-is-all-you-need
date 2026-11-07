@@ -20,6 +20,7 @@ import { runWithVideoFit } from './videoFit.js';
 import './services/placesBuiltin.js'; // the built-in places when nothing booted (tests): the boot recovery below asks them what can be picked up
 import { pickUpOnBoot, startPickUp, collectable, remoteCancellable } from './routing/reattach.js';
 import { emitJob, reportedCostOf } from './services/jobEvents.js';
+import './services/jobsBuiltin.js'; // the built-in job listeners (ETA learning, webhooks) when nothing booted (tests)
 
 /**
  * Shared job queue for all tools, in two run lanes (2026-10-25):
@@ -101,7 +102,6 @@ const PLAIN_ERR: Record<string, string> = { temporary: 'temporary problem', prov
 function settle(job: Job) {
   job.finishedAt = Date.now(); job.updatedAt = job.finishedAt; dropPreview(job.id); // live preview frames live only while the job runs
   try { settleSpend(job); } catch { /* spend log only */ }
-  if (job.status === 'done') void import('./etaLearn.js').then((L) => L.recordJob(job)).catch(() => {}); // HW-SHAPES B5: learned timings (real runs, or OPENHIGGSFIELD_ETA_LEARN_MOCK=1)
   const ca = (job as any).collectAfterFailure as { refund: number; prev: Pick<Job, 'refund' | 'creditsBack' | 'refunded'> } | undefined; delete (job as any).collectAfterFailure;
   // Retry download worked: the credits given back at the failure pay for the result again (team mode; own accounts: nothing was held in the app)
   if (ca && job.status === 'done') { if (ca.refund > 0) charge(`${job.id}#collect`, job.toolId, job.route ?? job.provider, ca.refund); job.refund = undefined; job.creditsBack = undefined; job.refunded = 0; }
@@ -127,10 +127,11 @@ function settle(job: Job) {
     parent.input.childCost = children.reduce((sum,j)=>sum+Math.max(0,Number(j.cost??0)-Number(j.refunded??0)),0);
     parent.input.childCostUsd = children.reduce((sum,j)=>sum+Number(jobSpendView(j.id)?.countedUsd ?? 0),0); parent.updatedAt=Date.now(); persistJob(parent);
   }
-  settledEvent(job);
+  settledEvent(job, 'queue');
 }
-/** job/settled (ctx.jobs): after this tick, so the copy listeners get carries run.ts's own late fixes; cost = what the places reported (never the charge). */
-const settledEvent = (job: Job) => setImmediate(() => emitJob('job/settled', job, { status: job.status, cost: reportedCostOf(job) }));
+/** job/settled (ctx.jobs): after this tick, so the copy listeners get carries run.ts's own late fixes; cost = what the places reported (never the charge).
+ *  Its listeners: ETA learning (plugin eta-learning: learned timings from done runs), webhooks (plugin webhooks), the canvas feed. */
+const settledEvent = (job: Job, via: 'queue' | 'late') => setImmediate(() => emitJob('job/settled', job, { status: job.status, cost: reportedCostOf(job), via }));
 
 /** Own-accounts mode, a failed / canceled paid run: what the provider does with it (its documented rule), never an app refund. */
 function ownAccountsNote(job: Job): string {
@@ -230,8 +231,7 @@ if (reconnect.length) setTimeout(() => { import('./comfy/resume.js').then(({ res
  *  ComfyUI finishes it. The spend row follows the job to done; nothing is charged (local runs are free, and no second charge is ever made). */
 function settleLate(job: Job) {
   try { settleSpend(job); } catch { /* spend log only */ }
-  void import('./etaLearn.js').then((L) => L.recordJob(job)).catch(() => {});
-  settledEvent(job);
+  settledEvent(job, 'late'); // ETA learning listens (plugin eta-learning)
 }
 const LATE_SWEEP_MS = Number(env('LATE_SWEEP_MS')) || 30_000;
 // Runs failed by the old fixed 30-min timeout ("timed out after N min of running") in the last 2 h kept their prompt on ComfyUI: watch them too.

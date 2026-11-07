@@ -1,7 +1,9 @@
 # The desktop app (npm start / npm run dev). One plugin id per line; leave a line out to turn that plugin off.
-# The places, tools, workflows, spend (the money guard), pricing and jobs services are part of the kernel and always on. `legacy` (today's server) always starts last.
+# The places, tools, workflows, spend (the money guard), pricing and jobs services are part of the kernel and always on. `legacy` (the server core)
+# starts after the plugins above it; the feature plugins below it (route groups) mount after it, then the server starts listening.
 name: desktop
 plugins:
+  - comfy-featured    # official Comfy templates as models (Gemini Omni, FLUX 3 Max, Kling 4.0, Topaz Bloom 2, Wan Animate 2); first, before anything reads the model tables
   - place-comfy-local   # Your computer (your ComfyUI, built-in tools)
   - place-comfy-cloud   # Comfy Cloud and your Comfy deployment (your Comfy key)
   - place-comfy-router  # Comfy Router (your Comfy key)
@@ -22,4 +24,25 @@ plugins:
   - agent-budgets     # agent budgets (X-OHF-Agent-Budget, MCP set_budget): /api/agent/budgets, quote line, the check before a run
   - billing-team-mode # team mode: credit balances charged per run and given back on failure (off = always your own accounts)
   - hosted-grant      # the one-time signup credits on a hosted demo (OPENHIGGSFIELD_HOSTED=1; does nothing elsewhere)
+  - eta-learning      # learned timings from your own finished runs (job/settled)
+  - webhooks          # job notifications: a job's webhook is sent when it ends (job/settled)
   - legacy
+  # feature plugins (route groups): off = their routes answer 404 not_found, like an unknown route
+  - preflight         # Check before you run
+  - prompt-grammar    # how each model reads its prompt and inputs
+  - hardware          # this computer: hardware, local ComfyUI, model downloads, learned timings (what setup and the doctor check)
+  - comfy-deploy      # your Comfy deployment
+  - backup            # back up and restore (export / import)
+  - brand-kits        # brand kits
+  - edge              # job lists, queue, download.zip, trash purge
+  - canvas-agent      # the canvas agent bridge (Claude on your board)
+  - canvas-demo       # the built-in demo agent on the canvas
+  - canvas            # the Canvas page's boards
+  - film              # the Film tab
+  - discover          # Explore feeds
+  - hub               # the workflow hub
+  - share             # share cards, Add logo and text, branded export
+  - captions          # captions + SRT / VTT, burn-in
+  - open-models       # Open models only (setting + quote check)
+  - openapi           # /api/openapi.json and /api/docs
+  - web-static        # the web build at / (npm start)

@@ -16,6 +16,7 @@ import { spawn } from 'node:child_process';
 import { rename } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import type { RouteDef } from '../../routing/types.js';
+import { builtInAddOn, type RouteAddOn } from '../../services/routeAddOns.js';
 import { keyConfigured } from '../../routing/keys.js';
 import { DATA_DIR } from '../../config.js';
 import { runFfmpeg } from '../../ffmpeg.js';
@@ -29,13 +30,17 @@ const falKey = () => keyConfigured(FAL_ENV, ['FAL_KEY']);
 /** Upscale on cloud = fal-ai/esrgan: est. 3 compute-s × $0.00111 = $0.0033 → 1 credit per image (1-credit minimum). */
 export const UPSCALE_CREDITS_PER_IMAGE = 1;
 const upExtra = (i: Record<string, any>) => (i.upscale && i.upscale !== 'off' ? UPSCALE_CREDITS_PER_IMAGE * (Number(i.n) === 4 ? 4 : 1) : 0);
+/** The cloud upscale as a route add-on (services/routeAddOns.ts; registered by plugin studio-image). */
+export const SOUL_UPSCALE = 'soul-cloud-upscale';
+export const soulUpscaleAddOn: RouteAddOn = { id: SOUL_UPSCALE, credits: upExtra };
+builtInAddOn(soulUpscaleAddOn);
 const upBlock = (i: Record<string, any>) => (i.upscale && i.upscale !== 'off' && !falKey() ? 'Cloud upscale runs on fal: add a fal key in Settings' : null);
 const COLOUR = { colour: { how: 'server', note: 'server-side Reinhard LAB transfer on the returned image, 0 credits', strength: [0.3, 0.7], sources: ['image', 'hex'] } };
 const UPSCALE = { upscale: { how: 'fal-ai/esrgan', factors: ['x2', 'x4'], requires: FAL_ENV, creditsPerImage: UPSCALE_CREDITS_PER_IMAGE, estimated: true } };
 type Mk = (o: { kind: 'fal' | 'replicate'; slug: string; label: string; sec: number; modes: string[]; caps: Record<string, unknown> }) => RouteDef;
 /** Built by routing/routes.ts (so fal()/rep() defaults stay in one place). */
 export function soulCloudRoutes(mk: Mk): RouteDef[] {
-  const add = (r: RouteDef): RouteDef => ({ ...r, extraCredits: upExtra, unavailableFor: upBlock });
+  const add = (r: RouteDef): RouteDef => ({ ...r, addOns: [SOUL_UPSCALE], unavailableFor: upBlock });
   return [
     add(mk({ kind: 'fal', slug: 'fal-ai/z-image/turbo/lora', label: 'Z-Image-Turbo + LoRA', sec: 4, modes: ['generate'], caps: { character: false, looks: 'zit-loras (≤3, other looks prompt-only)', aspect: true, n: [1, 4], ...COLOUR, ...UPSCALE } })),
     add(mk({ kind: 'replicate', slug: 'prunaai/z-image-turbo', label: 'Z-Image-Turbo', sec: 4, modes: ['generate'], caps: { character: false, looks: 'prompt-only', aspect: true, n: [1, 4], ...COLOUR, ...UPSCALE } })),

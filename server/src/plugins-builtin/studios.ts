@@ -8,10 +8,15 @@
  */
 import { definePlugin, type PluginDef } from '../kernel/index.js';
 import { STUDIO_TOOLS, galleryEntries, type StudioId } from '../tools/builtin.js';
+import { soulUpscaleAddOn } from '../tools/soul/cloud.js';
 
+/** studio-image also owns OpenSoul's cloud upscale (a route add-on on its cloud routes: services/routeAddOns.ts). */
 const studio = (id: Exclude<StudioId, 'apps-gallery'>): PluginDef => definePlugin({
-  name: id, inject: ['tools'],
-  apply(ctx) { for (const e of STUDIO_TOOLS[id]) ctx.tools.register(e.tool, { order: e.order, aliases: e.aliases }); },
+  name: id, inject: id === 'studio-image' ? ['tools', 'pricing'] : ['tools'],
+  apply(ctx) {
+    for (const e of STUDIO_TOOLS[id]) ctx.tools.register(e.tool, { order: e.order, aliases: e.aliases });
+    if (id === 'studio-image') ctx.pricing.addOn(soulUpscaleAddOn);
+  },
 });
 
 export const STUDIO_PLUGINS: Record<StudioId, PluginDef> = {

@@ -283,7 +283,7 @@ export function continueCheck(job: Job, tool: ToolDef, routeId: string): { ok: t
 export function continueOn(job: Job, tool: ToolDef, routeId: string): { ok: true; credits: number } | { error: string; status: number } {
   const c = continueCheck(job, tool, routeId); if ('error' in c) return c; const credits = c.credits;
   job.alternatives = []; job.status = 'running'; job.stage = 'queued'; job.finishedAt = undefined; job.error = null; job.refund = undefined;
-  const settleRow = () => import('../billing.js').then((B) => B.settleSpend(job)).catch(() => {}).then(() => emitJob('job/settled', job, { status: job.status, cost: reportedCostOf(job) })); // the Spend row (moved here by guardNextRoute) gets this run's status and actual cost; then job/settled (outside the queue)
+  const settleRow = () => import('../billing.js').then((B) => B.settleSpend(job)).catch(() => {}).then(() => emitJob('job/settled', job, { status: job.status, cost: reportedCostOf(job), via: 'fallback' })); // the Spend row (moved here by guardNextRoute) gets this run's status and actual cost; then job/settled (outside the queue)
   runRouted(job, tool, { only: routeId, guarded: true }).then(() => { job.finishedAt = Date.now(); void settleRow(); }, (e) => { job.status = 'failed'; job.error = String(e); job.finishedAt = Date.now(); void settleRow(); });
   return { ok: true, credits };
 }

@@ -114,8 +114,10 @@ Object.assign(process.env, { OPENHIGGSFIELD_PROFILE: profileFile, OPENHIGGSFIELD
   const out = execFileSync(process.execPath, ['--import', 'tsx', 'src/index.ts', '--dump-config'], { cwd: ROOT, env: { ...process.env, ...FAKE, OPENHIGGSFIELD_DATA_DIR: data, OPENHIGGSFIELD_PROFILE: '' }, maxBuffer: 64 << 20 }).toString();
   for (const v of Object.values(FAKE)) assert.ok(!out.includes(v), 'no key value in the dump');
   const d = JSON.parse(out); assert.equal(d.profile.name, 'desktop'); assert.equal(d.settings.dataDir, data); assert.ok(!fs.existsSync(data), 'the data folder is never opened');
-  assert.deepEqual(d.plugins.filter((p: any) => !/kernel service/.test(p.id)).map((p: any) => [p.id, p.state]), [...['place-comfy-local', 'place-comfy-cloud', 'place-comfy-router', 'place-fal', 'place-replicate', 'place-sunra', 'place-direct', 'place-sample', 'studio-video', 'studio-image', 'studio-audio', 'studio-3d', 'studio-edit', 'apps-gallery', 'workflow-folders', 'spend-cap', 'agent-budgets', 'billing-team-mode', 'hosted-grant'].map((id) => [id, 'active']), ['legacy', 'active']]);
-  assert.ok(d.routes.legacy.includes('GET /api/health') && d.routes.legacy.length > 400, 'routes per plugin');
+  assert.deepEqual(d.plugins.filter((p: any) => !/kernel service/.test(p.id)).map((p: any) => [p.id, p.state]), [...['comfy-featured', 'place-comfy-local', 'place-comfy-cloud', 'place-comfy-router', 'place-fal', 'place-replicate', 'place-sunra', 'place-direct', 'place-sample', 'studio-video', 'studio-image', 'studio-audio', 'studio-3d', 'studio-edit', 'apps-gallery', 'workflow-folders', 'spend-cap', 'agent-budgets', 'billing-team-mode', 'hosted-grant', 'eta-learning', 'webhooks'].map((id) => [id, 'active']), ['legacy', 'active'],
+    ...(await import('../src/plugins-builtin/features.js')).FEATURE_IDS.map((id) => [id, 'active'])]);
+  assert.ok(d.routes.legacy.includes('GET /api/health') && d.routes.legacy.length > 250, 'routes per plugin');
+  assert.ok(d.routes.captions.includes('GET /api/captions/status') && d.routes.openapi.includes('GET /api/openapi.json'), 'every feature plugin lists its routes');
   assert.deepEqual(d.hooks.find((x: any) => x.owner === 'local-only'), { name: 'onRequest', stage: 'security', owner: 'local-only' });
   assert.equal(d.keys.find((k: any) => k.name === 'COMFY_API_KEY').set, true);
   const e = execFileSync(process.execPath, ['--import', 'tsx', 'src/index.ts'], { cwd: ROOT, env: { ...process.env, ...FAKE, OPENHIGGSFIELD_DUMP_CONFIG: '1', OPENHIGGSFIELD_DATA_DIR: data, OPENHIGGSFIELD_PROFILE: '' }, maxBuffer: 64 << 20 }).toString();
@@ -127,7 +129,7 @@ Object.assign(process.env, { OPENHIGGSFIELD_PROFILE: profileFile, OPENHIGGSFIELD
   const ctx = await boot(); const B = `http://127.0.0.1:${testPort(9481)}`;
   const h = await (await fetch(`${B}/api/health`)).json() as any; assert.equal(h.backend, 'mock');
   assert.equal((await fetch(`${B}/api/health`, { headers: { origin: 'https://evil.example' } })).status, 403, 'local-only still first');
-  const http = (ctx as any).http.server; assert.ok(http.routesBy().legacy.length > 400);
+  const http = (ctx as any).http.server; assert.ok(http.routesBy().legacy.length > 250);
   const legacy = mounted.filter((m) => m.name === 'legacy').at(-1)!; await legacy.fiber.dispose();
   await assert.rejects(fetch(`${B}/api/health`), 'the port is closed'); assert.equal(http.listening, false);
   ok('legacy: serves through ctx.http; disposing the plugin closes the server'); }

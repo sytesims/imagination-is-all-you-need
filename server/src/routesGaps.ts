@@ -23,6 +23,7 @@ import { modelsFor } from './models.js';
 import { weightsForWorkflows } from './modelWeights.js';
 import { mcpInfo } from './mcpInfo.js';
 import { registerProfile } from './profile.js';
+import { setWebhookSink } from './plugins-builtin/webhooks.js';
 
 /** DP #20.7: the ComfyUI version, read (never hardcoded): /system_stats when reachable, else comfyui_version.py in the install folder
  *  (OPENHIGGSFIELD_COMFY_DIR, else the parent of the models folder). */
@@ -92,25 +93,33 @@ export function mainInputTakes(t: { inputs: { kind: string; accept?: string }[] 
   return !!kind && !!main && (!main.accept || main.accept.split(',').some((a) => a.trim().startsWith(`${kind}/`)));
 }
 
-type Hook = { url: string; sent: Set<string>; tries: number; next: number; until: number };
+type Hook = { url: string; sent: Set<string>; tries: number; next: number; until: number; busy?: boolean };
 const hooks = new Map<string, Hook>(Object.entries(getKv<Record<string, any>>('webhooks', {})).map(([k, v]) => [k, { ...v, sent: new Set<string>(v.sent ?? []) }]));
-const saveHooks = () => setKv('webhooks', Object.fromEntries([...hooks].map(([k, v]) => [k, { ...v, sent: [...v.sent] }])));
+const saveHooks = () => setKv('webhooks', Object.fromEntries([...hooks].map(([k, v]) => [k, { url: v.url, sent: [...v.sent], tries: v.tries, next: v.next, until: v.until }])));
 export function webhookUrlError(url: string): string | null { let u: URL; try { u = new URL(url); } catch { return 'webhookUrl must be an http(s) URL.'; } return /^https?:$/.test(u.protocol) ? null : 'webhookUrl must be an http(s) URL.'; }
 export function registerWebhook(jobId: string, url: string) { hooks.set(jobId, { url, sent: new Set(), tries: 0, next: 0, until: Date.now() + 2 * 3600_000 }); saveHooks(); }
 const TERMINAL = ['done', 'failed', 'canceled', 'blocked'];
+/** One delivery attempt for a job's webhook (once per terminal status; a failed POST backs off 2 s × 2^tries, at most 10 min). true: state changed. */
+async function attempt(id: string, h: Hook, now: number): Promise<boolean> {
+  const j = jobs.get(id); if (!j || now > h.until) { hooks.delete(id); return true; }
+  if (h.busy || !TERMINAL.includes(j.status) || h.sent.has(j.status) || now < h.next) return false;
+  const key = `${id}:${j.status}`; h.busy = true;
+  try {
+    try { const r = await fetch(h.url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-webhook-id': key }, body: JSON.stringify({ id, toolId: j.toolId, status: j.status, outputs: j.outputs, error: j.error, refund: (j as any).refund ?? null }), signal: AbortSignal.timeout(5000) });
+      if (r.ok) { h.sent.add(j.status); h.tries = 0; return true; } } catch { /* retry */ }
+    h.tries++; h.next = now + Math.min(600_000, 2000 * 2 ** h.tries); return true;
+  } finally { h.busy = false; }
+}
+/** job/settled (plugin webhooks): send the job's webhook now, instead of on the next tick of the loop below. */
+export async function deliverWebhook(id: string) { const h = hooks.get(id); if (h && (await attempt(id, h, Date.now()))) saveHooks(); }
+setWebhookSink(deliverWebhook);
 let loop: NodeJS.Timeout | null = null;
+/** Retries with back-off, hooks added after the job ended, and deliveries owed from before a restart. */
 function startWebhookLoop() {
   if (loop) return;
   loop = setInterval(async () => {
     const now = Date.now(); let dirty = false;
-    for (const [id, h] of hooks) {
-      const j = jobs.get(id); if (!j || now > h.until) { hooks.delete(id); dirty = true; continue; }
-      if (!TERMINAL.includes(j.status) || h.sent.has(j.status) || now < h.next) continue;
-      const key = `${id}:${j.status}`; dirty = true;
-      try { const r = await fetch(h.url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-webhook-id': key }, body: JSON.stringify({ id, toolId: j.toolId, status: j.status, outputs: j.outputs, error: j.error, refund: (j as any).refund ?? null }), signal: AbortSignal.timeout(5000) });
-        if (r.ok) { h.sent.add(j.status); h.tries = 0; continue; } } catch { /* retry */ }
-      h.tries++; h.next = now + Math.min(600_000, 2000 * 2 ** h.tries);
-    }
+    for (const [id, h] of hooks) if (await attempt(id, h, now)) dirty = true;
     if (dirty) saveHooks();
   }, 1000); loop.unref();
 }
