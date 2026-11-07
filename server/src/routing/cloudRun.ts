@@ -37,20 +37,35 @@ export const setCloudFetch = (f: typeof fetch | null, pollMs: number | null = nu
 /** The injected test fetch, if any (the deployment probe uses it too). */
 export const cloudTestFetch = () => testFetch;
 
+/** Shared by every Comfy Cloud runner (this one, and the partner-node runners: Tripo 3D, Topaz video): the Cloud job this attempt should only POLL
+ *  again (a restart or Retry download, routing/reattach.ts), or null for a normal run. */
+export function cloudResumeOf(job: Job, r: Pick<RouteDef, 'routeId'>, attempt: RouteAttempt) {
+  return job.remote?.resuming && job.remote.kind === 'cloud' && job.remote.routeId === r.routeId && job.remote.attempt === attempt.n ? job.remote : null;
+}
+/** The Cloud client for one attempt (a pick-up gets its own Idempotency-Key prefix; tests inject their fetch with setCloudFetch). */
+export function cloudClient(job: Job, attempt: RouteAttempt, tg: { base: string; token: string }, resuming: unknown = null) {
+  return new ComfyCloudV2(tg.base, tg.token, `${job.id}-a${attempt.n}${resuming ? `-r${Date.now().toString(36)}` : ''}`, testFetch ?? undefined, testPollMs ?? (Number(env('COMFY_CLOUD_POLL_MS')) || 3000));
+}
+/** A submitted Cloud job, written on the job at once (attempt.requestId, cloudJobId, job.remote): a restart, or a result that can't be saved, can
+ *  then be picked up by polling it (Retry download), never by submitting (and paying) again. */
+export function noteCloudSubmitted(job: Job, r: Pick<RouteDef, 'routeId'>, attempt: RouteAttempt, id: string, output = 0, outputs = 1) {
+  attempt.requestId = id; job.cloudJobId = id; if (!(job.requestIds ??= []).includes(id)) job.requestIds.push(id);
+  job.remote = { kind: 'cloud', id, routeId: r.routeId, attempt: attempt.n, output, outputs, at: Date.now() };
+  try { persistJob(job); } catch { /* the 400 ms flush has it */ }
+}
 export async function runCloudWorkflow(job: Job, r: RouteDef, attempt: RouteAttempt, keys: KeyReader = ANY_KEY) {
   // Price-first: a row whose price is not measured never runs for real (nothing is sent, so nothing is billed; run.ts gives the credits back).
   if (r.priceRef && HOSTED_BY_ID[r.priceRef]?.priceUnmeasured && !allowUnmeasuredCloud()) { job.reasonCode = 'price_unmeasured' as any; job.errorType = 'validation' as any; throw new Error(UNMEASURED_PRICE_REASON); }
   const tg = cloudTargetFor(r, keys); if (!tg) { job.reasonCode = (isDeployRoute(r.routeId) ? 'deploy_missing' : 'key_missing') as any; job.errorType = 'validation' as any; throw new Error(isDeployRoute(r.routeId) ? DEPLOY_MISSING_REASON : 'No Comfy API key is set'); }
   // a pick-up (restart / Retry download, routing/reattach.ts): the Cloud job from before is only polled, and only a one-pass graph (an earlier pass's
   // files are not kept across a restart); its uploads go again under new Idempotency-Keys (free), never the graph
-  const rm = job.remote?.resuming && job.remote.kind === 'cloud' && job.remote.routeId === r.routeId && job.remote.attempt === attempt.n ? job.remote : null;
-  const c = new ComfyCloudV2(tg.base, tg.token, `${job.id}-a${attempt.n}${rm ? `-r${Date.now().toString(36)}` : ''}`, testFetch ?? undefined, testPollMs ?? (Number(env('COMFY_CLOUD_POLL_MS')) || 3000));
+  const rm = cloudResumeOf(job, r, attempt);
+  const c = cloudClient(job, attempt, tg, rm);
   const run = c.run.bind(c); let passes = 0; let pass = 0;
   const partnerAuth = isStandalone(CLOUD_WORKFLOWS[r.routeId]) && !!(CLOUD_WORKFLOWS[r.routeId] as any).partnerAuth; // partner-node graphs: the key once in extra_data
   c.run = (g, o = {}) => { const k = pass++;
     if (rm && (passes !== 1 || k !== 0 || rm.output !== 0)) throw cannotPickUp(`a ${passes}-pass workflow`); // its earlier passes' files are gone with the restart
-    return run(g, { ...o, ...(partnerAuth ? { partnerAuth: true } : {}), ...(rm ? { resumeId: rm.id } : {}), onSubmitted: (id) => { attempt.requestId = id; job.cloudJobId = id;
-      job.remote = { kind: 'cloud', id, routeId: r.routeId, attempt: attempt.n, output: k, outputs: passes, at: Date.now() }; try { persistJob(job); } catch { /* the 400 ms flush has it */ } o.onSubmitted?.(id); } }); }; // stored at once; only ever polled
+    return run(g, { ...o, ...(partnerAuth ? { partnerAuth: true } : {}), ...(rm ? { resumeId: rm.id } : {}), onSubmitted: (id) => { noteCloudSubmitted(job, r, attempt, id, k, passes); o.onSubmitted?.(id); } }); }; // stored at once; only ever polled
   // B6: a twin route of an open model (job.provider comfy-h3 / comfy-open) runs the Comfy Cloud workflow named by its route, not by the job's provider
   const wf = CLOUD_WORKFLOWS[r.routeId]; let pre: Record<string, any> = {};
   const build: typeof buildCloudPlan = (j, o) => { const p = buildCloudPlan(wf ? { ...j, provider: wf.provider, input: { ...j.input, ...pre } } : j, o); passes = p.passes.length; notePlanPrompts(job, p); return p; }; // the prompts the workflow wrote ride on the job (result details)

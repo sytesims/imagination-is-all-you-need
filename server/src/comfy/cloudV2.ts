@@ -18,7 +18,7 @@ import { sanitizeProviderText } from '../comfyRouter.js';
 import { PollTolerance, MISS, withDownloadRetry } from '../hostedPoll.js';
 import { CLOUD_MAX_RUN_MIN, nearCloudLimit } from '../shared/cloudLimits.js';
 
-export type CloudReason = 'key_invalid' | 'cloud_credits' | 'workflow_invalid' | 'queue_full' | 'submit_uncertain' | 'cloud_job_failed' | 'cloud_timeout' | 'cloud_unreachable' | 'content_blocked' | 'cloud_job_gone' | 'upload_failed' | 'cloud_run_limit';
+export type CloudReason = 'key_invalid' | 'cloud_credits' | 'workflow_invalid' | 'queue_full' | 'submit_uncertain' | 'cloud_job_failed' | 'cloud_timeout' | 'cloud_unreachable' | 'content_blocked' | 'cloud_job_gone' | 'upload_failed' | 'cloud_run_limit' | 'download_refused';
 /** A Comfy Cloud failure with a plain message (no key, no URL; it follows "Comfy Cloud failed: ") and our reason code. temporary = retrying the same route may work. */
 export class CloudError extends Error {
   /** What Comfy Cloud said (sanitised): the ErrorEnvelope code / message and, for a refused graph, its per-node errors; null when nothing was said. */
@@ -154,16 +154,63 @@ export class ComfyCloudV2 {
       await new Promise((r) => setTimeout(r, this.pollMs));
     }
   }
-  /** Output url (auth) → 302 signed URL → fetched WITHOUT the key → dest. A few tries with back-off (audit 2026-11-01 #10); every try asks Cloud
-   *  again, so it gets a fresh signed link. The last failure is a DownloadError (the job keeps job.remote, so Retry download can fetch it later). */
-  async download(o: NativeOutput & { url?: string }, dest: string) {
-    if (!o.url) throw new CloudError('cloud_job_failed', 'a result came back without a download link.', null, true, 'output: no url');
-    const u = /^https?:/.test(o.url) ? o.url : this.base + o.url;
+  /** The places an output's bytes can be fetched from, in order (comfy-docs api-reference/v2 overview, "Output URLs and How Long They Last"):
+   *  the content endpoint on THIS Cloud base ({base}/api/v2/assets/{id}/content, sent with the key; it answers 302 to a signed storage link), then,
+   *  only when there is no way to reach it on the base, the link as given, fetched WITHOUT the key. The Comfy key never goes to another host
+   *  (2026-11-07: an absolute output url on another host used to get the key; job e47bb4e4). */
+  downloadPlan(o: { url?: string | null; id?: string | null }): { url: string; auth: boolean }[] {
+    const out: { url: string; auth: boolean }[] = []; const seen = new Set<string>(); const add = (url: string, auth: boolean) => { if (!seen.has(url)) { seen.add(url); out.push({ url, auth }); } };
+    const raw = o.url ? String(o.url) : ''; let abs: URL | null = null; try { abs = raw ? new URL(/^https?:/i.test(raw) ? raw : this.base + (raw.startsWith('/') ? '' : '/') + raw) : null; } catch { abs = null; }
+    const onBase = !!abs && sameOrigin(abs.toString(), this.base);
+    if (abs && onBase) add(abs.toString(), true);
+    const asset = (abs && /\/api\/v2\/assets\/([^/?#]+)\/content\/?$/.exec(abs.pathname)?.[1]) || (o.id ? encodeURIComponent(String(o.id)) : null);
+    if (asset) add(`${this.base}/api/v2/assets/${asset}/content`, true);
+    if (abs && !onBase) add(abs.toString(), false); // a signed or provider link: it carries its own authorization
+    return out;
+  }
+  /** One fetch of one place, following redirects by hand (at most 4 hops): the key rides only on the first request, to the Cloud base itself; every redirect (the 302 to a
+   *  signed storage link, on any host) is fetched without it. A relative Location stays on the host that sent it. */
+  private async fetchOnce(p: { url: string; auth: boolean }): Promise<Buffer> {
+    let at = p.url; let step = p.auth ? 'content endpoint' : 'download link';
+    for (let hop = 0; ; hop++) {
+      const key = hop === 0 && p.auth && sameOrigin(at, this.base);
+      let r: Response; try { r = await this.f(at, { headers: key ? this.auth() : {}, redirect: 'manual' }); } catch (e) { throw downloadErrorFor(step, at, null, key, String(e instanceof Error ? e.message : e)); }
+      const loc = r.status >= 300 && r.status < 400 ? r.headers.get('location') : null;
+      if (loc && hop < 4) { await r.arrayBuffer().catch(() => null); at = new URL(loc, at).toString(); step = 'signed link'; continue; }
+      if (!r.ok) throw downloadErrorFor(step, at, r.status, key, await r.text().catch(() => ''));
+      const buf = Buffer.from(await r.arrayBuffer()); if (!buf.length) throw downloadErrorFor(step, at, 502, key, 'empty body'); return buf;
+    }
+  }
+  /** Save one output (audit 2026-11-01 #10): a few tries with back-off; every try asks the content endpoint again, so a refused or expired signed
+   *  link is replaced by a fresh one. The last failure is a DownloadError whose last error says where it failed (host, step, status; never the
+   *  key or a signed query): the job keeps job.remote, so Retry download can fetch it later. */
+  async download(o: NativeOutput & { url?: string; id?: string }, dest: string) {
+    const plan = this.downloadPlan(o);
+    if (!plan.length) throw new CloudError('cloud_job_failed', 'a result came back without a download link.', null, true, 'output: no url');
     return withDownloadRetry('Comfy Cloud', async () => {
-      let r: Response; try { r = await this.f(u, { headers: this.auth(), redirect: 'manual' }); } catch (e) { throw new CloudError('cloud_unreachable', 'the result could not be downloaded.', null, true, String(e)); }
-      if (r.status >= 300 && r.status < 400 && r.headers.get('location')) r = await this.f(new URL(r.headers.get('location')!, u).toString());
-      if (!r.ok) throw cloudErrorFor(r.status, 'download');
-      await writeFile(dest, Buffer.from(await r.arrayBuffer())); return dest;
+      let last: unknown = null;
+      for (const p of plan) { try { await writeFile(dest, await this.fetchOnce(p)); return dest; } catch (e) { last = pickWorse(last, e); } }
+      throw last;
     }, { canRefresh: true });
   }
 }
+const sameOrigin = (u: string, base: string) => { try { return new URL(u).origin === new URL(base).origin; } catch { return false; } };
+/** host + path only (a signed link's query is its credential: never logged or shown). */
+export const safeLink = (u: string) => { try { const x = new URL(u); return `${x.host}${x.pathname.length > 60 ? x.pathname.slice(0, 57) + '…' : x.pathname}`; } catch { return 'an unreadable link'; } };
+/** A download failure, by where it happened. Only a 401 (or sso_required) from the Cloud base itself means the key; a refusal from a signed or
+ *  other link means the link was refused or expired (temporary: the next try asks for a fresh one). */
+export function downloadErrorFor(step: string, u: string, status: number | null, onBase: boolean, body = ''): CloudError {
+  const code = (() => { try { return String(JSON.parse(body)?.error?.code ?? ''); } catch { return ''; } })();
+  const where = `${step} on ${safeLink(u)}`; const detail = `download: ${where} → ${status ?? 'no answer'}`;
+  let e: CloudError;
+  if (status == null) e = new CloudError('cloud_unreachable', `the result could not be downloaded (${step}: no answer).`, null, true, `${detail} ${sanitizeProviderText(body, 200) ?? ''}`.trim());
+  else if (onBase && (status === 401 || code === 'sso_required')) e = new CloudError('key_invalid', 'the API key was not accepted (it is missing, wrong or revoked). Check the key in Settings.', status, false, detail);
+  else if (status === 401 || status === 403 || status === 404 || status === 410) e = new CloudError('download_refused', `the download link was refused or has expired (${where} answered ${status}).`, status, true, detail);
+  else if (status === 429 || status >= 500) e = new CloudError('cloud_unreachable', `the result could not be downloaded (${where} answered ${status}).`, status, true, detail);
+  else e = new CloudError('download_refused', `the download was refused (${where} answered ${status}).`, status, true, detail);
+  e.provider = { errorType: e.reasonCode, httpStatus: status, upstreamStatus: null, detail: e.message, upstreamDetail: null, refusalSubject: null, requestId: null, step: `download: ${step} (${safeLink(u).split('/')[0]})` };
+  return e;
+}
+/** Several places tried in one go: keep the most telling failure (the key over a link refusal over a network error). */
+const rank = (e: any) => (e?.reasonCode === 'key_invalid' ? 3 : e?.reasonCode === 'download_refused' ? 2 : e ? 1 : 0);
+const pickWorse = (a: unknown, b: unknown) => (rank(b) >= rank(a) ? b : a);

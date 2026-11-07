@@ -120,13 +120,14 @@ const asMp4 = async (src: string, jobId: string) => { if (/\.mp4$/i.test(src)) r
 async function muxSource(out: string, src: string) { const tmp = out.replace(/\.mp4$/i, '.mux.mp4');
   if ((await runFfmpeg(['-y', '-v', 'error', '-i', out, '-i', src, '-map', '0:v:0', '-map', '1:a:0?', '-c:v', 'copy', '-c:a', 'aac', '-shortest', tmp])) === 0) await (await import('node:fs/promises')).rename(tmp, out); }
 async function runTopazCloud(job: Job, r: RouteDef, attempt: RouteAttempt) {
-  const { ComfyCloudV2, CloudError, cloudFailure } = await import('../comfy/cloudV2.js'); const { cloudBase } = await import('../routing/cloudRun.js');
-  const cl = new ComfyCloudV2(cloudBase(), keyValue(r)!, `${job.id}-a${attempt.n}`); const i = job.input as Record<string, any>;
+  const { CloudError, cloudFailure } = await import('../comfy/cloudV2.js'); const { cloudBase, cloudClient, cloudResumeOf, noteCloudSubmitted } = await import('../routing/cloudRun.js');
+  // a pick-up (restart / Retry download): only the stored Cloud job is polled; nothing is uploaded or submitted again (routing/cloudRun.ts)
+  const rm = cloudResumeOf(job, r, attempt); const cl = cloudClient(job, attempt, { base: cloudBase(), token: keyValue(r)! }, rm); const i = job.input as Record<string, any>;
   try {
-    job.stage = 'uploading'; const asset = await cl.upload(await asMp4(i.videoPath, job.id));
+    const asset = rm ? null : (job.stage = 'uploading', await cl.upload(await asMp4(i.videoPath, job.id)));
     job.stage = 'submitted';
-    const res = await cl.run(topazGraph(job.provider, i, asset), { partnerAuth: true, isCanceled: () => (job.status as string) === 'canceled',
-      onSubmitted: (id) => { attempt.requestId = id; job.cloudJobId = id; (job.requestIds ??= []).push(id); }, onProgress: (p) => { job.stage = p.phase === 'queued' ? 'submitted' : 'rendering'; if (p.known) job.progress = p.percent; } });
+    const res = await cl.run(topazGraph(job.provider, i, asset), { partnerAuth: true, resumeId: rm?.id ?? null, isCanceled: () => (job.status as string) === 'canceled',
+      onSubmitted: (id) => noteCloudSubmitted(job, r, attempt, id), onProgress: (p) => { job.stage = p.phase === 'queued' ? 'submitted' : 'rendering'; if (p.known) job.progress = p.percent; } });
     const outs = Object.values(res.outputs).flat() as any[]; const vid = outs.find((o) => /\.(mp4|mov|webm)$/i.test(String(o.filename ?? ''))) ?? outs.find((o) => /video/i.test(String(o.content_type ?? '')));
     if (!vid) throw new CloudError('cloud_job_failed', 'the run finished without a video.', null, true, 'no video output');
     job.stage = 'muxing'; const name = `${job.id}-out0.mp4`; const dest = path.join(DATA_DIR, name); await cl.download(vid, dest); if (i.keepAudio !== false && i.hasAudio) await muxSource(dest, i.videoPath);
