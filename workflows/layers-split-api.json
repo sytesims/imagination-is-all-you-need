@@ -37,7 +37,7 @@
    "length": 1
   },
   "_meta": {
-   "title": "First frame"
+   "title": "First frame (as Swap Two People node 42)"
   }
  },
  "100": {
@@ -73,62 +73,16 @@
    "individual_masks": false
   },
   "_meta": {
-   "title": "Object 1 on the first frame (proven chain: H3 Character Swap Cloud nodes 42-43)"
+   "title": "Object 1 on the first frame (as Swap Two People node 143)"
   }
  },
  "102": {
-  "class_type": "SAM3_VideoTrack",
-  "inputs": {
-   "images": [
-    "2",
-    0
-   ],
-   "model": [
-    "3",
-    0
-   ],
-   "initial_mask": [
-    "101",
-    0
-   ],
-   "detection_threshold": 0.5,
-   "max_objects": 1,
-   "detect_interval": 1
-  },
-  "_meta": {
-   "title": "Object 1 tracked from its first-frame mask (max_objects 1, no text detection; as H3 Character Swap node 47)"
-  }
- },
- "103": {
-  "class_type": "SAM3_TrackToMask",
-  "inputs": {
-   "track_data": [
-    "102",
-    0
-   ],
-   "object_indices": "0"
-  }
- },
- "104": {
   "class_type": "MaskToImage",
   "inputs": {
    "mask": [
-    "103",
+    "101",
     0
    ]
-  }
- },
- "105": {
-  "class_type": "SaveImage",
-  "inputs": {
-   "images": [
-    "104",
-    0
-   ],
-   "filename_prefix": "layers/mask0"
-  },
-  "_meta": {
-   "title": "Object 1 matte (per frame)"
   }
  },
  "110": {
@@ -164,62 +118,16 @@
    "individual_masks": false
   },
   "_meta": {
-   "title": "Object 2 on the first frame (proven chain: H3 Character Swap Cloud nodes 42-43)"
+   "title": "Object 2 on the first frame (as Swap Two People node 143)"
   }
  },
  "112": {
-  "class_type": "SAM3_VideoTrack",
-  "inputs": {
-   "images": [
-    "2",
-    0
-   ],
-   "model": [
-    "3",
-    0
-   ],
-   "initial_mask": [
-    "111",
-    0
-   ],
-   "detection_threshold": 0.5,
-   "max_objects": 1,
-   "detect_interval": 1
-  },
-  "_meta": {
-   "title": "Object 2 tracked from its first-frame mask (max_objects 1, no text detection; as H3 Character Swap node 47)"
-  }
- },
- "113": {
-  "class_type": "SAM3_TrackToMask",
-  "inputs": {
-   "track_data": [
-    "112",
-    0
-   ],
-   "object_indices": "0"
-  }
- },
- "114": {
   "class_type": "MaskToImage",
   "inputs": {
    "mask": [
-    "113",
+    "111",
     0
    ]
-  }
- },
- "115": {
-  "class_type": "SaveImage",
-  "inputs": {
-   "images": [
-    "114",
-    0
-   ],
-   "filename_prefix": "layers/mask1"
-  },
-  "_meta": {
-   "title": "Object 2 matte (per frame)"
   }
  },
  "120": {
@@ -255,62 +163,16 @@
    "individual_masks": false
   },
   "_meta": {
-   "title": "Object 3 on the first frame (proven chain: H3 Character Swap Cloud nodes 42-43)"
+   "title": "Object 3 on the first frame (as Swap Two People node 143)"
   }
  },
  "122": {
-  "class_type": "SAM3_VideoTrack",
-  "inputs": {
-   "images": [
-    "2",
-    0
-   ],
-   "model": [
-    "3",
-    0
-   ],
-   "initial_mask": [
-    "121",
-    0
-   ],
-   "detection_threshold": 0.5,
-   "max_objects": 1,
-   "detect_interval": 1
-  },
-  "_meta": {
-   "title": "Object 3 tracked from its first-frame mask (max_objects 1, no text detection; as H3 Character Swap node 47)"
-  }
- },
- "123": {
-  "class_type": "SAM3_TrackToMask",
-  "inputs": {
-   "track_data": [
-    "122",
-    0
-   ],
-   "object_indices": "0"
-  }
- },
- "124": {
   "class_type": "MaskToImage",
   "inputs": {
    "mask": [
-    "123",
+    "121",
     0
    ]
-  }
- },
- "125": {
-  "class_type": "SaveImage",
-  "inputs": {
-   "images": [
-    "124",
-    0
-   ],
-   "filename_prefix": "layers/mask2"
-  },
-  "_meta": {
-   "title": "Object 3 matte (per frame)"
   }
  },
  "130": {
@@ -346,10 +208,56 @@
    "individual_masks": false
   },
   "_meta": {
-   "title": "Object 4 on the first frame (proven chain: H3 Character Swap Cloud nodes 42-43)"
+   "title": "Object 4 on the first frame (as Swap Two People node 143)"
   }
  },
  "132": {
+  "class_type": "MaskToImage",
+  "inputs": {
+   "mask": [
+    "131",
+    0
+   ]
+  }
+ },
+ "150": {
+  "class_type": "BatchImagesNode",
+  "inputs": {
+   "images.image0": [
+    "102",
+    0
+   ],
+   "images.image1": [
+    "112",
+    0
+   ],
+   "images.image2": [
+    "122",
+    0
+   ],
+   "images.image3": [
+    "132",
+    0
+   ]
+  },
+  "_meta": {
+   "title": "One first-frame mask per object, in name order (as Swap Two People node 162)"
+  }
+ },
+ "151": {
+  "class_type": "ImageToMask",
+  "inputs": {
+   "image": [
+    "150",
+    0
+   ],
+   "channel": "red"
+  },
+  "_meta": {
+   "title": "(as Swap Two People node 163)"
+  }
+ },
+ "152": {
   "class_type": "SAM3_VideoTrack",
   "inputs": {
    "images": [
@@ -361,41 +269,149 @@
     0
    ],
    "initial_mask": [
-    "131",
+    "151",
     0
    ],
    "detection_threshold": 0.5,
-   "max_objects": 1,
+   "max_objects": 4,
    "detect_interval": 1
   },
   "_meta": {
-   "title": "Object 4 tracked from its first-frame mask (max_objects 1, no text detection; as H3 Character Swap node 47)"
+   "title": "Track every object from its first-frame mask, no text detection (as Swap Two People node 170)"
   }
  },
- "133": {
+ "200": {
   "class_type": "SAM3_TrackToMask",
   "inputs": {
    "track_data": [
-    "132",
+    "152",
     0
    ],
    "object_indices": "0"
+  },
+  "_meta": {
+   "title": "Object 1 (as Swap Two People nodes 148 / 248)"
   }
  },
- "134": {
+ "201": {
   "class_type": "MaskToImage",
   "inputs": {
    "mask": [
-    "133",
+    "200",
     0
    ]
   }
  },
- "135": {
+ "202": {
   "class_type": "SaveImage",
   "inputs": {
    "images": [
-    "134",
+    "201",
+    0
+   ],
+   "filename_prefix": "layers/mask0"
+  },
+  "_meta": {
+   "title": "Object 1 matte (per frame)"
+  }
+ },
+ "210": {
+  "class_type": "SAM3_TrackToMask",
+  "inputs": {
+   "track_data": [
+    "152",
+    0
+   ],
+   "object_indices": "1"
+  },
+  "_meta": {
+   "title": "Object 2 (as Swap Two People nodes 148 / 248)"
+  }
+ },
+ "211": {
+  "class_type": "MaskToImage",
+  "inputs": {
+   "mask": [
+    "210",
+    0
+   ]
+  }
+ },
+ "212": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "211",
+    0
+   ],
+   "filename_prefix": "layers/mask1"
+  },
+  "_meta": {
+   "title": "Object 2 matte (per frame)"
+  }
+ },
+ "220": {
+  "class_type": "SAM3_TrackToMask",
+  "inputs": {
+   "track_data": [
+    "152",
+    0
+   ],
+   "object_indices": "2"
+  },
+  "_meta": {
+   "title": "Object 3 (as Swap Two People nodes 148 / 248)"
+  }
+ },
+ "221": {
+  "class_type": "MaskToImage",
+  "inputs": {
+   "mask": [
+    "220",
+    0
+   ]
+  }
+ },
+ "222": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "221",
+    0
+   ],
+   "filename_prefix": "layers/mask2"
+  },
+  "_meta": {
+   "title": "Object 3 matte (per frame)"
+  }
+ },
+ "230": {
+  "class_type": "SAM3_TrackToMask",
+  "inputs": {
+   "track_data": [
+    "152",
+    0
+   ],
+   "object_indices": "3"
+  },
+  "_meta": {
+   "title": "Object 4 (as Swap Two People nodes 148 / 248)"
+  }
+ },
+ "231": {
+  "class_type": "MaskToImage",
+  "inputs": {
+   "mask": [
+    "230",
+    0
+   ]
+  }
+ },
+ "232": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "231",
     0
    ],
    "filename_prefix": "layers/mask3"
@@ -410,7 +426,7 @@
    "bg_removal_name": "birefnet.safetensors"
   },
   "_meta": {
-   "title": "BiRefNet (MIT); chain of the official template utility_birefnet_remove_background"
+   "title": "BiRefNet (MIT); the official template utility_birefnet_remove_background"
   }
  },
  "301": {
@@ -445,7 +461,7 @@
    "filename_prefix": "layers/edges"
   },
   "_meta": {
-   "title": "Soft edges (combined with each object's matte on your computer)"
+   "title": "Soft edges (multiplied with each object's grown matte on your computer)"
   }
  },
  "400": {
@@ -455,7 +471,7 @@
    "weight_dtype": "default"
   },
   "_meta": {
-   "title": "Depth Anything 3 Small (Apache-2.0); chain of the official template utility_depth_anything3_video_depth_estimation"
+   "title": "Depth Anything 3 (Small on your computer, Mono-Large on Comfy Cloud); the official template utility_depth_anything3_video_depth_estimation"
   }
  },
  "401": {
@@ -496,7 +512,7 @@
    "filename_prefix": "layers/depth"
   },
   "_meta": {
-   "title": "Depth (near = white; normalised over the whole clip on your computer)"
+   "title": "Depth (near = white; stretched over the whole clip on your computer)"
   }
  }
 }

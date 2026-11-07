@@ -9,7 +9,7 @@
 3. **Pick the options** (all on by default, under the sliders button):
    - **Clean edges**: soft hair and fur edges from BiRefNet, kept close to each object.
    - **Depth**: a depth pass from Depth Anything 3. It also puts the layers in order, nearest on top.
-   - **Clean background**: the scene with your layers taken out (Footage Effects' Vanish, the first 5 s).
+   - **Clean background**: the scene with your layers taken out (the first 5 s).
 4. **Split into layers.** Free on your computer, or on Comfy Cloud with the price on the button.
 
 ## The result
@@ -35,12 +35,12 @@ Open the result to see the layer stack:
 
 | Step | Model | Licence |
 |---|---|---|
-| Find and track each name | SAM 3.1 (`sam3.1_multiplex_fp16`), one tracker per name, seeded from the first frame | SAM License (restricted: read it) |
+| Find and track each name | SAM 3.1 (`sam3.1_multiplex_fp16`): each name found on the first frame, then all tracked together, so names never swap | SAM License (restricted: read it) |
 | Soft edges | BiRefNet (`birefnet`), kept only in a thin band around each layer's edge | MIT |
-| Depth and order | Depth Anything 3 Small (`depth_anything_3_small`) | Apache-2.0 |
-| Clean background | Footage Effects' Vanish: LTX-2.5 + the Clean Plate IC-LoRA on your computer, LTX-2.3 on Comfy Cloud. Pasted only where your layers were; everywhere else it is your own footage | LTX-2.x Community License |
+| Depth and order | Depth Anything 3: Small on your computer, Mono-Large on Comfy Cloud | Apache-2.0 |
+| Clean background | On your computer, Footage Effects' Vanish (LTX-2.5 + the Clean Plate IC-LoRA). On Comfy Cloud, Remove an object with your names (the official LTX-2.3 template; not yet tried on a real Comfy Cloud run). Pasted only where your layers were; everywhere else it is your own footage | LTX-2.x Community License |
 
-The graph is [`workflows/layers-split-api.json`](../workflows/layers-split-api.json): our own, using only core ComfyUI nodes, built from chains that already ran (our H3 Character Swap graph's first-frame SAM tracking, and the official Comfy templates for BiRefNet and Depth Anything 3). Joining the edges, measuring depth over the clip, ordering the layers, the clean background paste and the export run on your computer with ffmpeg.
+The graph is [`workflows/layers-split-api.json`](../workflows/layers-split-api.json): our own, using only core ComfyUI nodes, built only from chains that already ran: the SAM part of our Swap Two People graph (it ran on Comfy Cloud), and the official Comfy templates for BiRefNet and Depth Anything 3. Joining the edges, measuring depth over the clip, ordering the layers, the clean background paste and the export run on your computer with ffmpeg.
 
 **Downloads for your computer:** 2.3 GB for the split (SAM 3.1 1.75 GB, BiRefNet 0.44 GB, Depth Anything 3 Small 0.14 GB). The clean background also needs Footage Effects' LTX-2.5 files (about 43 GB). The app shows the sizes and asks before it downloads anything.
 

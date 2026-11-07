@@ -1,14 +1,15 @@
 /**
  * Layers: the analysis graph (workflows/layers-split-api.json, our own, core ComfyUI nodes only), patched for one job. Proven chains only
- * (owner rule, 2026-11-07, after a text-only SAM3_VideoTrack graph hung twice on Comfy Cloud: research DIAGNOSIS.md):
- *  - SAM 3.1, one chain per object, exactly the chain of our working H3 Character Swap Comfy Cloud graph (workflows/cloud/h3-charswap-api.json
- *    nodes 42→43→46→47; the fixed test graph cloud-test 1-sam3-track-api.v2.json): CLIPTextEncode(name) → SAM3_Detect on frame 0 (threshold 0.35,
- *    refine 2) → SAM3_VideoTrack seeded with that mask (max_objects 1, no text detection while tracking) → SAM3_TrackToMask 0 → SaveImage.
- *    One tracker per object, so each layer keeps its own name.
+ * (owner rule, 2026-11-07, after a text-only SAM3_VideoTrack graph hung twice on Comfy Cloud: research DIAGNOSIS.md, PROVEN-WORKFLOWS.md):
+ *  - SAM 3.1: exactly the SAM part of Swap Two People (workflows/cloud/h3-two-person-swap-api.json, done on Comfy Cloud; nodes 42 → 143/243 →
+ *    160/161 → 162 → 163 → 170 → 148/248), with one name per object instead of "person" + a half-frame: frame 0 → one SAM3_Detect per name
+ *    (threshold 0.35, refine 2) → MaskToImage → BatchImagesNode → ImageToMask → ONE SAM3_VideoTrack seeded with those masks (no text detection,
+ *    max_objects = the number of names) → SAM3_TrackToMask i. Index i is always name i, so names never swap. (The one-object form of this chain
+ *    ran on Comfy Cloud on 2026-11-07: "woman", 48 frames, about 18 s.)
  *  - BiRefNet: the official template utility_birefnet_remove_background's chain (LoadBackgroundRemovalModel → RemoveBackground) on every frame;
- *    we save its mask (the template's cut-out join is done by us) and keep it only near each object's edge (masks.ts).
+ *    its mask is multiplied with each object's grown matte on this computer (masks.ts), so it only softens that object's edge.
  *  - Depth Anything 3: the official template utility_depth_anything3_video_depth_estimation's chain (DA3Inference 504, lower_bound_resize, mono →
- *    DA3Render depth, v2_style), with the Apache-2.0 Small checkpoint and frames saved as PNG; depth.ts normalises it over the clip.
+ *    DA3Render depth, v2_style). Small on your computer; Mono-Large on Comfy Cloud (plan.ts). Frames saved as PNG; depth.ts stretches them over the clip.
  * Unused objects and switched-off parts are taken out, so ComfyUI only loads what this job needs.
  */
 import { readFileSync } from 'node:fs';
@@ -19,13 +20,16 @@ import { LAYERS_MAX_OBJECTS, LAYERS_WORKFLOW } from './constants.js';
 export type FileRef = { __file: string };
 export interface GraphJob { source: string; objects: string[]; edges: boolean; depth: boolean }
 /** Output nodes of the analysis graph, in the order the plan reads them back. */
-export const maskNode = (k: number) => String(105 + 10 * k);
+export const maskNode = (k: number) => String(202 + 10 * k);
 export const EDGES_NODE = '303';
 export const DEPTH_NODE = '403';
+/** Depth Anything 3 on Comfy Cloud: the template's own default (on your computer: Small, 0.14 GB). */
+export const DA3_CLOUD_MODEL = 'depth_anything_3_mono_large.safetensors';
 
 const load = () => JSON.parse(readFileSync(path.join(WORKFLOWS_DIR, LAYERS_WORKFLOW), 'utf8')) as Record<string, any>;
 const drop = (g: Record<string, any>, ids: string[]) => { for (const id of ids) delete g[id]; };
-const chainNodes = (k: number) => [0, 1, 2, 3, 4, 5].map((n) => String(100 + 10 * k + n));
+const detectNodes = (k: number) => [100, 101, 102].map((n) => String(n + 10 * k));
+const trackNodes = (k: number) => [200, 201, 202].map((n) => String(n + 10 * k));
 
 export function layersGraph(j: GraphJob): Record<string, any> {
   const n = j.objects.length;
@@ -34,8 +38,10 @@ export function layersGraph(j: GraphJob): Record<string, any> {
   g['1'].inputs.file = { __file: j.source } satisfies FileRef;
   for (let k = 0; k < LAYERS_MAX_OBJECTS; k++) {
     if (k < n) { g[String(100 + 10 * k)].inputs.text = j.objects[k]; continue; }
-    drop(g, chainNodes(k));
+    drop(g, [...detectNodes(k), ...trackNodes(k)]);
+    delete g['150'].inputs[`images.image${k}`];
   }
+  g['152'].inputs.max_objects = n;
   if (!j.edges) drop(g, ['300', '301', '302', EDGES_NODE]);
   if (!j.depth) drop(g, ['400', '401', '402', DEPTH_NODE]);
   return g;

@@ -45,6 +45,7 @@ export function buildManifest(o: {
   }));
   const seconds = Math.round((o.frames / o.fps) * 100) / 100;
   const models: LayersManifest['models'] = LAYERS_LICENCES.filter((m) => (m.name !== LAYERS_MODELS.edges || o.edges) && (m.name !== LAYERS_MODELS.depth || !!o.urls.depth)).map((m) => ({ ...m }));
+  if (o.where === 'comfy-cloud') for (const m of models) if (m.name === LAYERS_MODELS.depth) Object.assign(m, { name: LAYERS_MODELS.depthCloud, licence: 'Apache-2.0 (Hugging Face tag)' }); // the Cloud template's default
   if (o.plate) models.push({ name: o.plate.model, ...PLATE_LICENCE });
   return {
     schema: 1, app: 'Imagination Is All You Need', kind: 'video-layers', jobId: o.jobId,

@@ -1,6 +1,6 @@
 // Layers (2026-11-07, plugin layers: server/src/layers). What a split promises, without a model:
 //  1. names: chips are tidied (no commas / colons for SAM), deduped, a JSON list or words; the mode follows Clean background.
-//  2. graph: one proven SAM chain per object (frame-0 SAM3_Detect → SAM3_VideoTrack max_objects 1, seeded, no text detection), unused chains and
+//  2. graph: the SAM part of Swap Two People (frame-0 SAM3_Detect per name → batched → one seeded SAM3_VideoTrack, no text detection), unused chains and
 //     switched-off parts removed, every class known to Comfy Cloud's node list; the output order.
 //  3. mask combine: the edge band filter (SAM core ∪ (BiRefNet ∩ grown SAM)), overlaps cut by the nearer layers; a real ffmpeg run on tiny frames.
 //  4. depth: percentiles, the clip-wide stretch, per-object median depth and the order (far → near; no depth: first chip on top).
@@ -38,15 +38,21 @@ const Z = await import('../src/layers/zipStream.ts');
 {
   const g = G.layersGraph({ source: '/x/src.mp4', objects: ['woman', 'steam'], edges: true, depth: true });
   assert.deepEqual(g['1'].inputs.file, { __file: '/x/src.mp4' });
+  // exactly the SAM part of Swap Two People (proven on Comfy Cloud): one SAM3_Detect per name on frame 0 → batched → ONE tracker seeded with them
   for (const [k, name] of ['woman', 'steam'].entries()) {
-    const b = 100 + 10 * k; const det = g[String(b + 1)], trk = g[String(b + 2)], tm = g[String(b + 3)];
-    assert.equal(g[String(b)].inputs.text, name);
-    assert.equal(det.class_type, 'SAM3_Detect'); assert.deepEqual(det.inputs.image, ['4', 0], 'detect on the first frame');
-    assert.equal(trk.class_type, 'SAM3_VideoTrack'); assert.equal(trk.inputs.max_objects, 1); assert.deepEqual(trk.inputs.initial_mask, [String(b + 1), 0]);
-    assert.ok(!('conditioning' in trk.inputs), 'no text detection while tracking (the path that hung on Comfy Cloud)');
-    assert.equal(tm.inputs.object_indices, '0'); assert.equal(g[G.maskNode(k)].class_type, 'SaveImage');
+    const b = 100 + 10 * k; const det = g[String(b + 1)];
+    assert.equal(g[String(b)].inputs.text, name); assert.equal(det.class_type, 'SAM3_Detect'); assert.deepEqual(det.inputs.image, ['4', 0], 'detect on the first frame');
+    assert.equal(det.inputs.threshold, 0.35); assert.equal(det.inputs.refine_iterations, 2);
+    assert.deepEqual(g['150'].inputs[`images.image${k}`], [String(b + 2), 0]);
+    assert.equal(g[String(200 + 10 * k)].inputs.object_indices, String(k), 'track index k = name k'); assert.equal(g[G.maskNode(k)].class_type, 'SaveImage');
   }
-  assert.ok(!g['120'] && !g['135'], 'chains 3 and 4 removed');
+  const trk = g['152']; assert.equal(trk.class_type, 'SAM3_VideoTrack'); assert.equal(trk.inputs.max_objects, 2); assert.deepEqual(trk.inputs.initial_mask, ['151', 0]);
+  assert.ok(!('conditioning' in trk.inputs), 'no text detection while tracking (the path that hung on Comfy Cloud)');
+  assert.deepEqual(Object.keys(g['150'].inputs), ['images.image0', 'images.image1']);
+  assert.ok(!g['120'] && !g['220'], 'chains 3 and 4 removed');
+  const two = JSON.parse(fs.readFileSync(new URL('../../workflows/cloud/h3-two-person-swap-api.json', import.meta.url), 'utf8'));
+  for (const [ours, theirs] of [['101', '143'], ['152', '170'], ['151', '163']]) for (const k of Object.keys(two[theirs].inputs)) if (!Array.isArray(two[theirs].inputs[k]) && k !== 'max_objects')
+    assert.deepEqual(g[ours].inputs[k], two[theirs].inputs[k], `${ours}.${k} as Swap Two People ${theirs}`);
   assert.deepEqual(G.outputNodes({ objects: ['a', 'b'], edges: true, depth: true }).map((o) => o.role), ['mask0', 'mask1', 'edges', 'depth']);
   const bare = G.layersGraph({ source: 's', objects: ['a'], edges: false, depth: false });
   assert.ok(!bare['300'] && !bare['400'] && !bare[G.EDGES_NODE] && !bare[G.DEPTH_NODE]);
@@ -58,8 +64,8 @@ const Z = await import('../src/layers/zipStream.ts');
   // SAM classes and inputs as Comfy Cloud lists them (object_info 2026-10-26)
   const oi = JSON.parse(fs.readFileSync(new URL('./fixtures/object-info-comfy-cloud-2026-10-26.json', import.meta.url), 'utf8'));
   for (const n of Object.values<any>(full)) { const def = oi[n.class_type]; if (!def) continue; const known = [...Object.keys(def.input?.required ?? {}), ...Object.keys(def.input?.optional ?? {})];
-    for (const k of Object.keys(n.inputs)) assert.ok(known.includes(k), `${n.class_type}.${k} is a Comfy Cloud input`); }
-  ok('graph: one proven SAM chain per object, parts removed when off, links and Cloud inputs valid');
+    for (const k of Object.keys(n.inputs)) assert.ok(known.includes(k.split(".")[0]), `${n.class_type}.${k} is a Comfy Cloud input`); } // "images.image0": an autogrow input
+  ok('graph: the proven Swap Two People SAM chain, parts removed when off, links and Cloud inputs valid');
 }
 // ---------------- 3. mask combine ----------------
 {
@@ -158,7 +164,10 @@ let man: any;
   assert.equal(p.passes.length, 1); assert.equal(p.passes[0].output, G.maskNode(0)); assert.deepEqual(p.passes[0].extraOutputs, [{ node: G.EDGES_NODE, label: 'edges' }]);
   assert.equal(p.post.kind, 'custom'); assert.equal(p.imageBatches, true); assert.equal(p.outKind, 'video');
   assert.throws(() => layersPlan({ id: 'j', toolId: 'layers', provider: K.LAYERS_LOCAL, input: {} }, 'local'), /not prepared/);
-  ok('plan: one analysis pass (mattes + edges), custom finish on this computer, every frame kept');
+  const c = layersPlan({ id: 'j', toolId: 'layers', provider: K.LAYERS_LOCAL, input: { ...i, depth: true } }, 'cloud');
+  assert.equal(c.passes[0].graph['400'].inputs.model_name, G.DA3_CLOUD_MODEL, 'Comfy Cloud: the depth template default (Mono-Large)');
+  assert.equal(p.passes[0].graph['400'], undefined);
+  ok('plan: one analysis pass (mattes + edges), custom finish on this computer, every frame kept; Mono-Large depth on Comfy Cloud');
 }
 // ---------------- 9. the unmeasured-price gate ----------------
 {

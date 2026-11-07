@@ -31,7 +31,8 @@ const PARTS = [
   { ...SAM, terms: LICENSES['sam-license']?.terms },
   { model: 'BiRefNet (birefnet.safetensors, Comfy-Org/BiRefNet; ZhengPeng7/BiRefNet) · soft edges', license: 'MIT', commercial: 'yes' as const, url: 'https://huggingface.co/ZhengPeng7/BiRefNet', licenseId: 'mit' },
   { model: 'Depth Anything 3 Small (depth_anything_3_small.safetensors, Comfy-Org/Depth-Anything-3; ByteDance-Seed) · depth and layer order', license: 'Apache-2.0', commercial: 'yes' as const, url: 'https://huggingface.co/Comfy-Org/Depth-Anything-3', licenseId: 'apache-2.0' },
-  { model: 'Clean background: Footage Effects Vanish (LTX-2.5 + Clean Plate IC-LoRA on your computer, LTX-2.3 on Comfy Cloud; Lightricks)', license: 'LTX-2.x Community License', commercial: 'restricted' as const, url: 'https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x', licenseId: 'ltx-2x-community' },
+  { model: 'Depth Anything 3 Mono-Large (depth_anything_3_mono_large.safetensors, Comfy-Org/Depth-Anything-3) · depth on Comfy Cloud (the official template’s default)', license: 'Apache-2.0 (Hugging Face tag; upstream terms of the Large checkpoints not yet checked)', commercial: 'yes' as const, url: 'https://huggingface.co/Comfy-Org/Depth-Anything-3', licenseId: 'apache-2.0' },
+  { model: 'Clean background: Footage Effects Vanish on your computer (LTX-2.5 + Clean Plate IC-LoRA), Remove an object on Comfy Cloud (official LTX-2.3 remove-object template); Lightricks', license: 'LTX-2.x Community License', commercial: 'restricted' as const, url: 'https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x', licenseId: 'ltx-2x-community' },
   { model: 'Layers graph (workflows/layers-split-api.json): our own, core ComfyUI nodes, after the official Comfy-Org templates (SAM 3 video segmentation, BiRefNet remove background, Depth Anything 3 video depth)', license: 'MIT', commercial: 'yes' as const, url: 'https://github.com/Comfy-Org/workflow_templates', licenseId: 'mit' },
 ];
 
@@ -53,17 +54,17 @@ const D = '2026-11-06' as HostedPrice['checkedAt'];
 if (!HOSTED_BY_ID[LAYERS_CLOUD]) {
   const row: HostedPrice = { providerId: LAYERS_CLOUD, model: `Layers (${LAYERS_MODEL_LINE}) on Comfy Cloud`, unit: 'second', usd: cloudGpuUsd(LAYERS_GPU_SEC.analysis), sourceUrl: 'https://www.comfy.org/cloud/pricing',
     checkedAt: D, estimated: true, priceUnmeasured: true,
-    note: `Price not measured yet: an estimate. Comfy Cloud bills active GPU time (0.39 credits per GPU-second, 211 credits = $1), model load included. Guessed at about ${LAYERS_GPU_SEC.analysis} GPU-seconds per second of clip for SAM 3.1 tracking, BiRefNet and Depth Anything 3 Small at up to 1024 px, plus the clean background (LTX-2.3 Vanish, about ${LAYERS_GPU_SEC.plate} GPU-seconds per second for up to ${LAYERS_PLATE_SECONDS} s). One measured run sets the real rate.` };
+    note: `Price not measured yet: an estimate. Comfy Cloud bills active GPU time (0.39 credits per GPU-second, 211 credits = $1), model load included. Guessed at about ${LAYERS_GPU_SEC.analysis} GPU-seconds per second of clip for SAM 3.1 tracking, BiRefNet and Depth Anything 3 Small at up to 1024 px, plus the clean background (LTX-2.3 Remove an object, about ${LAYERS_GPU_SEC.plate} GPU-seconds per second for up to ${LAYERS_PLATE_SECONDS} s). One measured run sets the real rate.` };
   HOSTED_PRICES.push(row); HOSTED_BY_ID[LAYERS_CLOUD] = row;
 }
 NATIVE_DIRECT[LAYERS_CLOUD] = { label: 'Comfy Cloud', sourceUrl: 'https://docs.comfy.org/tutorials/utility/video-segment-sam3', checkedAt: '2026-11-07', typicalLatencySec: 180, latencyEstimated: true, latencySource: 'estimated', output: 'video',
   priceInput: (i: Record<string, any>) => ({ ...i, duration: layersBillSeconds(i) }), caps: { maxSeconds: LAYERS_MAX_SECONDS, objects: 4 } } as any;
 CLOUD_WORKFLOWS[LAYERS_CLOUD_ROUTE] = { routeId: LAYERS_CLOUD_ROUTE, provider: LAYERS_CLOUD, standalone: true, target: 'cloud', label: 'Layers · Comfy Cloud',
-  graphs: [LAYERS_WORKFLOW, VFX_CLOUD_GRAPHS.vanish.graph /* the clean background: Footage Effects' Vanish graph */],
+  graphs: [LAYERS_WORKFLOW, VFX_CLOUD_GRAPHS['remove-object'].graph /* the clean background: the official LTX-2.3 remove-object template (unconfirmed on Comfy Cloud) */],
   requires: { nodes: [...new Set(['LoadVideo', 'GetVideoComponents', 'CheckpointLoaderSimple', 'ImageFromBatch', 'CLIPTextEncode', 'SAM3_Detect', 'MaskToImage', 'SAM3_VideoTrack',
     'SAM3_TrackToMask', 'SaveImage', 'LoadBackgroundRemovalModel', 'RemoveBackground', 'LoadDA3Model', 'DA3Inference', 'DA3Render', ...VFX_CLOUD_REQUIRES.nodes])],
     models: [{ loader: 'CheckpointLoaderSimple', field: 'ckpt_name', file: 'sam3.1_multiplex_fp16.safetensors' }, { loader: 'LoadBackgroundRemovalModel', field: 'bg_removal_name', file: 'birefnet.safetensors' },
-      { loader: 'LoadDA3Model', field: 'model_name', file: 'depth_anything_3_small.safetensors' }, ...VFX_CLOUD_REQUIRES.models] },
+      { loader: 'LoadDA3Model', field: 'model_name', file: 'depth_anything_3_mono_large.safetensors' }, ...VFX_CLOUD_REQUIRES.models] },
   plan: (j) => layersPlan(j, 'cloud') };
 CLOUD_RUNNER_ROUTES.add(LAYERS_CLOUD_ROUTE);
 /** One card, two places: Comfy Cloud is a place of the local model (like Footage Effects), with its own price rule; held while unmeasured

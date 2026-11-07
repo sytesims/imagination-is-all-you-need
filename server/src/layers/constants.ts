@@ -6,7 +6,8 @@
  *  - SAM 3.1 (Meta, SAM License) finds each named object on the first frame and tracks it through the clip (one proven chain per object);
  *  - BiRefNet (MIT) gives soft edges, kept only in a thin band around each object's matte (our own combine, ffmpeg);
  *  - Depth Anything 3 Small (Apache-2.0) gives depth, normalised over the whole clip by our own code, and sets the layer order;
- *  - the clean background is Footage Effects' Vanish (LTX-2.5 on your computer, LTX-2.3 on Comfy Cloud), pasted only inside the objects' area.
+ *  - the clean background is Footage Effects' Vanish on your computer (LTX-2.5) or Remove an object on Comfy Cloud (LTX-2.3), pasted only inside
+ *    the objects' area.
  */
 
 export const LAYERS_TOOL = 'layers';
@@ -31,8 +32,9 @@ export const LAYERS_MODELS = {
   sam: 'SAM 3.1',
   edges: 'BiRefNet',
   depth: 'Depth Anything 3 Small',
+  depthCloud: 'Depth Anything 3 Mono-Large',
   plateLocal: 'LTX-2.5 Clean Plate',
-  plateCloud: 'LTX-2.3 Vanish',
+  plateCloud: 'LTX-2.3 Remove an object',
 } as const;
 export const LAYERS_MODEL_LINE = `${LAYERS_MODELS.sam} + ${LAYERS_MODELS.edges} + ${LAYERS_MODELS.depth}`;
 
@@ -43,7 +45,7 @@ export const LAYER_COLOURS = ['#ff7a1a', '#3fa7ff', '#5fd068', '#c879ff'] as con
 export const LAYERS_OPTIONS = [
   { field: 'edges', label: 'Clean edges', hint: 'Soft hair and fur edges from BiRefNet, kept close to each object' },
   { field: 'depth', label: 'Depth', hint: 'A depth pass from Depth Anything 3; it also puts the layers in order' },
-  { field: 'background', label: 'Clean background', hint: 'The scene with the objects taken out (Vanish), first 5 s' },
+  { field: 'background', label: 'Clean background', hint: 'The scene with the objects taken out, first 5 s' },
 ] as const;
 export type LayersOption = (typeof LAYERS_OPTIONS)[number]['field'];
 
