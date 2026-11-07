@@ -10,6 +10,9 @@
  *
  * The spend guard and the kernel services are never switches (400). `legacy` (the server) and `web-static` (this page) aren't either.
  * Safe mode pauses every plugin that isn't ours (step 9 brings them; registerOutsidePlugin is that door); ours stay on.
+ * Plugins made by others are refused for now (security review 2026-11-07, F5): code plugins run inside the server, where ctx.keys is least
+ * privilege but not a sandbox, so only ours run until outside ones can run out of process. start() is the one door every start goes
+ * through (boot, Turn on, safe mode off), and it refuses them; Turn on answers 403 with OUTSIDE_REFUSED.
  * A plugin that throws while it starts doesn't stop the app: it is marked failed with its reason, and you can turn it off.
  *
  * OPENHIGGSFIELD_PLUGIN_CHOICES=ignore runs the profile exactly as written (no saved choices, no `off:` list): the test runner sets it, so
@@ -31,6 +34,8 @@ export interface Choices { on: Record<string, boolean>; safeMode: boolean }
 export const ALWAYS_ON = ['settings', 'db', 'keys', 'http', 'places', 'tools', 'workflows', 'spend', 'spend-guard', 'pricing', 'jobs', 'legacy', 'web-static'];
 export const SPEND_GUARD_LINE = 'The spend guard is always on: every paid run shows its price and waits for your OK.';
 const KV = 'plugins.choices';
+/** What the Plugins page says about a plugin made by someone else (they can't run yet). */
+export const OUTSIDE_REFUSED = 'Plugins made by other people can’t run in the app yet, so this one stays off. Nothing from it was started.';
 
 let root: Context | null = null;
 let profile: Profile = { name: 'desktop', plugins: [], file: '' };
@@ -81,8 +86,9 @@ export function initSwitchboard(o: { ctx: Context; profile: Profile; loaders: Re
 const plain = (e: unknown) => { const m = e instanceof Error ? e.message : String(e); return m.length > 200 ? `${m.slice(0, 197)}…` : m; };
 
 /** Mount one plugin. A throw marks it failed (the app keeps going); NeedsRestart leaves it for the next start. */
-export async function start(id: string): Promise<'on' | 'failed' | 'restart'> {
+export async function start(id: string): Promise<'on' | 'failed' | 'restart' | 'refused'> {
   if (!root) throw new Error('switchboard: not booted');
+  if (!isOurs(id)) return 'refused'; // not ours: never loaded, never run (OUTSIDE_REFUSED)
   if (fibers.has(id)) return 'on';
   let def: PluginDef<any>;
   try { def = (await (outside.get(id)?.load ?? loaders[id])()).default; } catch (e) { failed.set(id, `It couldn't load: ${plain(e)}`); return 'failed'; }
@@ -104,6 +110,7 @@ export async function setPlugin(id: string, on: boolean, o: { confirm?: boolean 
   if (id === 'spend-guard') throw new PluginRefused(400, SPEND_GUARD_LINE, { code: 'always_on' });
   if (ALWAYS_ON.includes(id)) throw new PluginRefused(400, 'This is part of the app itself and is always on.', { code: 'always_on' });
   if (!known(id) || (!catalogEntry(id) && isOurs(id))) throw new PluginRefused(404, `There is no plugin called "${id}".`, { code: 'not_found' });
+  if (on && !isOurs(id)) throw new PluginRefused(403, OUTSIDE_REFUSED, { code: 'outside_refused' });
   if (choicesIgnored()) throw new PluginRefused(409, 'Plugin choices are turned off for this server (OPENHIGGSFIELD_PLUGIN_CHOICES=ignore).', { code: 'choices_ignored' });
   const c = readChoices();
   const others = (on ? needsAll(id) : neededBy(id)).filter((x) => wanted(x, c) !== on);
@@ -163,6 +170,7 @@ async function row(id: string, c: Choices): Promise<PluginRow> {
   if (failed.has(id) && want) { state = 'failed'; reason = failed.get(id)!; }
   else if (!installed) { state = 'not-installed'; reason = 'Ready to install'; }
   else if (want && c.safeMode && !isOurs(id) && !choicesIgnored()) { state = 'paused'; reason = 'Paused by safe mode'; }
+  else if (!isOurs(id)) { state = 'off'; reason = OUTSIDE_REFUSED; }
   else if (want && missing.length) { state = 'off'; reason = `Needs ${missing.join(', ')}`; }
   else if (want !== run) { restartNeeded = true; state = run ? 'on' : 'off'; reason = want ? 'Turns on after a restart' : 'Turns off after a restart'; }
   else if (run && key?.rejected) { state = 'needs-key'; reason = `Your ${key.label} wasn’t accepted. Check it in Connections`; }
