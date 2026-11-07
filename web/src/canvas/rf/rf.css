@@ -143,6 +143,7 @@
 .cv-rf[data-joins=ports] .nf:hover .nf-port i,.cv-rf[data-joins=curve] .nf:hover .nf-port i{background:color-mix(in srgb,var(--k,#888) 55%,var(--surface-1,#131517))}
 .cv-rf .lk-join{stroke-width:calc(2.4px * max(1, var(--tl-scale,1)));stroke-opacity:calc(var(--lk-o) + .42)}
 .cv-rf[data-joins=ports] .lk-thread:not(.lk-join),.cv-rf[data-joins=curve] .lk-thread:not(.lk-join){stroke-width:calc(1.8px * max(1, var(--tl-scale,1)));stroke-opacity:calc(var(--lk-o) + .12)}
+.cv-rf .lk:not(.lit):not(.sel) .lk-thread{stroke-opacity:.32;filter:none} /* pick A: calm grey at rest (node.css) */
 .cv-rf .lk.lit .lk-thread{stroke-opacity:.95;filter:drop-shadow(0 0 calc(4px * max(1, var(--tl-scale,1))) color-mix(in srgb,var(--k) 55%,transparent))}
 .cv-rf .lk.sel .lk-thread{stroke:var(--accent,#FF7A1A);stroke-opacity:1;stroke-width:calc(2.6px * max(1, var(--tl-scale,1)))}
 .cv-rf .lk.run .lk-thread{stroke-dasharray:.012 .012;animation:rf-lk-flow 1.4s linear infinite}

@@ -520,15 +520,20 @@ body.nf-port-dragging .nf.nf-r-ok{box-shadow:0 0 0 1px color-mix(in srgb,var(--a
 
 /* ---------- connections (LinkLayer.tsx): notches for neighbours, light threads, pulses, stardust during runs ---------- */
 .cv-links{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none}
-.lk{--k:var(--media-image,#FF8A3D);--lk-o:.15}
+.lk{--k:var(--media-image,#FF8A3D);--lk-o:.15;--lk-rest:#8A8C93}
+/* link colour, owner's pick A (2026-11-07): at rest every link is one calm neutral grey; only the selected or hovered card's chain (.lit)
+   lights up in its media colour, and a selected link stays orange. Both engines read these. */
+.lk:not(.lit):not(.sel){--k-now:var(--lk-rest)}.lk.lit,.lk.sel{--k-now:var(--k)}
 .lk.k-video{--k:var(--media-video,#A98BFF)}.lk.k-audio{--k:var(--media-audio,#4FC9B8)}.lk.k-text{--k:var(--media-text,#D9D9DE)}
-.lk-thread{fill:none;stroke:var(--k);stroke-width:calc(1.6px * max(1, var(--tl-scale,1)));stroke-opacity:var(--lk-o);stroke-linejoin:round;stroke-linecap:round;transition:stroke-opacity 220ms ease}
-.lk-bridge{stroke:var(--k);stroke-width:calc(3px * max(1, var(--tl-scale,1)));stroke-linecap:round;stroke-opacity:calc(var(--lk-o) + .25)}
-.lk-tab{fill:color-mix(in srgb,var(--k) 70%,var(--surface-1,#131517));stroke:var(--surface-1,#131517);stroke-width:2}
+.lk-thread{fill:none;stroke:var(--k-now,var(--k));stroke-width:calc(1.6px * max(1, var(--tl-scale,1)));stroke-opacity:var(--lk-o);stroke-linejoin:round;stroke-linecap:round;transition:stroke-opacity 220ms ease}
+.lk-bridge{stroke:var(--k-now,var(--k));stroke-width:calc(3px * max(1, var(--tl-scale,1)));stroke-linecap:round;stroke-opacity:calc(var(--lk-o) + .25)}
+.lk-tab{fill:color-mix(in srgb,var(--k-now,var(--k)) 70%,var(--surface-1,#131517));stroke:var(--surface-1,#131517);stroke-width:2}
 .lk.lit .lk-tab{fill:var(--k)}
 .lk-pulse{fill:none;stroke:var(--k);stroke-width:calc(2.6px * max(1, var(--tl-scale,1)));stroke-linecap:round;stroke-dasharray:.07 1;stroke-dashoffset:.07;filter:drop-shadow(0 0 5px var(--k));animation:lk-pulse 1.25s cubic-bezier(.45,0,.2,1) 1 both}
 .lk.lit .lk-pulse{animation-iteration-count:1}
 @keyframes lk-pulse{to{stroke-dashoffset:-1}}
+/* the grey at rest is a touch firmer than a coloured link was, so it still reads on the board */
+.lk:not(.lit):not(.sel) .lk-thread,.lk:not(.lit):not(.sel) .lk-bridge{stroke-opacity:.32;filter:none}
 .lk-dust{fill:var(--k);opacity:.85;filter:drop-shadow(0 0 3px var(--k))}
 .lk-magnet line{stroke:#E8C36A;stroke-width:3;stroke-linecap:round;stroke-dasharray:6 8;opacity:.8}
 .lk-magnet circle{fill:none;stroke:#E8C36A;stroke-width:2.5;animation:lk-mag 900ms ease-in-out infinite}
