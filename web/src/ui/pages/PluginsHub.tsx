@@ -11,7 +11,6 @@ import { MADE_BY_US, repoDoc } from '../../shared/brand';
 import { PluginTile, PluginSwitch, StateTag, Tags, usePluginToggle } from '../plugins/PluginParts';
 import { AddPluginMenu } from '../plugins/AddPluginMenu';
 import { SearchIcon, ResetIcon, PlusIcon, ChevronDownIcon, ChevronRightIcon, KeyIcon, AlertIcon, CloseIcon, DownloadIcon, GenerateIcon, CommunityIcon } from '../Icons';
-import '../plugins/plugins-ui.css';
 
 export function PluginsHub() {
   const { data, error, reload } = usePluginList(); const { busy, toggle, install } = usePluginToggle();

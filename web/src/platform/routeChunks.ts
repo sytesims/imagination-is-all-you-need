@@ -24,8 +24,8 @@ export const L = {
   app: once(() => import('../tools/app/AppTool')),
   faceSwap: once(() => import('../tools/imageApps/FaceSwapTool')),
   shots: once(() => import('../tools/imageApps/ShotsTool')),
-  film: once(() => import('../ui/film/FilmPage')), // Film (2026-10-27): /film and /film/:id
-  canvas: once(() => import('../canvas/CanvasPage')), // the Canvas board (2026-10-24): tldraw loads with this chunk only
+  film: once(() => Promise.all([import('../ui/film/FilmPage'), import('../ui/plugins/PluginOff')]).then(([m, p]) => ({ ...m, default: p.gated('film', 'Film', m.default as any) }))), // off in Plugins: says so // Film (2026-10-27): /film and /film/:id
+  canvas: once(() => Promise.all([import('../canvas/CanvasPage'), import('../ui/plugins/PluginOff')]).then(([m, p]) => ({ ...m, default: p.gated('canvas', 'Canvas', m.default as any) }))), // off in Plugins: says so (boards kept) // the Canvas board (2026-10-24): tldraw loads with this chunk only
   threeD: once(() => import('../ui/three/ThreeDStudio')), // the 3D page (2026-10-23); <model-viewer> loads later, on first view
   learnEcom: once(() => import('../learn/EcomBook')), // the e-commerce pop-up book (2026-10-24): three.js and the book's fonts load with this chunk only
   pages: once(() => import('../ui/pages/Pages')),

@@ -13,7 +13,6 @@ import { PuzzleIcon, ShieldIcon, LaptopIcon, LockIcon, ChevronRightIcon, Chevron
 import { PluginTile, PluginSwitch, usePluginToggle } from './PluginParts';
 import { AddPluginMenu } from './AddPluginMenu';
 import '../../shared/barPop.css';
-import './plugins-ui.css';
 
 const SAFE_OFF = 'Turns outside plugins off. Ours stay on.';
 const SAFE_ON = 'Outside plugins paused. Ours stay on.'; /* as short as the off line: one line both ways, nothing jumps */

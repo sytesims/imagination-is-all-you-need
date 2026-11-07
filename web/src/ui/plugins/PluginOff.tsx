@@ -3,7 +3,6 @@ import type { ComponentType } from 'react';
 import { Link } from '../../platform/router';
 import { usePluginOn } from '../../shared/plugins';
 import { PluginTile } from './PluginParts';
-import './plugins-ui.css';
 
 export function PluginOff({ id, name }: { id: string; name: string }) {
   return <div className="pgx-main"><div className="pgx-empty" data-testid={`plugin-off-${id}`}><PluginTile id={id} />
