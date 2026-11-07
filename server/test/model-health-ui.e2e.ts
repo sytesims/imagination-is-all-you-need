@@ -4,7 +4,7 @@
 // the in-progress card showed in the feed and the mock result card landed. Failures get a screenshot in $MODEL_HEALTH_DIR/shots.
 // Writes $MODEL_HEALTH_DIR/ui.json for scripts/model-health-report.mjs. Chromium: the headless shell Playwright caches (test/_cdp.ts); skipped without it.
 // Ports: MODEL_HEALTH_API_PORT / MODEL_HEALTH_WEB_PORT (default testPort(8812) / 5195 alone, testPort(9195) in the parallel runner).
-// Run: npx tsx test/model-health-ui.e2e.ts   (MODEL_HEALTH_ONLY=<tool id> narrows it)
+// Run: npx tsx test/model-health-ui.e2e.ts   (MODEL_HEALTH_ONLY=<tool id>[,<tool id>] narrows it; MODEL_HEALTH_CASE=<regex> keeps the cases whose "tool engine mode" matches, e.g. 'h3-video .* keyframes|router-wan3 flf')
 import { testPort } from './_ports.js'; import { spawn, execFileSync, type ChildProcess } from 'node:child_process'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 import { openPage, findChromium } from './_cdp.js'; import { VIDEO_TOOLS, CAPS_TOOLS, knownFor } from './_model-health.js';
 const ROOT = path.resolve(import.meta.dirname, '..'); const WEB = path.resolve(ROOT, '../web'); const t0 = Date.now();
@@ -42,12 +42,13 @@ try {
     for (const p of t.providers) { const pm: string[] | undefined = t.app?.providerModes?.[p.id];
       const modes = am?.length ? am.filter((x) => !pm || pm.includes(x.mode)) : CAPS_TOOLS.has(id) ? (pm ?? []).map((mode) => ({ mode })) : [{ mode: '' }];
       for (const m of modes) cases.push({ tool: t, p, ...m }); } }
-  console.log(`${cases.length} UI cases (tool × model × mode)`);
+  const all = cases.length; if (process.env.MODEL_HEALTH_CASE) { const re = new RegExp(process.env.MODEL_HEALTH_CASE); cases.splice(0, cases.length, ...cases.filter((c) => re.test(`${c.tool.id} ${c.p.id} ${c.mode}`))); }
+  console.log(`${cases.length} UI cases (tool × model × mode)${cases.length < all ? ` of ${all}` : ''}`);
   const pg = (await openPage())!; await pg.send('Page.addScriptToEvaluateOnNewDocument', { source: "try{localStorage.setItem('ohf:setup:seen','1')}catch(e){}" });
   const posts: { id: string; url: string }[] = []; const resp = new Map<string, number>();
   pg.on((m: any) => { if (m.method === 'Network.requestWillBeSent' && m.params.request.method === 'POST' && /\/api\/tools\/[^/]+\/jobs$/.test(m.params.request.url)) posts.push({ id: m.params.requestId, url: m.params.request.url });
     if (m.method === 'Network.responseReceived' && /\/api\/tools\/[^/]+\/jobs$/.test(m.params.response.url)) resp.set(m.params.requestId, m.params.response.status); });
-  for (const c of cases) {
+  for (const c of cases) { const tc = Date.now();
     const row: UiRow = { tool: c.tool.id, engine: c.p.id, model: c.p.modelKey ?? c.p.id, mode: c.mode, status: 'fail', why: '' }; rows.push(row); const tag = `${c.tool.id} ${c.p.id} ${c.mode}`.trim();
     const bad = async (why: string) => { row.why = why; console.log(`fail ${tag}: ${why}`); row.shot = path.join(SHOTS, `${tag.replace(/[^a-z0-9.-]+/gi, '_')}.png`); try { await pg.screenshot(row.shot); } catch { /* */ } };
     try {
@@ -62,7 +63,7 @@ try {
       posts.length = 0; resp.clear();
       try { await pg.eval("location.origin.startsWith('http') && (localStorage.clear(), sessionStorage.clear(), localStorage.setItem('ohf:setup:seen', '1'))"); } catch { /* about:blank */ } // every case starts from a fresh bar (no saved prompt, files or model)
       await pg.goto(`${W}${url}`);
-      if (!(await pg.waitFor('document.querySelector("[data-testid=vs-generate], button[data-testid*=generate]")', 15000))) { await bad('no Generate button on the page'); continue; }
+      if (!(await pg.waitFor('document.querySelector("[data-testid=vs-generate], button[data-testid*=generate]")', 30000 /* a busy machine: Vite compiles a workflow page's chunks on its first visit */))) { await bad('no Generate button on the page'); continue; }
       await sl(900);
       // pick the model in the menu like a user (rows the menu shows directly; versions inside a group stay on the deep link)
       const nm = JSON.stringify(String(c.p.displayName ?? c.p.name ?? ''));
@@ -75,6 +76,7 @@ try {
         if (['i2v', 'flf', 'r2v'].includes(c.mode)) await pg.setFiles('[data-testid=vs-start-input]', [PNG]);
         if (c.mode === 'flf') await pg.setFiles('[data-testid=h3-last-frame-input]', [PNG2]);
         if (c.mode === 'r2v') await pg.setFiles('[data-testid=vs-ref-input]', [PNG2]);
+        if (c.mode === 'keyframes') await pg.setFiles('[data-testid=vs-kf-input]', [PNG, PNG2]); // Keyframes: 2 frames, the fewest every keyframes model takes
       } else {
         const need = new Set<string>([...(c.tool.inputs ?? []).filter((i: any) => i.kind === 'file' && i.required).map((i: any) => i.name), ...(c.file ? [c.file] : []),
           ...(['camera', 'photo-fx', 'app-orbit-shot'].includes(c.tool.id) ? ['image'] : []), ...(/swap|motion/.test(c.tool.id) ? ['refs'] : []), ...(c.tool.id === 'app-transition' ? ['image', 'lastFrame'] : [])]);
@@ -104,6 +106,10 @@ try {
       if (gen.disabled) { await bad(`Generate is blocked: ${gen.why}`); continue; }
       await pg.click((await pg.eval<boolean>('!!document.querySelector("[data-testid=vs-generate]")')) ? '[data-testid=vs-generate]' : 'button[data-testid*=generate]');
       for (let i = 0; i < 60 && !posts.length; i++) await sl(100);
+      const down = () => pg.eval<boolean>(`!!document.querySelector('[data-testid=offline-banner]:not([data-reason=""])')`); // the app's connection banner, still down
+      if (!posts.length && (await down() || await pg.eval<boolean>(`/offline/i.test([...document.querySelectorAll('[role=alert], .toast, .apop')].map((e) => e.textContent).join(' '))`))) { // a busy machine: 3 failed polls in a row read as offline (shared/connectivity); wait for the next good poll, then press once more
+        for (let i = 0; i < 100 && await down(); i++) await sl(200); console.log(`note ${tag}: the page said offline; pressed Generate again`);
+        await pg.click((await pg.eval<boolean>('!!document.querySelector("[data-testid=vs-generate]")')) ? '[data-testid=vs-generate]' : 'button[data-testid*=generate]'); for (let i = 0; i < 60 && !posts.length; i++) await sl(100); }
       if (!posts.length) { const msg = await pg.eval<string>(`[...document.querySelectorAll('[data-testid=vs-missing], [data-testid=vs-blocked], [role=alert], .toast, .apop, [role=dialog]')].map((e) => e.textContent.trim()).filter(Boolean).join(' / ').slice(0, 300)`); await bad(`Generate sent no request${msg ? `: ${msg.slice(0, 140)}` : ''}`); continue; }
       const post = posts[0]; let body = ''; try { body = (await pg.send('Network.getRequestPostData', { requestId: post.id })).postData ?? ''; } catch { /* large upload: no post data kept */ }
       const field = (n: string) => body.match(new RegExp(`name="${n}"\\r?\\n\\r?\\n([^\\r\\n]*)`))?.[1] ?? null;
@@ -119,12 +125,13 @@ try {
       if (!(await pg.waitFor(`(() => { const t = document.querySelector('${card}'); return t && /st-done/.test(t.className) && t.querySelector('video, img'); })()`, 45000))) {
         const cls = await pg.eval<string>(`(document.querySelector('${card}') || {}).className || ''`); await bad(`result card did not land (${cls})`); continue; }
       row.status = 'pass';
-    } catch (e: any) { await bad(`threw: ${String(e?.message ?? e).slice(0, 160)}`); }
+    } catch (e: any) { await bad(`threw: ${String(e?.message ?? e).slice(0, 160)}`); } finally { (row as any).ms = Date.now() - tc; }
 
   }
   await pg.close();
   fs.writeFileSync(path.join(OUT, 'ui.json'), JSON.stringify({ at: new Date().toISOString(), rows }, null, 1));
-  const n = (s: string) => rows.filter((r) => r.status === s).length; console.log(`UI rows ${rows.length}: ${n('pass')} pass / ${n('fail')} fail`);
+  const n = (s: string) => rows.filter((r) => r.status === s).length; console.log(`UI rows ${rows.length}: ${n('pass')} pass / ${n('fail')} fail / ${n('skip')} skip`);
+  { const ran = rows.filter((r) => r.status !== 'skip'); const ms = ran.map((r: any) => r.ms ?? 0); console.log(`time per case: avg ${(ms.reduce((a, b) => a + b, 0) / Math.max(1, ms.length) / 1000).toFixed(1)} s over ${ran.length}; slowest ${[...ran].sort((a: any, b: any) => b.ms - a.ms).slice(0, 3).map((r: any) => `${r.tool} ${r.engine} ${r.mode} ${(r.ms / 1000).toFixed(0)} s`).join(', ')}`); }
   const fresh = rows.filter((r) => r.status === 'fail' && !knownFor(`ui|${r.tool}|${r.engine}|${r.mode}`)); for (const r of rows) if (r.status === 'fail' && knownFor(`ui|${r.tool}|${r.engine}|${r.mode}`)) (r as any).known = true;
   fs.writeFileSync(path.join(OUT, 'ui.json'), JSON.stringify({ at: new Date().toISOString(), rows }, null, 1));
   if (fresh.length) { failed++; console.error(`${fresh.length} new UI findings (not in KNOWN)`); } else console.log('ok no new UI findings');
