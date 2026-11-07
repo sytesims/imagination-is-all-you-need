@@ -17,6 +17,8 @@ import type { HttpRequest } from '../hostedRequests.js';
 import { env } from '../env.js';
 import { BUSY_RETRIES, busyWaitMs } from '../busyRetry.js';
 import { PollTolerance, MISS } from '../hostedPoll.js';
+import { keyedFetch, keyUrlAllowed, hostRuleOf, type KeyScope } from '../security/keyedFetch.js';
+import { KEY_HOSTS, scopeOf } from '../security/keyScopes.js';
 
 type Fetch = typeof fetch;
 export type DirectReason = 'key_invalid' | 'provider_credits' | 'content_blocked' | 'input_invalid' | 'queue_full' | 'provider_error';
@@ -84,6 +86,11 @@ export const DIRECT_PROVIDERS: Record<string, DirectProviderDef> = {
 export const registerDirectProvider = (p: DirectProviderDef) => { DIRECT_PROVIDERS[p.id] = p; };
 /** The host this server talks to for a provider (env override for a regional host). */
 export const directBase = (id: string) => { const p = DIRECT_PROVIDERS[id]; const o = p?.baseEnv ? env(p.baseEnv)?.trim() : ''; return (o || p?.defaultBase || '').replace(/\/$/, ''); };
+/** Where a lab's key may go: its official hosts (security/keyScopes.ts), its default base and the base you configured (https, or this computer). */
+export const directScope = (id: string): KeyScope => scopeOf(DIRECT_PROVIDERS[id]?.name ?? id, (KEY_HOSTS as Record<string, readonly string[]>)[id] ?? [],
+  () => [...hostRuleOf(DIRECT_PROVIDERS[id]?.defaultBase), ...hostRuleOf(directBase(id))]);
+/** A stored poll URL (job.remote, maybe from a backup) is used only on that lab's own hosts. */
+export const directPollSafe = (id: string | undefined, url: string | undefined) => !!id && !!url && !!DIRECT_PROVIDERS[id] && keyUrlAllowed(url, directScope(id).hosts());
 /** Builders write the official host; swap it for the configured one. */
 export const rebase = (url: string, id: string) => { const p = DIRECT_PROVIDERS[id]; const b = directBase(id); return p && b && url.startsWith(p.defaultBase) ? b + url.slice(p.defaultBase.length) : url; };
 
@@ -117,7 +124,7 @@ export async function directRun(spec: DirectSpec, req0: HttpRequest, key: string
     // BUSY_RETRIES more tries, then the error is thrown with .busy = true.
     let sub: { j: any; t: string }; let tries = 0; let backoffs = 0; // backoffs: waits without a Retry-After (5 s, 10 s, 20 s…)
     for (;;) {
-      const r = await f(req.url, { method: req.method, headers, ...(req.method === 'POST' ? { body: req.form ?? JSON.stringify(req.body ?? {}) } : {}) });
+      const r = await keyedFetch(directScope(p.id), req.url, { method: req.method, headers, ...(req.method === 'POST' ? { body: req.form ?? JSON.stringify(req.body ?? {}) } : {}) }, { f });
       sub = await readJson(r);
       const e = r.ok ? p.bodyError?.(sub.j) ?? null : p.httpError(r.status, sub.j, sub.t);
       if (!e) break;
@@ -143,7 +150,7 @@ async function pollDirect(spec: DirectSpec, p: DirectProviderDef, h: { id: strin
     await sleep(tol.wait(pace));
     if (o.isCanceled?.()) throw new Error('canceled');
     const got = await tol.read(async () => {
-      const r = await f(h.pollUrl, { headers: { ...p.auth(key), accept: 'application/json' } }); const { j, t } = await readJson(r);
+      const r = await keyedFetch(directScope(p.id), h.pollUrl, { headers: { ...p.auth(key), accept: 'application/json' } }, { f }); const { j, t } = await readJson(r);
       if (!r.ok) { const e = p.httpError(r.status, j, t); e.message = e.message.replace(' submit ', ' poll '); throw e; }
       const be2 = p.bodyError?.(j); if (be2) throw be2;
       return j;

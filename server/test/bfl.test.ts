@@ -10,7 +10,7 @@ const f = (async (url: string, init: any) => { calls.push({ url, init }); const 
   return j(++polls < 2 ? { status: 'Pending' } : { status: 'Ready', result: { sample: 'https://x.invalid/o.mp4' } }); }) as any;
 const r = await bflRun(bflVideoUpscaleRequest({ inputVideo: 'AA', factor: 2, mode: 'creative' }), 'k', { f, pollMs: 1 });
 assert.equal(r.url, 'https://x.invalid/o.mp4'); assert.equal(calls[0].init.headers['x-key'], 'k'); assert.equal(JSON.parse(calls[0].init.body).creativity, 1); assert.equal(calls[1].init.headers['x-key'], 'k');
-const fm = (async (_u: string, init: any) => ({ ok: true, status: 200, json: async () => (init?.method === 'POST' ? { id: 'a', polling_url: 'p' } : { status: 'Content Moderated' }), text: async () => '' })) as any;
+const fm = (async (_u: string, init: any) => ({ ok: true, status: 200, json: async () => (init?.method === 'POST' ? { id: 'a', polling_url: 'https://api.bfl.ai/v1/get_result?id=a' } : { status: 'Content Moderated' }), text: async () => '' })) as any;
 await assert.rejects(bflRun(bflKleinRequest({ prompt: 'x' }), 'k', { f: fm, pollMs: 1 }), /Moderated/);
 assert.equal((bflKleinRequest({ prompt: 'x', images: Array(12).fill('A') }).body!.images as string[]).length, 10);
 // price = MP × s × rate, rounded up: 1920×1080 (2.0736 MP) × 5 s × $0.035 = $0.36288 → 37 credits; creative × $0.05 = $0.5184 → 52 (BFL pricing re-read 2026-10-23)

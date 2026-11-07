@@ -4,15 +4,15 @@
  */
 import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner, PlaceFile } from '../services/places.js';
-import { falRun, falResult, falCancel, falImageInput, type FalHandle } from '../providers/fal.js';
+import { falRun, falResult, falCancel, falImageInput, falHandleSafe, type FalHandle } from '../providers/fal.js';
 import { liveBackend } from '../routing/keys.js';
 import type { KeyReader } from '../kernel/keys.js';
 import { HANDOFF_POLICY, handOff } from '../mediaHandoff.js';
 import type { RemoteHandle } from '../jobs.js';
 
 export const FAL_KEYS = ['OPENHIGGSFIELD_FAL_KEY', 'FAL_KEY'];
-/** A remembered fal request (job.remote) → the handle falRun polls. */
-const handleOf = (h: RemoteHandle | null): FalHandle | null => (h?.statusUrl && h.responseUrl ? { requestId: h.id, statusUrl: h.statusUrl, responseUrl: h.responseUrl, cancelUrl: h.cancelUrl ?? '' } : null);
+/** A remembered fal request (job.remote) → the handle falRun polls; none when a URL in it isn't fal's (a stored handle from a backup). */
+const handleOf = (h: RemoteHandle | null): FalHandle | null => (h?.statusUrl && h.responseUrl && falHandleSafe(h) ? { requestId: h.id, statusUrl: h.statusUrl, responseUrl: h.responseUrl, cancelUrl: h.cancelUrl ?? '' } : null);
 /** fal image endpoints answer { images: [{ url }] }. */
 const firstImage = (o: any): string | undefined => o?.images?.map((x: any) => x.url)?.[0];
 
@@ -26,6 +26,7 @@ export const falPlaceOf = (keys: KeyReader): PlaceRunner => ({
   key: (r) => keys.value(r),
   live: (r) => !!keys.value(r) && liveBackend(),
   async run({ route, body, key, resume, pick = firstImage }, h) {
+    if (resume && !handleOf(resume)) throw Object.assign(new Error('This fal request can’t be picked up again: its stored address isn’t one of fal’s'), { cannotPickUp: true }); // never submit again
     const res = await falRun(route.endpoint, body, key, { timeoutMs: h.timeoutMs, isCanceled: h.isCanceled, onBusy: h.onBusy, resume: handleOf(resume),
       onSubmit: (id, x) => h.onSubmit({ kind: 'fal', id, statusUrl: x.statusUrl, responseUrl: x.responseUrl, cancelUrl: x.cancelUrl }),
       onStatus: (s) => h.onStatus(s.status === 'IN_QUEUE' ? 'submitted' : 'rendering', s.queue_position) });
@@ -35,8 +36,8 @@ export const falPlaceOf = (keys: KeyReader): PlaceRunner => ({
   async build(r, { job, prompt, seed, extras }) { // fal image models (providers/fal.ts falImageInput)
     return falImageInput(r.endpoint, { prompt, seed, loras: job.input.hostedLoras, imageUrls: extras.imageUrls ?? (r.endpoint.includes('flux-3/klein/edit-image') || r.endpoint === 'fal-ai/nano-banana-2/edit' ? await kleinRefUris(job.input) : undefined), imageSize: extras.imageSize, aspectRatio: extras.aspect ?? job.input.aspect, imageRes: job.input.imageResolution });
   },
-  resume: (h) => !!(h.statusUrl && h.responseUrl),
-  async cancel(h, r, f) { const key = keys.value(r); return key && h.cancelUrl ? falCancel(h.cancelUrl, key, f) : null; },
+  resume: (h) => !!handleOf(h),
+  async cancel(h, r, f) { const key = keys.value(r); return key && h.cancelUrl && falHandleSafe(h) ? falCancel(h.cancelUrl, key, f) : null; },
   inputs: HANDOFF_POLICY.fal.accepts,
   upload: (file, kind) => handOff(file, kind, 'fal'),
 });
