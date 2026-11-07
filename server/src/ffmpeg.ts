@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from './security/childProcess.js';
 import { access } from 'node:fs/promises';
 
 /** Remux video from `videoPath` with audio from `audioSourcePath` (withSource=false → video only). Falls back to video only if no audio track. */

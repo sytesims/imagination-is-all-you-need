@@ -29,7 +29,7 @@ import { ROUTER_APP_MODELS } from '../shared/videoAppWorkflows.js';
 import { addAdjustNote } from '../shared/snap.js';
 import { VIDEO_LIMITS, hasToolDurations, registerToolDurations, durationsFor, durationsByProvider, defaultDurationByProvider, defaultDurationFor, resolveDuration, durationErrorBody } from './h3/videoCaps.js';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn } from '../security/childProcess.js';
 import type { Preset, ToolDef } from './types.js';
 import type { Job } from '../jobs.js';
 import { DATA_DIR } from '../config.js';

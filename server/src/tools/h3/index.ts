@@ -6,7 +6,7 @@ import { attachVoiceControls } from '../voice/voiceControls.js';
  */
 import { ltxDfrAdjustNote, ltxDfrRuns, ltxDfrSmooth, ltxDfrFrames, LTX_DFR_FPS, LTX_DFR_SMOOTH_FIELD } from '../../shared/ltxDfr.js';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn } from '../../security/childProcess.js';
 import { registerProvider } from '../../providers.js';
 import { registerLicense, registerWorkflowLicense } from '../../licenses.js';
 import { DATA_DIR } from '../../config.js';

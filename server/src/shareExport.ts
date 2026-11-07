@@ -17,7 +17,7 @@ import type { FastifyInstance } from 'fastify';
 import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import { DATA_DIR } from './config.js';
 import { jobs } from './jobs.js';
 import * as lib from './library.js';

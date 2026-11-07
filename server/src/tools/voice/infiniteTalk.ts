@@ -11,7 +11,7 @@
  *    that comes without speech gets a plain line saying so. With both, the speech file wins (a warning says the script was not used).
  */
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn } from '../../security/childProcess.js';
 import { DATA_DIR } from '../../config.js';
 import { runFfmpeg } from '../../ffmpeg.js';
 import { imageDimsOfFile } from '../../imageDims.js';

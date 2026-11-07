@@ -13,7 +13,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync, execSync } from '../security/childProcess.js';
 import { fileURLToPath } from 'node:url';
 import { comfyInstallOf, type ComfyInstall } from '../hardware/comfyInstall.js';
 import { PROVIDER_ACCOUNTS } from '../shared/providerKeys.js';

@@ -20,7 +20,7 @@
  * Stage strengths stay the template's (0.7 on the half-size stage, 1.0 on the full-size stage).
  * Pure helpers (sizes, frames, graph patch, ffmpeg argument lists) are tested without ComfyUI; joinExtension runs ffmpeg.
  */
-import { spawn } from 'node:child_process';
+import { spawn } from '../security/childProcess.js';
 import { runFfmpeg, countFrames } from '../ffmpeg.js';
 import { frameIndexArgs } from '../videoFrame.js';
 

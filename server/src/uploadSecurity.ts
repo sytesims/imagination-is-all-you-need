@@ -5,7 +5,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import { VECTOR_FILE_RE } from './shared/imageVector.js';
 import { DATA_DIR } from './config.js';
 

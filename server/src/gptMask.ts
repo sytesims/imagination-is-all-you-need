@@ -3,7 +3,7 @@
  * Sources: https://developers.openai.com/api/docs/guides/image-generation#edit-images
  * and web/src/ui/next/MaskSheet.tsx (opaque grayscale export, proportionally capped at 64 MP).
  */
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import { imageDimsOf } from './imageDims.js';
 import { videoSize } from './ffmpeg.js';
 import { handOffBytes, HANDOFF_POLICY } from './mediaHandoff.js';

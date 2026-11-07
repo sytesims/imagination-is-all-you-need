@@ -4,7 +4,7 @@
  * Python: OPENHIGGSFIELD_PY (default server/py/.venv/bin/python); setup: `python server/py/voice_runner.py setup`.
  */
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { env } from './env.js';
