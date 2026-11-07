@@ -20,7 +20,9 @@ export const norm = (s: unknown) => String(s ?? '').toLowerCase().replace(/[_/·
 export function queryWords(q?: string): string[] {
   const all = norm(q).split(' ').filter(Boolean); const kept = all.filter((w) => !STOP.has(w)); return kept.length ? kept : all;
 }
-const variants = (w: string) => { const v = [w]; if (w.length > 4 && w.endsWith('ing')) v.push(w.slice(0, -3)); if (w.length > 3 && w.endsWith('s') && !w.endsWith('ss')) v.push(w.slice(0, -1)); if (w.length > 3 && w.endsWith('ed')) v.push(w.slice(0, -2)); return v; };
+/** Plural / -ing / -ed forms, only for words of 6+ letters and never down to under 4 (2026-11-07: "kling" → "kl" matched FLUX Klein). */
+const variants = (w: string) => { const v = [w]; if (w.length < 6) return w.length >= 5 && w.endsWith('s') && !w.endsWith('ss') ? [w, w.slice(0, -1)] : v;
+  for (const suf of ['ing', 'ed', 's']) if (w.endsWith(suf) && !(suf === 's' && w.endsWith('ss')) && w.length - suf.length >= 4) v.push(w.slice(0, -suf.length)); return v; };
 const has = (hay: string, w: string) => { const h = hay; const c = hay.replace(/[\s-]+/g, ''); return variants(w).some((x) => h.includes(x) || c.includes(x.replace(/-/g, ''))); };
 
 const mk = (kind: EntryKind, id: string, name: string, media: string | null, words: unknown[], text: unknown[], ref: any): Entry =>

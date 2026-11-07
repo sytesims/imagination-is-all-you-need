@@ -4,6 +4,7 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from './config.js';
 import { applyStagedImport } from './backup.js';
+import { scrubImportedLibrary } from './security/importScrub.js';
 
 /**
  * SQLite persistence (better-sqlite3, synchronous) at `$OPENHIGGSFIELD_DATA_DIR/openhiggsfield.db` (a legacy `openjutsu.db` is renamed on first start).
@@ -18,12 +19,14 @@ if (!existsSync(DB_PATH) && existsSync(LEGACY_DB)) {
   console.info('[openhiggsfield] migrated data/openjutsu.db → openhiggsfield.db');
 }
 /** BH4 #8: a backup staged by POST /api/import is applied here, before the DB opens (see backup.ts applyStagedImport). */
-applyStagedImport(DB_PATH);
+const imported = applyStagedImport(DB_PATH);
 export const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 const TABLES = ['jobs', 'ledger', 'job_meta', 'projects', 'elements', 'kv', 'uploads', 'eta_samples', 'spend', 'eta_steps', 'user_looks', 'canvas_boards', 'films'] as const; // films: the Film tab's projects (filmProjects.ts) // canvas_boards: /canvas boards, tldraw snapshot JSON (canvasBoards.ts) // user_looks: looks saved from a result (workflowLooks.ts) // eta_steps: per-step local ETA learning (stepEta.ts) // spend: per-job spend log (billing.ts) // eta_samples: HW-SHAPES B5 learned timings (etaLearn.ts)
 export type Table = (typeof TABLES)[number];
 for (const t of TABLES) db.exec(`CREATE TABLE IF NOT EXISTS ${t} (id TEXT PRIMARY KEY, data TEXT NOT NULL)`);
+/** A backup just applied: drop the stored addresses it brought (provider handles' URLs, webhooks, plugin base URLs; security/importScrub.ts). */
+if (imported?.applied) { const s = scrubImportedLibrary(db); console.info(`[openhiggsfield] import: cleared stored addresses (${s.jobs} jobs, webhooks ${s.webhooks ? 'removed' : 'none'}, ${s.settings} plugin settings)`); }
 
 const stmts = Object.fromEntries(TABLES.map((t) => [t, {
   put: db.prepare(`INSERT INTO ${t} (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data`),

@@ -5,17 +5,19 @@
  * The AI dock (AgentPanel) sits on the left, 380 px, open by default; the board fills the rest and builds live as the agent works,
  * with a Follow agent toggle in the top bar.
  */
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useSoundScope } from '../shared/soundDirector';
 import { navigate, useSearch } from '../platform/router';
 import { BarPopover, PopSection, PopRow } from '../shared/BarPop';
 import { askConfirm, askText } from '../shared/Dialog';
 import { useToast } from '../shared/Toast';
 import { Skeleton } from '../shared/Skeleton';
-import { listBoards, createBoard, getBoard, renameBoard, deleteBoard, setBoardProject, type Board as BoardDoc, type BoardSummary } from './boardsApi';
+import { listBoards, createBoard, getBoard, renameBoard, deleteBoard, setBoardProject, setBoardBudget, type Board as BoardDoc, type BoardSummary } from './boardsApi';
 import { Board, type SaveState } from './Board';
 import { AgentPanel } from './AgentPanel';
-import { SpendChip } from './SpendChip';
+import { SpendChip, BUDGET_EVT, BUDGET_ASK_EVT } from './SpendChip';
+import { OPEN_DOCK_EVT } from './flowRun';
+import { CoinIcon } from './icons';
 import { FollowToggle } from './FollowAgent';
 import { DOCK_W } from './agentDockModel';
 import { useValue, BoardProvider, type BoardApi } from './boardApi';
@@ -23,10 +25,13 @@ import { CardPanel } from './CardPanel'; /* MOCKUP: the card panel */
 import { BOARD_LOOKS, boardLookAtom, setBoardLook } from './boardLook';
 import { BoardIcon, ChevronIcon, PanelIcon } from './icons';
 import { PlusIcon, PencilIcon, TrashIcon, SparkleIcon } from '../ui/Icons';
+import { canvasEngine, engineInUrl, saveEngine, savedEngine, type CanvasEngine } from './rf/engine';
 import './canvas.css';
 import './generate.css';
 import './node.css';
 
+/* the React Flow engine (behind the switch, rf/engine.ts): its own chunk, loaded only when it is on */
+const RfBoard = lazy(() => import('./rf/RfBoard'));
 const LAST = 'ohf-canvas-last-board';
 const AGENT_OPEN = 'ohf-canvas-dock-open'; /* the left dock (2026-10-26): a new key, so everyone starts with it open */
 const readLast = () => { try { return localStorage.getItem(LAST); } catch { return null; } };
@@ -48,8 +53,8 @@ function useHeaderBottom() {
   return box;
 }
 
-function BoardSwitcher({ boards, current, save, onPick, onNew, onRename, onDelete }: { boards: BoardSummary[]; current: BoardSummary; save: SaveState;
-  onPick: (id: string) => void; onNew: () => void; onRename: () => void; onDelete: () => void }) {
+function BoardSwitcher({ boards, current, save, onPick, onNew, onRename, onDelete, onBudget }: { boards: BoardSummary[]; current: BoardSummary; save: SaveState;
+  onPick: (id: string) => void; onNew: () => void; onRename: () => void; onDelete: () => void; onBudget: () => void }) {
   const btn = useRef<HTMLButtonElement>(null); const [open, setOpen] = useState(false); const run = (f: () => void) => () => { setOpen(false); f(); };
   return <div className="cv-switch">
     <button ref={btn} type="button" className="cv-switch-btn" aria-haspopup="dialog" aria-expanded={open} data-testid="cv-switch" onClick={() => setOpen(o => !o)}>
@@ -62,15 +67,29 @@ function BoardSwitcher({ boards, current, save, onPick, onNew, onRename, onDelet
         </div>
       </PopSection>
       <LookSection />
+      <EngineSection />
       <PopSection>
         <div className="cv-board-actions" role="menu" aria-label="Board actions">
           <PopRow role="menuitem" icon={<PlusIcon size={16} />} label="New board" onClick={run(onNew)} testId="cv-board-new" />
           <PopRow role="menuitem" icon={<PencilIcon size={16} />} label="Rename this board" onClick={run(onRename)} testId="cv-board-rename" />
+          <PopRow role="menuitem" icon={<CoinIcon size={16} />} label={current.budgetUsd != null ? 'Board budget' : 'Set a board budget'} hint={current.budgetUsd != null ? `$${current.budgetUsd.toFixed(2)} · only you can change it` : 'Runs that would go over it don’t start'} onClick={run(onBudget)} testId="cv-board-budget" />
           <PopRow role="menuitem" icon={<TrashIcon size={16} />} label="Delete this board" onClick={run(onDelete)} testId="cv-board-delete" className="cv-danger" />
         </div>
       </PopSection>
     </BarPopover>
   </div>;
+}
+
+/** Which engine draws the board (dev builds, or once the new one is on): Classic (tldraw) or the React Flow preview. Kept in this browser. */
+function EngineSection() {
+  const now = canvasEngine(); if (!(import.meta as any).env?.DEV && now !== 'rf' && savedEngine() !== 'rf') return null;
+  const pick = (e: CanvasEngine) => { saveEngine(e); const q = new URLSearchParams(location.search); q.delete('engine'); location.search = q.toString(); };
+  return <PopSection label="Board engine">
+    <div className="cv-looks" role="radiogroup" aria-label="Board engine" data-testid="cv-engine">
+      {([['tldraw', 'Classic', 'Today’s board'], ['rf', 'New (preview)', 'React Flow, being tested']] as const).map(([id, label, hint]) =>
+        <button key={id} type="button" role="radio" aria-checked={now === id} className={`cv-look${now === id ? ' on' : ''}`} data-testid={`cv-engine-${id}`} title={hint} onClick={() => pick(id)}><b>{label}</b></button>)}
+    </div>
+  </PopSection>;
 }
 
 /** The board's background look (Space, Haze, Night), kept in this browser. */
@@ -90,7 +109,8 @@ export default function CanvasPage() {
   const want = new URLSearchParams(search).get('board');
   const [boards, setBoards] = useState<BoardSummary[] | null>(null); const [board, setBoard] = useState<BoardDoc | null>(null);
   const [err, setErr] = useState(''); const [save, setSave] = useState<SaveState>('saved'); const [drawer, setDrawer] = useState(false); const [ask] = useState(() => new URLSearchParams(location.search).get('ask') ?? '') /* Explore's Ask an agent: read before the board link replaces the URL */; const [agentOpen, setAgentOpen] = useState(() => readAgentOpen() || !!ask); const [agentBusy, setAgentBusy] = useState(false); const [boardApi, setBoardApi] = useState<BoardApi | null>(null); const [panelOn, setPanelOn] = useState(false);
-  const go = (id: string, replace = false) => navigate(`/canvas?board=${encodeURIComponent(id)}`, { replace });
+  const [engine] = useState(canvasEngine); const [urlEngine] = useState(engineInUrl);
+  const go = (id: string, replace = false) => navigate(`/canvas?board=${encodeURIComponent(id)}${urlEngine ? `&engine=${urlEngine}` : ''}`, { replace });
 
   const refresh = useCallback(() => listBoards().then(bs => { setBoards(bs); return bs; }), []);
   /* pick the board to open */
@@ -111,6 +131,14 @@ export default function CanvasPage() {
   const onNew = async () => { try { const nb = await createBoard(); await refresh(); go(nb.id); } catch (e: any) { toast(e?.message || 'Could not make a board.', 'error'); } };
   const onRename = async () => { if (!board) return; const name = await askText({ title: 'Rename board', label: 'Name', initial: board.name, confirm: 'Rename', maxLength: 80 }); if (!name || name === board.name) return;
     try { const s = await renameBoard(board.id, name); setBoard(b => (b ? { ...b, name: s.name } : b)); await refresh(); } catch (e: any) { toast(e?.message || 'Could not rename the board.', 'error'); } };
+  /* the board budget (release 1): only the person sets it, here; an empty answer removes it */
+  const onBudget = async () => { if (!board) return; const was = current?.budgetUsd ?? null;
+    const t = await askText({ title: 'Board budget', label: 'Most this board may spend, in dollars (leave empty for no budget)', placeholder: '5.00', initial: was != null ? was.toFixed(2) : '', confirm: 'Save budget', maxLength: 12 });
+    if (t == null) return; const raw = t.replace(/^[$\s]+/, '').trim(); const usd = raw === '' ? null : Number(raw.replace(',', '.'));
+    if (usd != null && (!Number.isFinite(usd) || usd < 0)) { toast('Type an amount in dollars, like 5 or 12.50.', 'warn'); return; }
+    try { const r = await setBoardBudget(board.id, usd); setBoards(bs => bs?.map(b => (b.id === board.id ? { ...b, budgetUsd: r.budget?.usd ?? null } : b)) ?? bs); dispatchEvent(new Event(BUDGET_EVT));
+      toast(r.budget ? `Board budget set: $${r.budget.usd.toFixed(2)}` : 'Board budget removed'); }
+    catch (e: any) { toast(e?.message || 'Could not set the budget.', 'error'); } };
   const onProject = async (pid: string | null) => { if (!board) return; const was = board.projectId ?? null; setBoard(b => (b ? { ...b, projectId: pid } : b));
     try { await setBoardProject(board.id, pid); void refresh(); } catch (e: any) { setBoard(b => (b ? { ...b, projectId: was } : b)); toast(e?.message || 'Could not set the project.', 'error'); } };
   const onDelete = async () => { if (!board) return;
@@ -121,21 +149,27 @@ export default function CanvasPage() {
   /* your agent made, renamed or switched boards (canvas_create_board / canvas_switch_board): follow it live */
   const onBoardsChanged = useCallback(() => { void refresh().catch(() => undefined); }, [refresh]);
   const onAgentOpen = useCallback((id: string, name: string, by: string) => { void refresh().catch(() => undefined); go(id); toast(`${by} opened “${name}”`); }, [refresh]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* release 2: a proposal made from the board (a Group's Run the flow) opens the dock; Change the budget on a proposal opens the dialog */
+  const budgetRef = useRef(onBudget); budgetRef.current = onBudget;
+  useEffect(() => { const dock = () => { setAgentOpen(true); writeAgentOpen(true); }; const ask = () => void budgetRef.current();
+    addEventListener(OPEN_DOCK_EVT, dock); addEventListener(BUDGET_ASK_EVT, ask);
+    return () => { removeEventListener(OPEN_DOCK_EVT, dock); removeEventListener(BUDGET_ASK_EVT, ask); }; }, []);
   const current = boards?.find(b => b.id === board?.id) ?? (board ? { ...board } : null);
-  const rootStyle = { top, bottom, '--cv-agent-w': agentOpen ? `var(--cv-dock,${DOCK_W}px)` : '0px', '--cv-panel-w': panelOn && !drawer ? 'var(--cv-dock,380px)' : '0px' } as CSSProperties;
+  const rootStyle = { top, bottom, '--cv-agent-w': agentOpen ? `var(--cv-dock,${DOCK_W}px)` : '0px', '--cv-drawer-w': drawer ? '344px' : '0px', '--cv-panel-w': panelOn && !drawer ? (engine === 'rf' ? 'var(--cv-insp-w)' : 'var(--cv-dock,380px)') : '0px' } as CSSProperties;
   return <div ref={soundScope} className={`cv-root${agentOpen ? ' cv-agent-open' : ''}`} style={rootStyle} data-testid="canvas-page">
     {err ? <div className="cv-msg"><p>{err}</p><button type="button" className="cv-empty-btn" onClick={() => navigate(`/canvas${search}`, { replace: true })}>Try again</button></div>
       : board && current ? <>
-        <Board key={board.id} onBoard={setBoardApi} board={board} onSaveState={setSave} onSaved={onSaved} drawerOpen={drawer} setDrawerOpen={setDrawer} onProject={onProject} />
+        {engine === 'rf' ? <Suspense fallback={<div className="cv-msg"><Skeleton variant="tiles" count={3} /></div>}><RfBoard key={board.id} onBoard={setBoardApi} board={board} onSaveState={setSave} onSaved={onSaved} drawerOpen={drawer} setDrawerOpen={setDrawer} onProject={onProject} /></Suspense>
+          : <Board key={board.id} onBoard={setBoardApi} board={board} onSaveState={setSave} onSaved={onSaved} drawerOpen={drawer} setDrawerOpen={setDrawer} onProject={onProject} />}
         <div className="cv-topl">
           {!agentOpen && <button type="button" className={`cv-agent-btn${agentBusy ? ' busy' : ''}`} aria-pressed={false} aria-label="Show the AI panel" data-testid="cv-agent-toggle" onClick={toggleAgent}><SparkleIcon size={16} /><span>AI</span>{agentBusy && <i className="cv-agent-dot" aria-hidden />}</button>}
-          <BoardSwitcher boards={boards ?? []} current={current} save={save} onPick={id => id !== board.id && go(id)} onNew={onNew} onRename={onRename} onDelete={onDelete} /><SpendChip boardId={board.id} /><FollowToggle busy={agentBusy} />
+          <BoardSwitcher boards={boards ?? []} current={current} save={save} onPick={id => id !== board.id && go(id)} onNew={onNew} onRename={onRename} onDelete={onDelete} onBudget={onBudget} /><SpendChip boardId={board.id} onBudget={onBudget} /><FollowToggle busy={agentBusy} />
+          <button type="button" className={`cv-assets-btn${drawer ? ' on' : ''}`} aria-pressed={drawer} aria-label="Assets" data-testid="cv-assets" onClick={toggleDrawer}><PanelIcon size={16} /><span>Assets</span></button>
         </div>
         <div className="cv-agent-slot" data-slot="agent-panel" data-testid="cv-agent-slot" aria-hidden={!agentOpen}>
           <AgentPanel key={board.id} boardId={board.id} ask={ask} open={agentOpen} onClose={toggleAgent} onBusy={setAgentBusy} onBoards={onBoardsChanged} onOpenBoard={onAgentOpen} />
         </div>
-        {boardApi && <BoardProvider value={boardApi}><CardPanel hidden={drawer} onOpen={setPanelOn} /></BoardProvider>}
-        <button type="button" className={`cv-assets-btn${drawer ? ' on' : ''}`} aria-pressed={drawer} data-testid="cv-assets" onClick={toggleDrawer}><PanelIcon size={16} /><span>Assets</span></button>
+        {boardApi && <BoardProvider value={boardApi}><CardPanel hidden={drawer} onOpen={setPanelOn} variant={engine === 'rf' ? 'inspector' : undefined} /></BoardProvider>}
       </> : <div className="cv-msg"><Skeleton variant="tiles" count={3} /></div>}
   </div>;
 }

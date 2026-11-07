@@ -9,7 +9,7 @@ import { setPlanModelKey } from '../comfy/plans.js';
 
 export type RefPlace = 'local' | 'router' | 'fal' | 'replicate' | 'direct';
 /** Route kind → grammar place (shared/promptGrammar.ts `places`): Comfy Cloud workflows and deployments run the same graphs as local. */
-export const placeOfKind = (kind: string | null | undefined): RefPlace => (kind === 'comfy-router' ? 'router' : kind === 'fal' ? 'fal' : kind === 'replicate' ? 'replicate' : kind === 'direct' ? 'direct' : 'local');
+export const placeOfKind = (kind: string | null | undefined): RefPlace => (kind === 'comfy-router' ? 'router' : kind === 'fal' || kind === 'sunra' || kind === 'kie' ? 'fal' /* aggregators sending the maker's own schema, like fal */ : kind === 'replicate' ? 'replicate' : kind === 'direct' ? 'direct' : 'local');
 /** The model key a job runs on a route (or on its engine when no route is known). */
 export const jobModelKey = (j: { toolId: string; provider: string; input?: Record<string, any> | null }, routeId?: string | null): string =>
   routeId ? routeModelKey(j.toolId, j.provider, routeId, j.input) : modelKeyOf(j.toolId, j.provider, j.input);

@@ -2,6 +2,8 @@
 
 A plugin adds an app from a ComfyUI workflow, without touching the core. Drop a folder into **`plugins/`** at the repo root (override it with `OPENHIGGSFIELD_PLUGINS_DIR`) and restart the app: plugins load once at start, so a new or changed folder shows up after a restart.
 
+Inside the server, the `workflow-folders` plugin (in `server/profiles/desktop.yml`) loads both folders and gives each folder its own plugin instance, so removing a folder (a workflow you added, a hub install) takes out exactly its tool and graph with no restart. The folder format below is unchanged.
+
 ## Add a workflow (no folder needed)
 
 The easiest way: **Your workflows › Add a workflow** (also the "Bring your own" card on the Workflows page and "+ Add your own" at the end of every tab's workflow picker). Drop a ComfyUI workflow file (the API format from **Workflow › Export (API)**; a regular saved workflow is converted when its nodes are known), check the guessed nodes (photo or clip, prompt, seed, result, which settings to show), pick the tab and group, and save. It shows up in its tab at once, with no restart, and an **Added by you** badge.
@@ -46,7 +48,7 @@ plugins/<folder>/
 
 - Plugins load once at server start, in folder-name order. Folders starting with `.` or `_` are ignored.
 - Each manifest and its files are validated. A bad plugin is **skipped with clear errors and the server keeps running**.
-- `GET /api/plugins` reports every plugin as `{ id, ok, errors[], warnings[], toolId, license, handler, dir }`. The same lines are printed to the server log.
+- `GET /api/workflow-folders` reports every plugin as `{ id, ok, errors[], warnings[], toolId, license, handler, dir }`. The same lines are printed to the server log.
 - `npm run plugins:check` validates all manifests, maps each preset onto the workflow, and posts the graphs to the local ComfyUI validator. Nothing is run.
 
 ## Manifest (`plugin.json`, schema 1)
@@ -127,6 +129,13 @@ export default handler;
 - **Mock clips:** `mock-cutout.mp4` and `mock-matte.mp4` are procedural (ffmpeg edge detection on the app's sample clip), not real segmentation.
 - **Installing for real use:** clone `lldacing/ComfyUI_BiRefNet_ll` into `ComfyUI/custom_nodes`, `pip install timm`, and put the BiRefNet weights from https://huggingface.co/ZhengPeng7/BiRefNet into `ComfyUI/models/BiRefNet/`.
 
+## Keys and plugins made by others
+
+- **Keys (`ctx.keys`):** a code plugin reads only the keys it lists in its `keys`. Asking for any other key gives nothing (`KeyNotDeclared`), and only the server core may list every key. This is least privilege, not a sandbox: code plugins run inside the server, where the keys are, so it keeps honest plugins to what they asked for and makes a new key request visible; it can't stop code that sets out to misbehave.
+- **Where keys go:** every request that carries a key goes only to that provider's own https addresses (or this computer), and no redirect carries it anywhere else. Doctor and Settings → Connections warn when an address you set sends a key somewhere else.
+- **Plugins made by others:** for now only plugins made by us run code in the app. A code plugin made by someone else is refused (the Plugins page says so, and turning it on answers 403); safe mode keeps it off as well. Workflows you add in the app are data and never run code. A folder you copy into `plugins/` by hand may carry a `handler` that runs code in the server, so only add one you trust.
+- **Tools the app starts** (ffmpeg, the voice runner, tar, git) get no keys in their environment.
+
 ## Community hub (`/api/hub/*`)
 
 Browse community LoRAs and ComfyUI workflows, curated by business use case, and install them in one click. Code: `server/src/hub/` (catalog + install) and `server/src/routesHub.ts`.
@@ -137,6 +146,6 @@ Browse community LoRAs and ComfyUI workflows, curated by business use case, and 
 - **Endpoints.**
   - `GET /api/hub/items?type=lora|workflow&useCase=product-shots|ads|fashion|real-estate|thumbnails&sort=popular|trending|new|rated&q=&limit=&offset=`
   - `GET /api/hub/items/:id` (adds `installAs`)
-  - `POST /api/hub/install` `{ id, as? }`: LoRA → `as: "lora"` (recorded as installed under `ComfyUI/models/loras/<file>`, `mock: true`; no download yet). Workflow → `as: "style"` (default; a style preset `{ id, label, prompt }`) or `as: "tool"` (writes `plugins/hub-<slug>/` with plugin.json, the app's own Z-Image Turbo img2img workflow and node-map.json, validated with the plugin schema; it loads on the next server start, `requiresRestart: true`). The tool uses the item's name as its style; it does not download or run the community workflow itself. 409 if already installed.
+  - `POST /api/hub/install` `{ id, as? }`: LoRA → `as: "lora"` (recorded as installed under `ComfyUI/models/loras/<file>`, `mock: true`; no download yet). Workflow → `as: "style"` (default; a style preset `{ id, label, prompt }`) or `as: "tool"` (writes `plugins/hub-<slug>/` with plugin.json, the app's own Z-Image Turbo img2img workflow and node-map.json, validated with the plugin schema; it loads at once, with no restart, and `requiresRestart` is `true` only when it couldn't load now). Uninstalling takes it out of the app, then deletes the folder. The tool uses the item's name as its style; it does not download or run the community workflow itself. 409 if already installed.
   - `GET /api/hub/installed`, `DELETE /api/hub/installed/:id` (id is `<itemId>:<as>`; removing a tool deletes its `plugins/hub-*` folder).
 - Installs are stored in the `hub_installed` SQLite table.

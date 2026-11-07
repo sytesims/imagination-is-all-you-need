@@ -9,6 +9,9 @@ import { atom, useValue, useQuickReactor, useMaybeEditor, useTools, useIsToolSel
   type Atom, type Editor, type TLArrowBinding, type TLEventInfo, type TLInstancePresence, type TLShapeId } from 'tldraw';
 import { BoardContext, type AgentPresence, type BoardApi, type BoardInputEvent, type BoardLink, type BoardNode, type CameraMove, type Rect } from './boardApi';
 import { isNodeType, GROUP_TYPE } from './nodeTypes';
+import { tldrawGroupName } from '../../../server/src/shared/boardDoc';
+/** a Group (frame) on the classic board: an empty name shows as "Group" (boardDoc.tldrawGroupName), never tldraw's "Frame" */
+const groupName = (props: any, meta: any) => { const g = tldrawGroupName(props?.name, meta ?? {}); return g.name === String(props?.name ?? '') ? { name: g.name, meta: { ...(meta ?? {}), autoName: false } } : g; };
 import { linkArrowsWith } from './links';
 
 export { atom, useValue, type Atom };
@@ -51,8 +54,11 @@ function makeBoard(editor: Editor): BoardApi {
     nodesAt: (p, o) => editor.getShapesAtPoint(p, { hitInside: true, margin: o?.margin ?? 0 }).filter((s) => s.type !== 'arrow') as unknown as BoardNode[],
     parentOf: (id) => { const p = editor.getShape(sid(id))?.parentId; return p && String(p).startsWith('shape:') ? p : null; },
     childrenOf: (id) => editor.getSortedChildIdsForParent(sid(id)),
-    addNode: (n) => { const id = createShapeId(); editor.createShape({ id, type: n.type, x: n.x, y: n.y, ...(n.props ? { props: n.props } : {}), ...(n.meta ? { meta: n.meta } : {}) } as any); return id; },
-    patchNode: (id, patch) => { const s = editor.getShape(sid(id)); if (s) editor.updateShape({ id: s.id, type: s.type, ...patch } as any); },
+    addNode: (n) => { const id = createShapeId(); const g = n.type === 'frame' ? groupName(n.props, n.meta) : null;
+      editor.createShape({ id, type: n.type, x: n.x, y: n.y, ...(n.props ? { props: g ? { ...n.props, name: g.name } : n.props } : {}), ...(g ? { meta: g.meta } : n.meta ? { meta: n.meta } : {}) } as any); return id; },
+    patchNode: (id, patch) => { const s = editor.getShape(sid(id)); if (!s) return;
+      const g = s.type === 'frame' && patch.props && 'name' in patch.props ? groupName(patch.props, { ...(s.meta as any), ...(patch.meta ?? {}) }) : null;
+      editor.updateShape({ id: s.id, type: s.type, ...patch, ...(g ? { props: { ...patch.props, name: g.name }, meta: g.meta } : {}) } as any); },
     patchNodes: (list) => { editor.updateShapes(list.flatMap((p) => { const s = editor.getShape(sid(p.id)); return s ? [{ ...p, id: s.id, type: s.type }] : []; }) as any); },
     removeNodes: (ids) => { if (ids.length) editor.deleteShapes(ids.map(sid)); },
     setParent: (ids, parentId) => { if (ids.length) editor.reparentShapes(ids.map(sid), parentId ? sid(parentId) : editor.getCurrentPageId()); },

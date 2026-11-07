@@ -266,13 +266,13 @@ function errorsDoc() {
   L.push('\nJob-level failures are not HTTP errors: `GET /api/jobs/{id}` returns 200 with `status` `failed` | `blocked` and `errorType` (`temporary`, `provider_outage`, `ip`, `nsfw`, …), plus `refund`. `blocked` means the cloud provider itself refused the job (the app never pre-blocks content); its credits go back to your balance (team mode) once.\n');
   L.push('## Limits\n');
   const H = live.health, C = live.config, Q = live.queue;
-  const upMb = srcConst('server/src/index.ts', /MAX_UPLOAD_MB\s*=\s*(\d+)/), upFiles = srcConst('server/src/index.ts', /limits:\s*\{[^}]*files:\s*(\d+)/);
+  const upMb = srcConst('server/src/legacy.ts', /MAX_UPLOAD_MB\s*=\s*(\d+)/), upFiles = srcConst('server/src/legacy.ts', /limits:\s*\{[^}]*files:\s*(\d+)/);
   const lim = srcConst('server/src/media.ts', /export const LIMITS\s*=\s*(\{[^}]*\})/), refMb = srcConst('server/src/tools/shared.ts', /MAX_CHAR_REF_BYTES\s*=\s*(\d+)\s*\*/);
   L.push(md([
     ['maxParallel', C.maxParallel ?? Q.maxParallel, 'Jobs running at once (`OPENHIGGSFIELD_MAX_PARALLEL`, default 6)', 'GET /api/config, /api/queue'],
     ['maxParallelFree', H.queue?.maxParallelFree, 'Free-lane jobs running at once (`OPENHIGGSFIELD_MAX_PARALLEL_FREE`)', 'GET /api/health'],
     ['maxQueued', C.maxQueued ?? Q.maxQueued, 'Queued jobs before 429 `queue_full` (`OPENHIGGSFIELD_MAX_QUEUED`, default 20; 0 = only the parallel cap, then 429 `concurrency`)', 'GET /api/config, /api/queue'],
-    ['upload size', upMb ? `${upMb} MB per file` : '—', `Multipart cap; over it → 400 \`file_too_large\`. Max ${upFiles ?? '—'} files per request.`, 'server/src/index.ts'],
+    ['upload size', upMb ? `${upMb} MB per file` : '—', `Multipart cap; over it → 400 \`file_too_large\`. Max ${upFiles ?? '—'} files per request.`, 'server/src/legacy.ts'],
     ['reference image', refMb ? `${refMb} MB each` : '—', 'Restyle character refs', 'server/src/tools/shared.ts'],
     ['media limits', lim, 'Source video seconds, min pixels, refs per job / per call, prompt length', 'server/src/media.ts'],
     ['image checks', '<128 px short side → 400 `low_res`; unreadable → 400 `unreadable`; all-black → 400 `dark`', 'Warnings only: <512 px, very dark/bright', summaryOf('/api/media', 'post') ? 'openapi POST /api/media' : 'source'],

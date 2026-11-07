@@ -196,6 +196,12 @@ export const PriceTagIcon = svg(<><path d="M20 12.5 12.5 20a1.5 1.5 0 0 1-2.1 0L
 export const LaptopIcon = svg(<><rect x="4.5" y="5" width="15" height="10.5" rx="1.5" /><path d="M2.5 19h19" /></>, 'LaptopIcon');
 /** A key (your own provider keys). */
 export const KeyIcon = svg(<><circle cx="8" cy="12" r="3.5" /><path d="M11.5 12h9M17.5 12v3M20.5 12v2.5" /></>, 'KeyIcon');
+/** A puzzle piece (Plugins: the header button and the page). Our own drawing. */
+export const PuzzleIcon = svg(<><path d="M10 6V5a2 2 0 1 1 4 0v1h3.5a1 1 0 0 1 1 1v3.5h1a2 2 0 1 1 0 4h-1V18a1 1 0 0 1-1 1H14v-1a2 2 0 1 0-4 0v1H6.5a1 1 0 0 1-1-1v-3.5h1a2 2 0 1 0 0-4h-1V7a1 1 0 0 1 1-1z" /></>, 'PuzzleIcon');
+/** A shield (safe mode, the spend guard). */
+export const ShieldIcon = svg(<><path d="M12 3.5 19 6v5.5c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z" /></>, 'ShieldIcon');
+/** A padlock (always on). */
+export const LockIcon = svg(<><rect x="5" y="10.5" width="14" height="9.5" rx="2" /><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" /></>, 'LockIcon');
 /** The place icon for a run-on id: local → Local, comfy-cloud → Comfy, anything else → Other API. */
 export const placeIconFor = (runOn: string | null | undefined) => runOn === 'local' || runOn === 'gpu' ? YourGpuIcon : runOn === 'comfy-cloud' || runOn === 'comfy' ? ComfyPlaceIcon : ApiPlugIcon;
 

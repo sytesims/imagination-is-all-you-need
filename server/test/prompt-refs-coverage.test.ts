@@ -67,6 +67,7 @@ function attempts(t: any, engine: string, prompt: string): { fields: Record<stri
 }
 /** Field sets a tool needs beyond the generic ones (a mode's own files and fields). */
 const EXTRA: Record<string, { types?: string; files: string[]; count?: number; fields?: Record<string, string> }[]> = {
+  layers: [{ files: ['video'], fields: { objects: '["person"]' } }], // Video to layers: names, not a prompt (each name is its own SAM text)
   voice: [{ types: 'voiceover', files: ['video'] }, { types: 'lipsync', files: ['image', 'speech'] }, { types: 'change-voice', files: ['video', 'voiceAudio'] }, { types: 'translate', files: ['video'], fields: { language: 'es' } }],
   'h3-video': ['r2v', 'i2v', 't2v'].map((m) => ({ types: m, files: m === 't2v' ? [] : ['image'], fields: { duration: '5', aspect: 'auto' } })), // the fal H3 routes start at 5 s
   reshoot: [{ files: ['video'], fields: { yaw: '30', tilt: '10' } }], // H3 CrossView: the take alone and a camera position
@@ -106,6 +107,7 @@ const NO_BODY: Record<string, string> = {
 const NO_GRAMMAR: Record<string, string> = {};
 /** tool|model the test can't make an input for (by model key, with the reason). */
 const NO_TEST_INPUT: Record<string, string> = {
+  'layers-edit|local-layers-edit': 'Video to layers: Render: changes a stored split (fromJob = a finished layers job); ffmpeg on this computer, no model prompt',
   'make-it-real|comfy-ltx25-layout': 'renders a stored Direct a Shot plan job (planJob id + its mockup video); its Router renders build through routeRequest like every other Router body',
   'make-it-real|kling-v3-omni-edit': 'renders a stored Direct a Shot plan job (planJob id + its mockup video)', 'make-it-real|luma-ray-3.2-edit': 'renders a stored Direct a Shot plan job',
   'make-it-real|runway-aleph-2': 'renders a stored Direct a Shot plan job', 'make-it-real|seedance-2.5-edit': 'renders a stored Direct a Shot plan job',
@@ -203,7 +205,14 @@ const SENDERS: Record<string, { calls?: RegExp; why: string }> = {
   'comfyRouter.ts': { why: 'Comfy Router transport: sends the body it is given' }, 'comfy/cloudV2.ts': { why: 'Comfy Cloud transport: sends the graph it is given' },
   'comfy/native.ts': { why: 'local ComfyUI transport: sends the graph it is given' }, 'comfy/storage.ts': { why: 'uploads media to Comfy storage; no prompt' },
   'mediaHandoff.ts': { why: 'the shared media hand-off: uploads files to fal / Replicate storage; no prompt' },
+  'plugins-builtin/place-fal.ts': { why: 'fal place plugin: sends the body routing/run.ts built with routeRequest' }, 'plugins-builtin/place-replicate.ts': { why: 'Replicate place plugin: sends the body routing/run.ts built with routeRequest' },
+  'plugins-builtin/place-direct.ts': { why: 'labs place plugin: builds each body with routing/routeRequest.ts (the lab\'s own build), then sends it' },
+  'plugins-builtin/place-comfy-cloud.ts': { why: 'Comfy Cloud place plugin: runs routing/cloudRun.ts (graphs from comfy/plans.ts buildPlan) or the route\'s own partner graph; cancel only' },
+  'plugins-builtin/place-comfy-router.ts': { why: 'Comfy Router place plugin: runs routing/routerRun.ts (bodies from routeRequest); cancel only' },
   'providers/fal.ts': { why: 'fal transport (falImageInput is called only from routeRequest)' }, 'providers/replicate.ts': { why: 'Replicate transport (replicateImageInput only from routeRequest)' },
+  'providers/sunra.ts': { why: 'Sunra transport: bodies are built in routing/aggregatorRoutes.ts, called from routeRequest' }, 'providers/kie.ts': { why: 'kie.ai transport: bodies are built in routing/aggregatorRoutes.ts, called from routeRequest' },
+  'providers/runpod.ts': { why: 'RunPod transport (worker-comfyui): sends the graph it is given; inputs through handOff' },
+  'plugins-builtin/place-runpod.ts': { calls: /buildPlan\(/, why: 'RunPod place plugin: runs comfy/runNative.ts with graphs from comfy/plans.ts buildPlan on your endpoint' },
   'providers/byteplus.ts': { why: 'BytePlus lab body builders (route.direct.build), called only from routeRequest' }, 'providers/gemini.ts': { why: 'Gemini lab body builders, called only from routeRequest' },
   'providers/openai.ts': { why: 'OpenAI lab body builders, called only from routeRequest' }, 'hostedRequests.ts': { why: 'lab body builders (route.direct.build / route.request), called only from routeRequest' },
   'cinema/enhance.ts': { why: 'prompt enhancer (a local LLM you run): rewrites the words before the job; the job then goes through the rewrite like any other' },
@@ -216,14 +225,18 @@ const SENDERS: Record<string, { calls?: RegExp; why: string }> = {
 };
 const sfails: string[] = [];
 for (const f of files) {
-  if (!SENDS.test(f.text)) continue; const e = SENDERS[f.rel];
+  // Fastify route definitions ({ method: 'POST', url: '/api/…' }) are this server's own routes, not outgoing requests.
+  if (!SENDS.test(f.text.replace(/method: ?['"]POST['"], ?url: ?['"]\//g, ''))) continue; const e = SENDERS[f.rel];
   if (!e) { sfails.push(`${f.rel} sends a request or runs a graph: build its body with routing/routeRequest.ts (hosted) or comfy/plans.ts buildPlan (graphs), then list it in SENDERS with why`); continue; }
   if (e.calls && !e.calls.test(code(f.text))) sfails.push(`${f.rel} no longer calls ${e.calls}: ${e.why}`);
 }
 for (const k of Object.keys(SENDERS)) if (!files.some((f) => f.rel === k)) sfails.push(`SENDERS lists ${k}, which is gone`);
 /** Body builders are invoked in one place (routeRequest); the prompt peek also calls a Router body, on input it rewrote itself (withRefGrammar). */
 const BUILD_CALL = /\bspec\.body\(|\.direct\.build\(|\br\.request!?\(|(?<!function )\b(falImageInput|replicateImageInput)\(|DIRECT_CLIENTS\[/;
-const BUILD_AT: Record<string, RegExp> = { 'routing/routeRequest.ts': /refInputFor\(job, r\)/, 'routesPromptPeek.ts': /withRefGrammar\(/ };
+const BUILD_AT: Record<string, RegExp> = { 'routing/routeRequest.ts': /refInputFor\(job, r\)/, 'routesPromptPeek.ts': /withRefGrammar\(/,
+  // a queue place's image body (PlaceRunner.build): routeRequest calls it with the prompt it already rewrote (promptAt(k)), and with nothing else
+  'plugins-builtin/place-fal.ts': /async build\(r, \{ job, prompt, seed, extras \}\)/, 'plugins-builtin/place-replicate.ts': /async build\(r, \{ job, prompt, seed, extras \}\)/ };
+assert.match(code(files.find((f) => f.rel === 'routing/routeRequest.ts')!.text), /build\(r, \{ job, prompt: promptAt\(k\), seed, extras \}\)/, 'routeRequest hands the place its rewritten prompt');
 for (const f of files) { const c = code(f.text); if (!BUILD_CALL.test(c)) continue; const need = BUILD_AT[f.rel];
   if (!need) sfails.push(`${f.rel} builds a request body itself (${c.match(BUILD_CALL)![0]}): use routing/routeRequest.ts so the prompt rewrite applies`);
   else if (!need.test(c)) sfails.push(`${f.rel} builds bodies without ${need}`); }
@@ -233,7 +246,7 @@ for (const f of files) if (f.rel !== 'mediaHandoff.ts' && /\.toString\(\s*['"]ba
 const src = (rel: string) => code(files.find((f) => f.rel === rel)!.text);
 assert.match(src('comfy/plans.ts'), /export function buildPlan\([^)]*\)[^{]*\{\s*const j = \{ \.\.\.j0, input: withRefGrammar\(/, 'buildPlan rewrites the input first');
 assert.match(src('comfy/cloudWorkflows.ts'), /isStandalone\(w\)\) \{ const plan = w\.plan\(\{ \.\.\.j, input: withRefGrammar\(/, 'standalone cloud plans (H3 CrossView) rewrite the input first');
-assert.match(src('routing/jobRefs.ts'), /setPlanModelKey\(/, 'local graphs use the runners\' model key'); assert.match(src('index.ts'), /import '\.\/routing\/jobRefs\.js'/, 'the server loads it at start');
+assert.match(src('routing/jobRefs.ts'), /setPlanModelKey\(/, 'local graphs use the runners\' model key'); assert.match(src('legacy.ts'), /import '\.\/routing\/jobRefs\.js'/, 'the server loads it at start');
 assert.match(src('routing/routeRequest.ts'), /export async function routeRequest\([^\n]*\n\s*const gi = refInputFor\(job, r\);/, 'routeRequest rewrites the input first');
 // web: removing a photo that counts as @imageN renumbers the prompt's mentions (shared/mentions.ts), the start photo included
 const appTool = fs.readFileSync(path.join(SRC, '../../web/src/tools/app/AppTool.tsx'), 'utf8');

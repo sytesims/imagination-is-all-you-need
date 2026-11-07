@@ -6,6 +6,7 @@ import { threeDRedirectTarget } from '../../../server/src/shared/threeD';
 import { redirectTarget, withSearch, addedImageRedirect } from '../shared/workflowLinks';
 import { selfHostRedirect } from '../shared/legacyRoutes';
 import { useEffect, useState } from 'react';
+import { useLinkOn } from '../shared/plugins';
 /** Minimal pushState router (no dependency). */
 export function navigate(to: string, o: { replace?: boolean; state?: Record<string, unknown> } = {}) { to = canonTo(to); /* inApp: this entry was reached by a click in the app (✕ can go back to it). A replace keeps the entry's own flag: a direct link stays a direct link, so ✕ closes to the page's list, as Esc does */
   const st = { ...(o.replace ? history.state : {}), inApp: o.replace ? !!(history.state as any)?.inApp : true, ...(o.state ?? {}) }; if (o.replace) history.replaceState(st, '', to); else history.pushState(st, '', to); dispatchEvent(new PopStateEvent('popstate')); }
@@ -40,6 +41,8 @@ export function useSearch() {
 export const videoWorkflowParam = (search = location.search): string => new URLSearchParams(search).get('workflow') ?? '';
 
 export function Link({ to, children, className, onClick, ...rest }: { to: string; children: React.ReactNode; className?: string } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & { [k: `data-${string}`]: string | undefined }) {
+  /* a page of a studio turned off in Plugins (Video, Image, Audio, 3D, Edit…): the link hides, so nothing leads to a dead end (shared/studioLinks.ts) */
+  if (!useLinkOn()(to)) return null;
   /* an outside address (the GitHub repo and docs) opens in a new tab: no prefetch, no in-app navigation */
   if (/^https?:\/\//i.test(to)) return <a {...rest} href={to} className={className} target="_blank" rel="noopener noreferrer" onClick={onClick}>{children}</a>;
   /* prefetch the page's code on hover / focus / touch, so the click rarely waits for a chunk */
@@ -49,13 +52,14 @@ export function Link({ to, children, className, onClick, ...rest }: { to: string
 }
 
 // ---- Header slot routes (DESIGN-NOTES 21/23). Components are Design Planner's (ui/pages, ui/Usage). ----
-import { PageComps, prefetchRoute } from './routeChunks'; // each page is its own chunk (performance)
-const { Canvas, Film, LearnEcom, SpendOrUsage, Licenses, Settings, TermsPage, ApiDocs, Mcp, Plugins, Community, Workflows, Models, Profile, RecipeImport } = PageComps;
+import { PageComps, prefetchRoute } from './routeChunks';
+// each page is its own chunk (performance); Canvas and Film are wrapped by their plugin switch in routeChunks
+const { Canvas, Film, LearnEcom, SpendOrUsage, Licenses, Settings, TermsPage, ApiDocs, Mcp, Plugins, PluginsHub, Community, Workflows, Models, Profile, RecipeImport } = PageComps;
 export type PageRoute = [title: string, Comp: React.ComponentType<{ tools: any[] }>];
 export const PAGES: Record<string, PageRoute> = {
-  '/mcp': ['MCP', Mcp], '/api-docs': ['API', ApiDocs], '/plugins': ['Your workflows', Plugins], '/community': ['Community', Community],
-  '/canvas': ['Canvas', Canvas as any],
-  '/film': ['Editor', Film as any], // Film (2026-10-27): the list; /film/:id is FILM_ID_PATH (App.tsx)
+  '/mcp': ['MCP', Mcp], '/api-docs': ['API', ApiDocs], '/plugins': ['Plugins', PluginsHub] /* step 7 (2026-11-07): the Plugins page; old /plugins links land here and it links to Your workflows */, '/workflows/yours': ['Your workflows', Plugins] /* was /plugins; before WF_PATH, so not a workflow id */, '/community': ['Community', Community],
+  '/canvas': ['Canvas', Canvas],
+  '/film': ['Editor', Film], // Film (2026-10-27): the list; /film/:id is FILM_ID_PATH (App.tsx)
   '/r': ['Make this', RecipeImport as any], // a shared recipe (/r?recipe=…, shared/recipe.ts): check it, then open it in the tool; nothing runs until Generate
   '/learn/ai-ecommerce': ['AI for e-commerce', LearnEcom as any], // the pop-up book (learn/EcomBook.tsx), full screen over the app
   '/workflows': ['Workflows', Workflows], '/models': ['Models', Models],

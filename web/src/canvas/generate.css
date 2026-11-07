@@ -2,7 +2,12 @@
    Dark, quiet surfaces from the brand tokens; orange only for the selection, the current take, a running dot and the Generate button. */
 
 /* ---- top left: (AI button when the dock is closed) board switcher, this board's spend chip, Follow agent. The dock is agentPanel.css ---- */
-.cv-topl{position:absolute;top:12px;left:12px;z-index:20;display:flex;align-items:center;gap:8px}
+.cv-topl{position:absolute;top:12px;left:12px;right:calc(var(--cv-panel-w,0px) + var(--cv-drawer-w,0px) + 12px);z-index:20;display:flex;align-items:center;gap:8px;pointer-events:none;container-type:inline-size;transition:right var(--dur-slow,300ms) var(--ease,cubic-bezier(.4,0,.2,1))}
+.cv-topl>*{pointer-events:auto;flex:none}
+/* release 2 leftover: Assets is the top bar's last item (it can't cover Follow agent); a narrow board shows Follow agent as its switch only */
+.cv-topl .cv-assets-btn{margin-left:auto}
+@container (max-width:900px){.cv-topl .cv-follow{padding:0 12px}.cv-topl .cv-follow>span{display:none}}
+@container (max-width:560px){.cv-topl .cv-assets-btn{padding:0 13px}.cv-topl .cv-assets-btn>span{display:none}}
 .cv-topl .cv-switch{position:relative;top:auto;left:auto}
 .cv-root{--cv-agent-w:0px}
 .cv-spend{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px 0 12px;border-radius:12px;text-decoration:none;color:var(--text-2,#898A8B);background:rgba(19,21,23,.92);border:1px solid rgba(255,255,255,.08);box-shadow:0 4px 20px rgba(0,0,0,.28);backdrop-filter:blur(12px);font:500 12px/1 var(--font-ui,Inter,sans-serif);transition:background var(--t-state,150ms) ease}

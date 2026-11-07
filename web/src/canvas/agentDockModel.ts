@@ -8,6 +8,7 @@ import { atom } from './boardApi';
 import { flowById, flowInfo } from '../shared/genFlows';
 import { catalogNow } from './catalog';
 import { workflowOpenOf, withSearch } from '../shared/workflowLinks';
+import { linkOn } from '../shared/plugins';
 import type { FeedEntry, Proposal } from './agentBridge';
 
 export const DOCK_W = 380;
@@ -70,7 +71,9 @@ export function toolHrefOf(flowId: string, jobId?: string | null): string | null
   /* the workflow's own tab (shared/workflowLinks, the same links Assets and the viewer use): Image recipes on Create Image, video flows on the
      Video page (Lip Sync too, not Audio), Music / Sound effects / Text to speech on Audio, Image to 3D on the 3D page */
   const base = f.medium === 'image' && f.id !== 'create' ? `${IMAGE_PAGE}?workflow=${encodeURIComponent(f.id)}` : workflowOpenOf({ toolId, input: f.types ? { types: [f.types] } : {} });
-  return jobId ? withSearch(base, `recreate=${encodeURIComponent(jobId)}`) : base;
+  const href = jobId ? withSearch(base, `recreate=${encodeURIComponent(jobId)}`) : base;
+  return linkOn(href) ? href : null; /* its studio is off in Plugins: no Open in tool */
 }
 
 export { agentStarterPrompt, dockRoute, dockState, dockStatusLine, dockPill, workingLine, messageStatus, messageStatusText, listenCommand, LISTEN_PHRASE, type DockState, type MsgStatus } from './dockAgent';
+

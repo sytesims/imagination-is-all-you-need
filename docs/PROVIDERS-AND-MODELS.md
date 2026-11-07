@@ -53,12 +53,62 @@ If nothing is ready, the mock backend runs a free, labelled sample ("Sample outp
 | Comfy Cloud open-workflow jobs | Implemented for registered builders/runners, including LTX and H3 workflows. See [cloud workflows](../workflows/cloud/README.md) for sources and prerequisites. Fixture validation and a previous real result do not verify every route or account. |
 | Comfy Router and supported partner/API nodes | Implemented per model/route (`server/src/comfyRouter.ts`, `server/src/routing/routerRun.ts` and registered cloud partner runners). A key, entitlement, compatible inputs and an available executor are still required; this is not a blanket real-run claim. |
 | fal, Replicate | Wired but not yet run with a real key |
+| Sunra | Wired against its documented API and tested with recorded responses; not yet run with a real key. Hidden until a Sunra key is set |
 | Official lab APIs: **Black Forest Labs** (FLUX 3 Image / Klein / Video / Upscaler, FLUX.2 [flex], FLUX.2 [klein] 4B / 9B), **MiniMax** (H3 / H3-Max video, Speech 2.8 HD / Turbo, image-01), **LTX** (LTX-2.5 Pro / Fast, LTX-2.3 Fast), **OpenAI** (GPT Image 2, 2.5 Flare / Sunburst: generate, edit, inpaint), **Google Gemini API** (Nano Banana 2.1 / 2 / Pro, Nano Banana 2 Lite), **BytePlus ModelArk** (Seedance 2.0 on Generate Video, Seedance 2.0 Fast / Mini / 2.5, Seedream 5.0 Pro / Flash) | Wired (`server/src/providers/direct.ts`, routes in `server/src/routing/directRoutes.ts`). Tested against fake lab servers; not yet run with a real key. Outputs are saved right away (lab links expire); LTX runs at most 2 jobs at once and waits out "busy" answers. BytePlus refuses Seedance jobs with reference videos (it only takes public links) |
 | MiniMax Speech direct | Implemented through the direct-route registry and speech adapter. Requires the appropriate provider key/access; no new real-provider validation is implied by this documentation update. |
 | DashScope direct | Connection configuration exists, but no direct executor was identified in this review. Do not assume a saved key enables a route. |
 | Your own ComfyUI and this-computer tools | Registered local workflows and media-processing steps are implemented where their runner exists. Hardware/model/node readiness and per-route verification vary. A cloud result or cross-platform startup CI does not prove local GPU execution. |
 
 Under the hood, Comfy Cloud jobs use Comfy Cloud's official API v2 (jobs and assets over HTTPS), and a local ComfyUI is driven through its HTTP and WebSocket API.
+
+### Sunra
+
+[Sunra](https://sunra.ai) runs models at the makers' list prices on a fal-shaped queue (submit, poll, result, cancel). It is built in (`place-sunra` in `server/profiles/desktop.yml`) but stays out of sight until you add a Sunra key in **Settings → Connections** (`OPENHIGGSFIELD_SUNRA_KEY`). Then **Sunra** shows up in Run on for:
+
+| Model | Sunra model | Price (checked 2026-11-03) |
+|---|---|---|
+| Seedance 2.5 | `bytedance/seedance-2.5` | $10.70 / 1M video tokens (480p, 720p), $11.70 (1080p): about $0.11 / $0.23 / $0.57 per second |
+| Seedance 2.0 Fast | `bytedance/seedance-2.0-fast` | $5.29 / 1M video tokens: about $0.05 / $0.11 per second (480p / 720p) |
+| MiniMax H3 | `minimax/minimax-h3` | $0.038 per second (480p), $0.08 (768p) |
+| Nano Banana 2 | `google/gemini-3.1-flash-image` | $0.067 / $0.101 / $0.15 per image (1K / 2K / 4K) |
+| GPT Image 2.5 Flare | `openai/gpt-image-2.5-flare` | OpenAI token rates, quoted as an estimate; the settled charge is recorded after each run |
+
+- Text to video, a first frame, or first and last frames. Reference clips and brush edits run on Comfy Cloud.
+- Your files go up through Sunra's own upload (a public, hard-to-guess link on `assets.sunra.ai`).
+- Sunra says failed runs aren't charged. Sunra adds 5% to each API top-up, which our prices don't include.
+- Sources: [queue](https://docs.sunra.ai/multimodal/queue), [uploads](https://docs.sunra.ai/platform/file-upload), [errors](https://docs.sunra.ai/platform/errors), and the public pricing API (`https://api.sunra.ai/v1/pricing/model/<model>/endpoint/<endpoint>`). Each price row carries its source and date.
+- A different address (a proxy, a test server): `config: place-sunra: baseUrl:` in your profile, or `OPENHIGGSFIELD_PLACE_SUNRA_BASE_URL`.
+
+### Installable place plugins
+
+Some places ship in the code but are **off** until you add them to your profile. They never show up otherwise.
+
+**kie.ai · reseller, may change without notice** (`place-kie`). kie.ai resells many models at low prices. It is a reseller, not the model makers' partner, its terms cover its website only, and its models and prices can change without notice. Use it knowing that.
+
+To turn it on:
+
+1. Open **Plugins** (the puzzle button next to Assets) and press **Install** on kie.ai. Nothing is downloaded: it ships with the app. (Or copy `server/profiles/desktop.yml` to your own file, for example `my.yml`, add a line `  - place-kie` above `  - legacy`, and start the app with `OPENHIGGSFIELD_PROFILE=/path/to/my.yml`.)
+2. Add your kie.ai key in **Settings → Connections** (`OPENHIGGSFIELD_KIE_KEY`).
+
+Then Run on offers it for Seedance 2.5 ($0.14 / $0.315 / $0.79 per second at 480p / 720p / 1080p) and Nano Banana 2 ($0.04 / $0.06 / $0.09 per image at 1K / 2K / 4K), prices from [kie.ai's model pages](https://kie.ai/pricing), checked 2026-11-06.
+- kie.ai answers errors as HTTP 200 with a code in the body; the app reads each one (out of credits, bad input, maintenance…).
+- It keeps results for 14 days; the app saves each one as soon as it's ready.
+- It has no cancel call: Cancel stops the app waiting, but the task may still finish and bill there.
+- Failed tasks use no credits, per its docs. Sources: [task details](https://docs.kie.ai/market/common/get-task-detail), [uploads](https://docs.kie.ai/file-upload-api/upload-file-stream).
+
+**RunPod** (`place-runpod`). Runs our own Create Image workflows (the same ComfyUI graphs as Your computer) on a GPU you rent on RunPod Serverless. You pay RunPod for the GPU seconds each run uses.
+
+To turn it on:
+
+1. On RunPod, create a Serverless endpoint from the official **worker-comfyui** image ([source](https://github.com/runpod-workers/worker-comfyui), AGPL-3.0 licence; the app only calls it, no code is copied). Pick an image tag or build one with the models of the workflows you want (each model's files are listed on the Models & Licences page). Set max workers to at least 1 and active (always-on) workers to 0 so it costs nothing while idle.
+2. Open **Plugins** and press **Install** on RunPod (or add `  - place-runpod` above `  - legacy` in your own profile copy, as for kie.ai above).
+3. In **Settings → Connections → RunPod**, add your RunPod API key (`OPENHIGGSFIELD_RUNPOD_API_KEY`, or `RUNPOD_API_KEY`) and your endpoint's **Endpoint ID** (shown on the endpoint's page). Its models stay hidden until both are set.
+
+Then Run on offers RunPod for the Create Image models that have a ComfyUI workflow here.
+- **Price:** RunPod bills per GPU second, so the price before a run is an estimate: about 60 GPU seconds per image × $0.000486 per second (RunPod's listed rate for the 48 GB class, [pricing](https://www.runpod.io/pricing), checked 2026-11-06), about $0.03 per image. After each run the real GPU time RunPod reports (`executionTime`) × your rate is recorded as the run's cost. Set your own GPU's rate and seconds per image in your profile (`config: place-runpod: gpuUsdPerSecond:` / `secondsPerImage:`) or `OPENHIGGSFIELD_PLACE_RUNPOD_GPU_USD_PER_SECOND` / `_SECONDS_PER_IMAGE`.
+- **Size limit:** RunPod takes requests up to 10 MB, and input photos travel inside the request. A larger photo is refused before anything is sent (nothing is charged): use a smaller file or another place.
+- RunPod bills GPU time even when a workflow fails or is cancelled while running. Cancel asks RunPod to stop the job. Results are kept 30 minutes; the app saves each one at once.
+- For now: images only (Create Image). Sources: [sending requests](https://docs.runpod.io/serverless/endpoints/send-requests), [worker-comfyui](https://github.com/runpod-workers/worker-comfyui).
 
 ### Retiring and removed models
 

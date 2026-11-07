@@ -23,6 +23,17 @@ export function chooseForSlot(board: BoardApi, cardId: NodeId, s: Pick<GenSlot, 
   const room = Math.max(1, s.max - used);
   pickMedia({ accept: ACCEPT[s.accept === 'video' ? 'video' : s.accept === 'audio' ? 'audio' : 'image'], title: `Choose ${s.label.toLowerCase()}`, multiple: s.max > 1, max: s.max > 1 ? room : undefined, onFiles: fs => { void (async () => { for (const f of fs.slice(0, room)) await fillSlot(board, cardId, s, f, toast); })(); } });
 }
+/** Take one input off a card: an arrow input deletes its arrow (one undo step), a file added on the card leaves its inputs. */
+export function removeCardInput(board: BoardApi, cardId: NodeId, i: BoardInput) {
+  if (i.arrowId) { board.mark('remove input'); board.removeLinks([i.arrowId]); return; }
+  const p = board.getNode(cardId)?.props as GenCardProps | undefined; if (!p) return; const { [i.key]: _gone, ...pins } = p.pins ?? {}; setCard(board, cardId, { inputs: p.inputs.filter(x => x.key !== i.key), pins });
+}
+/** Replace what fills a slot (the inspector's Replace): pick a file first; only once one is chosen do the old inputs go and the new one goes in. */
+export function replaceInSlot(board: BoardApi, cardId: NodeId, s: Pick<GenSlot, 'name' | 'label' | 'accept' | 'max'>, toast: Toast, old: BoardInput[]) {
+  pickMedia({ accept: ACCEPT[s.accept === 'video' ? 'video' : s.accept === 'audio' ? 'audio' : 'image'], title: `Replace ${s.label.toLowerCase()}`, multiple: false, onFiles: fs => { void (async () => {
+    const f = fs[0]; if (!f) return; if (kindOfFile(f) !== s.accept) { toast(wrongTypeText(f.name, [s.accept]), 'warn'); return; }
+    for (const i of old) removeCardInput(board, cardId, i); await fillSlot(board, cardId, s, f, toast); })(); } });
+}
 async function fillSlot(board: BoardApi, cardId: NodeId, s: Pick<GenSlot, 'name' | 'accept'>, f: File | undefined, toast: Toast) {
   if (!f) return; const kind: InputKind | null = kindOfFile(f);
   if (kind !== s.accept) { toast(wrongTypeText(f.name, [s.accept]), 'warn'); return; }
@@ -33,9 +44,7 @@ async function fillSlot(board: BoardApi, cardId: NodeId, s: Pick<GenSlot, 'name'
 
 export function CardInputs({ cardId, slots, bySlot, showAdd, className = '', testPrefix = 'gc' }: { cardId: NodeId; slots: GenSlot[]; bySlot: Record<string, BoardInput[]>; showAdd: boolean; className?: string; /** 'gc' on the card, 'cp' in the panel */ testPrefix?: string }) {
   const board = useBoardApi(); const toast = useToast();
-  const props = () => (board.getNode(cardId)?.props as GenCardProps | undefined);
-  const remove = (i: BoardInput) => { if (i.arrowId) { board.mark('remove input'); board.removeLinks([i.arrowId]); return; }
-    const p = props(); if (!p) return; const { [i.key]: _gone, ...pins } = p.pins ?? {}; setCard(board, cardId, { inputs: p.inputs.filter(x => x.key !== i.key), pins }); };
+  const remove = (i: BoardInput) => removeCardInput(board, cardId, i);
   return <div className={`nf-ins${className ? ` ${className}` : ''}`} data-testid={`${testPrefix}-inputs`}>
     {slots.map(s => { const list = bySlot[s.name] ?? [];
       return <span key={s.name} className="nf-slot" data-testid={`${testPrefix}-slot-${s.name}`} data-n={list.length}>

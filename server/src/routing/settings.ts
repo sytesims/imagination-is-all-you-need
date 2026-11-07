@@ -3,15 +3,19 @@
  * POST stores a key in the env file (OPENHIGGSFIELD_ENV_FILE, else <repo>/.env.local; the file the API loads at start) and in process.env, but ONLY when the server is
  * bound to a loopback address (HOST=127.0.0.1 / ::1 / localhost, the default for npm start and npm run dev). With HOST=0.0.0.0, POST answers 403.
  */
-import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { keyConfigured } from './keys.js';
+import { readKey, keyVarInUse, setKey, unsetKey } from '../kernel/coreKeys.js';
+import { baseWarnings, namesOf } from '../security/baseUrls.js';
 import { getKv, setKv } from '../db.js';
-import { env } from '../env.js';
+import { bootSettings, snapshot } from '../kernel/settings.js';
 import { invalidateTools } from '../toolsCache.js';
 import { openWeightsOnly } from '../providers.js';
 import { aKey } from '../shared/modelIds.js';
 import { FAL_ENV, REPLICATE_ENV, COMFY_ENV } from './routes.js';
+import { places } from '../services/places.js';
+import { RUNPOD_ENDPOINT_RE, runpodEndpoint } from './runpodRoutes.js';
 export interface ProviderSetting { id: string; name: string; envKey: string; envAliases: string[]; configured: boolean; mockedKey?: boolean; docsUrl: string; keysUrl: string;
   /** Runs open weights: local ComfyUI (always) and Comfy (Comfy Cloud runs our open graphs; its partner/API nodes are not open weights). Everything else is a hosted API. */
   openWeights: boolean; openWeightsNote: string | null;
@@ -23,13 +27,36 @@ export interface ProviderSetting { id: string; name: string; envKey: string; env
   /** dp30 (e): '••••' + the key's last 4 characters (keys of 12+ characters; shorter keys show '••••' only); null when no real key is set. Never more. */ keyHint: string | null;
   /** dp30 (e): where the key in use came from: 'saved' (POST /api/settings/providers) | 'env' (server environment / .env file, no timestamp) | 'mock' (mockKeys only) | null (none). */ keySource: 'saved' | 'env' | 'mock' | null;
   /** The environment variable the key in use is read from (a name, never a value); null when there is no real key. Lets the UI say "still set as FAL_KEY". */ keyEnvVar: string | null;
+  /** Settings this connection needs besides its key (RunPod: Endpoint ID). Not secrets: the value is shown. Saved with POST {id, field, value}. */
+  fields?: ProviderField[];
   /** 'ok' = the key matches the provider's well-known format; 'unexpected' = it doesn't (saved before the check, or set in the env file); 'unchecked' = this provider has no stable format to check, so the key is only tried on the first run. null when there is no real key. */ keyFormat: 'ok' | 'unexpected' | 'unchecked' | null }
+export interface ProviderField { id: string; label: string; value: string | null; placeholder: string; help: string }
+/** Plugin settings a connection asks for in Connections, saved in the app (kv settings.<plugin>, the ctx.settings kv layer). */
+const FIELDS: Record<string, { plugin: string; fields: { id: string; label: string; placeholder: string; help: string; valid: RegExp; bad: string }[] }> = {
+  runpod: { plugin: 'place-runpod', fields: [{ id: 'endpointId', label: 'Endpoint ID', placeholder: 'Paste your RunPod Endpoint ID', help: 'On your endpoint’s page in the RunPod console, under its name.', valid: RUNPOD_ENDPOINT_RE, bad: 'That doesn’t look like an Endpoint ID. Copy it from your endpoint’s page in the RunPod console (letters and numbers only).' }] },
+};
+const fieldsOf = (id: string): ProviderField[] | undefined => { const f = FIELDS[id]; if (!f) return undefined; let cur: Record<string, unknown> = {};
+  try { cur = id === 'runpod' ? { endpointId: runpodEndpoint() || null } : {}; } catch { /* unreadable settings: shown as not set */ }
+  return f.fields.map(({ id: fid, label, placeholder, help }) => ({ id: fid, label, placeholder, help, value: typeof cur[fid] === 'string' && cur[fid] ? String(cur[fid]) : null })); };
+/** Save (or clear, with '') one connection setting. Never a key: keys go through storeKey. */
+export function storeField(id: string, field: string, raw: string): { ok: true } | { error: string } {
+  const f = FIELDS[id]?.fields.find((x) => x.id === field); if (!f) return { error: `unknown setting ${field} for ${id}` };
+  const v = raw.trim(); if (v && !f.valid.test(v)) return { error: f.bad };
+  const k = `settings.${FIELDS[id].plugin}`; const cur = getKv<Record<string, unknown>>(k, {}) ?? {}; const next = { ...cur };
+  if (v) next[field] = v; else delete next[field]; setKv(k, next); invalidateTools(); return { ok: true };
+}
 const OW_NOTE: Record<string, string> = { local: 'Open weights locally.', comfy: 'Partner (API) nodes are hosted models, not open weights. The same key also runs our open-weights graphs on Comfy Cloud, so it stays on in open-weights-only mode.' };
 const P: Omit<ProviderSetting, 'configured' | 'openWeights' | 'openWeightsNote' | 'disabledReason' | 'providerGroup' | 'keySetAt' | 'keyHint' | 'keySource' | 'keyEnvVar' | 'keyFormat'>[] = [
   { id: 'local', name: 'Local ComfyUI', envKey: 'COMFY_BASE_URL', envAliases: [], docsUrl: 'https://docs.comfy.org/', keysUrl: '' },
   { id: 'comfy', name: 'Comfy Cloud (one key)', /* BH9 P1-8: was 'Comfy API (partner nodes / Router / Cloud)' */ envKey: COMFY_ENV, envAliases: [], docsUrl: 'https://docs.comfy.org/tutorials/partner-nodes/overview', keysUrl: 'https://platform.comfy.org/profile/api-keys' },
   { id: 'fal', name: 'fal', envKey: FAL_ENV, envAliases: ['FAL_KEY'], docsUrl: 'https://docs.fal.ai/model-apis/model-endpoints/queue', keysUrl: 'https://fal.ai/dashboard/keys' },
   { id: 'replicate', name: 'Replicate', envKey: REPLICATE_ENV, envAliases: ['REPLICATE_API_TOKEN'], docsUrl: 'https://replicate.com/docs/reference/http', keysUrl: 'https://replicate.com/account/api-tokens' },
+  /** Sunra (place-sunra, 2026-11-06): its routes stay hidden until this key is set. */
+  { id: 'sunra', name: 'Sunra', envKey: 'OPENHIGGSFIELD_SUNRA_KEY', envAliases: [], docsUrl: 'https://docs.sunra.ai/multimodal/queue', keysUrl: 'https://sunra.ai/dashboard/api-tokens' },
+  /** RunPod (place-runpod, installable only): listed only when the plugin is in the profile; it also needs an Endpoint ID (a setting, `fields`). */
+  { id: 'runpod', name: 'RunPod', envKey: 'OPENHIGGSFIELD_RUNPOD_API_KEY', envAliases: ['RUNPOD_API_KEY'], docsUrl: 'https://docs.runpod.io/serverless/endpoints/send-requests', keysUrl: 'https://www.runpod.io/console/user/settings' },
+  /** kie.ai (place-kie, installable only): listed only when the plugin is in the profile (providerSettings). */
+  { id: 'kie', name: 'kie.ai · reseller, may change without notice', envKey: 'OPENHIGGSFIELD_KIE_KEY', envAliases: [], docsUrl: 'https://docs.kie.ai/market/common/get-task-detail', keysUrl: 'https://kie.ai/api-key' },
   { id: 'minimax', name: 'MiniMax (direct API)', envKey: 'OPENHIGGSFIELD_MINIMAX_API_KEY', envAliases: [], docsUrl: 'https://platform.minimax.io/docs/guides/video-generation', keysUrl: 'https://platform.minimax.io/user-center/basic-information/interface-key' },
   { id: 'ltx', name: 'LTX (direct API)', envKey: 'OPENHIGGSFIELD_LTX_API_KEY', envAliases: [], docsUrl: 'https://docs.ltx.io/', keysUrl: 'https://docs.ltx.io/quickstart' /* "Sign in to the Developer Console to create your API key" */ },
   // Official lab APIs, batch 2 (2026-10-23)
@@ -73,26 +100,26 @@ export function keyProblem(id: string, raw: string): string | null {
   const f = FORMATS[id]; if (f && !f.test(v)) return `That doesn't look like ${aKey(name.replace(/\s*\(.*\)\s*$/, ''))}. ${f.hint}`;
   return null;
 }
-const envVarInUse = (p: { envKey: string; envAliases: string[] }) => [p.envKey, ...p.envAliases].find((k) => !!process.env[k]?.trim()) ?? null;
+const envVarInUse = (p: { envKey: string; envAliases: string[] }) => keyVarInUse([p.envKey, ...p.envAliases]);
 function keyMeta(p: { id: string; envKey: string; envAliases: string[] }, configured: boolean) {
   if (p.id === 'local') return { keySetAt: null, keyHint: null, keySource: null, keyEnvVar: null, keyFormat: null }; // an address, not a key
-  const ev = envVarInUse(p); const v = ev ? process.env[ev]!.trim() : null;
+  const ev = envVarInUse(p); const v = ev ? readKey(ev)! : null;
   if (!v) return { keySetAt: null, keyHint: null, keySource: configured ? 'mock' as const : null, keyEnvVar: null, keyFormat: null };
   const sv = (getKv<Record<string, SavedKey>>(KEYS_KV, {}) ?? {})[p.id]; const saved = !!sv && sv.fp === fpOf(v);
   return { keySetAt: saved ? sv.setAt : null, keyHint: keyHintOf(v), keySource: saved ? 'saved' as const : 'env' as const, keyEnvVar: ev, keyFormat: keyFormatOf(p.id, v) };
 }
-export const providerSettings = (): ProviderSetting[] => P.map((p) => { const real = !!p.envKey && [p.envKey, ...p.envAliases].some((k) => !!process.env[k]?.trim()); const conf = !!p.envKey && keyConfigured(p.envKey, p.envAliases);
+export const providerSettings = (): ProviderSetting[] => P.filter((p) => !((p.id === 'kie' || p.id === 'runpod') && places.off(p.id)) /* installable: only with its plugin on */).map((p) => { const real = !!p.envKey && !!keyVarInUse([p.envKey, ...p.envAliases]); const conf = !!p.envKey && keyConfigured(p.envKey, p.envAliases);
   // Item 5: only local ComfyUI is badged open weights; 'Comfy API (partner nodes …)' is an API provider. Its key still runs open Comfy Cloud
   // graphs (cloud-*-wf, providerGroup 'Comfy Cloud' per route), so open-weights-only mode keeps it enabled.
   const ow = p.id === 'local'; const owOnlyOk = ow || p.id === 'comfy' || ACCOUNT_ONLY.has(p.id);
   return { ...p, configured: conf, mockedKey: conf && !real, openWeights: ow, openWeightsNote: OW_NOTE[p.id] ?? null, providerGroup: ow ? 'Local' as const : 'API' as const,
-    disabledReason: openWeightsOnly() && !owOnlyOk ? 'open-weights-only mode: hosted APIs are off' : null, ...keyMeta(p, conf) }; });
+    disabledReason: openWeightsOnly() && !owOnlyOk ? 'open-weights-only mode: hosted APIs are off' : null, ...keyMeta(p, conf), ...(FIELDS[p.id] ? { fields: fieldsOf(p.id) } : {}) }; });
 /** BH9 (e): providers whose (paid) routes are enabled: a key is configured (real, or mockKeys on the mock backend) and the provider isn't
  *  switched off (open-weights-only). Empty → every enabled route is local / open weights → 'No credits, local' (localFree) is true. */
 export const cloudProvidersEnabled = (): string[] => providerSettings().filter((p) => p.id !== 'local' && !ACCOUNT_ONLY.has(p.id) && p.configured && !p.disabledReason).map((p) => p.id);
 export const localFreeNow = () => cloudProvidersEnabled().length === 0;
 /** Where saved keys live: OPENHIGGSFIELD_ENV_FILE (filming mode: <scratch data>/.env.local), else <repo>/.env.local. */
-export const ENV_LOCAL = env('ENV_FILE')?.trim() ? path.resolve(env('ENV_FILE')!.trim()) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.env.local');
+export const ENV_LOCAL = bootSettings().envFile;
 export const isLoopback = (host: string | undefined | null) => !!host && /^(127\.\d+\.\d+\.\d+|::1|localhost|::ffff:127\.0\.0\.1)$/.test(host);
 /** Write/replace one KEY=value line. Value must be a single printable line. */
 export function storeKey(id: string, value: string, file = ENV_LOCAL): { ok: true; envKey: string; keyFormat: 'ok' | 'unchecked' } | { error: string } {
@@ -101,7 +128,7 @@ export function storeKey(id: string, value: string, file = ENV_LOCAL): { ok: tru
   const lines = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').filter((l) => !l.startsWith(`${p.envKey}=`)) : [];
   while (lines.length && lines.at(-1) === '') lines.pop();
   lines.push(`${p.envKey}=${value}`); fs.writeFileSync(file, lines.join('\n') + '\n', { mode: 0o600 });
-  process.env[p.envKey] = value; invalidateTools();
+  setKey(p.envKey, value); invalidateTools();
   try { const all = getKv<Record<string, SavedKey>>(KEYS_KV, {}) ?? {}; all[p.id] = { setAt: new Date().toISOString(), fp: fpOf(value) }; setKv(KEYS_KV, all); } catch { /* status only */ }
   return { ok: true, envKey: p.envKey, keyFormat: keyFormatOf(p.id, value) === 'ok' ? 'ok' : 'unchecked' };
 }
@@ -111,7 +138,7 @@ export function removeKey(id: string, file = ENV_LOCAL): { ok: true; envKey: str
   const p = P.find((x) => x.id === id && x.id !== 'local'); if (!p) return { error: `unknown provider ${id}`, code: 'unknown_provider' };
   const meta = keyMeta(p, true); if (meta.keySource !== 'saved') return { error: 'This key wasn’t added here, so it can’t be removed here. Remove it from the server’s settings file.', code: 'not_saved_here' };
   if (fs.existsSync(file)) { const lines = fs.readFileSync(file, 'utf8').split('\n').filter((l) => !l.startsWith(`${p.envKey}=`)); while (lines.length && lines.at(-1) === '') lines.pop(); fs.writeFileSync(file, lines.length ? lines.join('\n') + '\n' : '', { mode: 0o600 }); }
-  delete process.env[p.envKey]; invalidateTools();
+  unsetKey(p.envKey); invalidateTools();
   try { const all = getKv<Record<string, SavedKey>>(KEYS_KV, {}) ?? {}; delete all[p.id]; setKv(KEYS_KV, all); } catch { /* status only */ }
   // an alias variable (FAL_KEY, REPLICATE_API_TOKEN) in the server's environment keeps the provider connected: say which one, never its value
   const still = envVarInUse(p);
@@ -120,5 +147,16 @@ export function removeKey(id: string, file = ENV_LOCAL): { ok: true; envKey: str
 /** billing.ts: which provider account a route's key bills (envKey or alias → provider id), null when unknown. */
 export const providerForEnvKey = (envKey: string | null | undefined): string | null => (!envKey ? null : P.find((p) => p.envKey === envKey || p.envAliases.includes(envKey))?.id ?? null);
 /** billing.ts (connected accounts): the REAL key for a provider, server-side only (never returned, logged or sent anywhere but that provider's API). Mock keys don't count. */
-export const realKeyFor = (id: string): string | null => { const p = P.find((x) => x.id === id && x.id !== 'local'); if (!p) return null; return [p.envKey, ...p.envAliases].map((k) => process.env[k]?.trim()).find((x) => !!x) ?? null; };
+export const realKeyFor = (id: string): string | null => { const p = P.find((x) => x.id === id && x.id !== 'local'); if (!p) return null; return [p.envKey, ...p.envAliases].map(readKey).find((x) => !!x) ?? null; };
 export const providerName = (id: string): string => P.find((p) => p.id === id)?.name ?? id;
+
+/** Plugin settings that hold an address a key goes to (security/baseUrls.ts name → plugin, field): the profile's or the saved value. */
+const PLUGIN_BASES: Record<string, [string, string]> = { PLACE_SUNRA_BASE_URL: ['place-sunra', 'baseUrl'], PLACE_KIE_BASE_URL: ['place-kie', 'baseUrl'],
+  PLACE_KIE_UPLOAD_BASE_URL: ['place-kie', 'uploadBaseUrl'], PLACE_RUNPOD_BASE_URL: ['place-runpod', 'baseUrl'] };
+const savedBase = (name: string): string | undefined => {
+  const pb = PLUGIN_BASES[name]; if (!pb) return undefined; const [plugin, field] = pb;
+  const saved = getKv<Record<string, unknown> | null>(`settings.${plugin}`, null)?.[field] ?? snapshot().profile.config?.[plugin]?.[field];
+  return typeof saved === 'string' ? saved : undefined;
+};
+/** Settings → Connections: one line per address override that sends a key off the provider's own https hosts (security/baseUrls.ts). */
+export const keyBaseWarnings = () => baseWarnings((n) => namesOf(n).map((k) => process.env[k]?.trim()).find(Boolean) || savedBase(n)).map(({ name, provider, reason, text }) => ({ name, provider, reason, text }));

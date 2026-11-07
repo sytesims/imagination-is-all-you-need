@@ -16,6 +16,8 @@
  * Comfy Cloud graphs upload their inputs with the Comfy Cloud upload API (comfy/cloudV2.ts upload()), the documented way for workflows
  * (docs.comfy.org/development/cloud/api-reference "Uploading Inputs"); that path stays in the cloud client because it needs the run's client.
  */
+import { readKey } from './kernel/coreKeys.js';
+import { places } from './services/places.js';
 import { createHash } from 'node:crypto';
 import { statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -26,7 +28,7 @@ import { uploadToComfyStorage, uploadSeedanceAsset, CACHE_MS as COMFY_CACHE_MS }
 
 export type MediaKind = 'image' | 'video' | 'audio';
 export type HandOffForm = 'url' | 'data-uri' | 'base64';
-export type HandOffProvider = 'comfy-router' | 'fal' | 'replicate' | 'byteplus' | 'bfl' | 'minimax' | 'ltx' | 'google' | 'openai';
+export type HandOffProvider = 'comfy-router' | 'fal' | 'replicate' | 'byteplus' | 'bfl' | 'minimax' | 'ltx' | 'google' | 'openai' | 'runpod';
 export interface HandOffOpts {
   /** Forms the request field takes, from its schema (default: the provider's usual forms for that kind). */ accepts?: HandOffForm[];
   /** Content type (default: from the extension). */ mime?: string;
@@ -70,6 +72,10 @@ export const FAL_UPLOAD_TTL_S = 86_400; const FAL_REUSE_MS = (FAL_UPLOAD_TTL_S *
 export const REPLICATE_INLINE_MAX = 256_000;
 /** Comfy Router body cap 100 MiB; base64 adds 4/3 → about 75 MB of media per request (docs.comfy.org/development/comfy-router/limitations). */
 export const ROUTER_INLINE_MAX = 75_000_000;
+/** RunPod /run bodies are capped at 10 MB (docs.runpod.io/serverless/endpoints/send-requests); base64 adds 4/3, and the graph needs room:
+ *  about 7.3 MB of media per job. The words the quote and the runner say when it is over (providers/runpod.ts RUNPOD_TOO_BIG). */
+export const RUNPOD_MEDIA_MAX = 7_300_000;
+export const RUNPOD_TOO_BIG_LINE = 'This file is too big to send to RunPod (max 10 MB). Use a smaller file or another place.';
 
 let testFetch: typeof fetch | null = null;
 /** Tests: inject fetch for the fal / Replicate uploads (Comfy storage has its own: comfy/storage.ts setStorageFetch). */
@@ -135,19 +141,23 @@ export const HANDOFF_POLICY: Record<HandOffProvider, Policy> = {
   // OpenAI image edits: multipart image[] files, each under 50 MB
   openai: { name: 'OpenAI', accepts: { image: ['base64'], video: [], audio: [] }, inlineMax: {}, preferInlineMax: {}, maxBytes: { image: 50_000_000 },
     docs: ['https://platform.openai.com/docs/api-reference/images/createEdit (each image under 50 MB)'] },
+  // RunPod worker-comfyui (place-runpod): input.images[].image is base64; the whole /run body is capped at 10 MB, so the job's files together
+  // (base64 adds 4/3) must stay under it. mediaIssue checks the total; providers/runpod.ts measures the exact body before sending.
+  runpod: { name: 'RunPod', accepts: { image: ['base64'], video: ['base64'], audio: ['base64'] }, inlineMax: {} /* the cap is per body: mediaIssue sums the files */, preferInlineMax: {}, maxBytes: {},
+    docs: ['https://docs.runpod.io/serverless/endpoints/send-requests (/run payload up to 10 MB)', 'https://github.com/runpod-workers/worker-comfyui (input.images: name + base64 image)'] },
 };
 
 // ---------------------------------------------------------------- helpers
 const httpsUrl = (u: unknown): u is string => { try { return typeof u === 'string' && new URL(u).protocol === 'https:'; } catch { return false; } };
 /** The server's own public address (OPENHIGGSFIELD_PUBLIC_BASE_URL): files under the data dir are served at <base>/files/<name>. */
 export const publicBase = () => (env('PUBLIC_BASE_URL') ?? process.env.OPENHIGGSFIELD_PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
-const keyOf = (p: Policy) => p.upload?.keyEnv.map((k) => process.env[k]?.trim()).find(Boolean);
+const keyOf = (p: Policy) => p.upload?.keyEnv.map(readKey).find(Boolean);
 const resolveFile = (f: string) => (path.isAbsolute(f) ? f : path.join(DATA_DIR, f));
 const sizeOf = (f: string) => { try { return statSync(resolveFile(f)).size; } catch { return -1; } };
 const who = (p: Policy, o: HandOffOpts) => o.who ?? p.name;
 
 /** Can a link be made for this provider right now (public address, Comfy key for Seedance assets, or the provider's own upload with its key)? */
-export const canLink = (provider: HandOffProvider, o: HandOffOpts = {}) => !!publicBase() || !!keyOf(HANDOFF_POLICY[provider]) || (!!o.seedanceAsset && !!process.env.COMFY_API_KEY?.trim());
+export const canLink = (provider: HandOffProvider, o: HandOffOpts = {}) => !!publicBase() || !!keyOf(HANDOFF_POLICY[provider]) || (!!o.seedanceAsset && !!places.comfyKey());
 
 type Plan = { form: HandOffForm; via?: 'public' | 'upload' | 'asset' };
 /** What hand-off a file of `bytes` gets (no I/O). Throws HandOffError when it can't go at all. */
@@ -156,7 +166,7 @@ function plan(bytes: number, kind: MediaKind, provider: HandOffProvider, o: Hand
   const hard = p.maxBytes[kind]; if (hard != null && bytes > hard) throw new HandOffError(`This ${n} is ${mb(bytes)}; ${p.name} takes up to ${mb(hard)} per file. Use a shorter or smaller ${n}.`, 'too_big');
   const inlineForm = accepts.find((f) => f !== 'url'); const inlineMax = p.inlineMax[kind] ?? Infinity;
   const inlineOk = !!inlineForm && bytes <= inlineMax; const urlOk = accepts.includes('url');
-  const viaLink = (): Plan => ({ form: 'url', via: o.seedanceAsset && process.env.COMFY_API_KEY?.trim() ? 'asset' : publicBase() ? 'public' : 'upload' });
+  const viaLink = (): Plan => ({ form: 'url', via: o.seedanceAsset && places.comfyKey() ? 'asset' : publicBase() ? 'public' : 'upload' });
   if (urlOk && link && (!inlineOk || bytes > (p.preferInlineMax[kind] ?? Infinity))) return viaLink();
   if (inlineOk) return { form: inlineForm! };
   if (urlOk) throw new HandOffError(`${who(p, o)} takes this ${n} as a link${provider === 'comfy-router' || provider === 'byteplus' ? ', uploaded with your Comfy key: add the key in Settings' : p.upload ? `, uploaded with your ${p.name} key: add it in Settings` : ': set the server\'s public address (OPENHIGGSFIELD_PUBLIC_BASE_URL)'}${!link && inlineForm ? ` (inline it takes up to ${mb(inlineMax)}; yours is ${mb(bytes)})` : ''}.`, 'needs_link');
@@ -199,7 +209,7 @@ export async function handOffBytes(file: string, kind: MediaKind, provider: Hand
 // ---------------------------------------------------------------- route-level check (quote and submit)
 /** The provider a route hands media to (null: local graphs, Comfy Cloud graphs and routes with no media). */
 export function providerOfRoute(r: { kind?: string; vendor?: string; direct?: { provider?: string } }): HandOffProvider | null {
-  if (r.kind === 'fal' || r.kind === 'replicate' || r.kind === 'comfy-router') return r.kind;
+  if (r.kind === 'fal' || r.kind === 'replicate' || r.kind === 'comfy-router' || r.kind === 'runpod') return r.kind;
   const d = r.direct?.provider ?? r.vendor; return d && d in HANDOFF_POLICY ? (d as HandOffProvider) : null;
 }
 const list = (x: unknown): string[] => (Array.isArray(x) ? x.filter((p): p is string => typeof p === 'string' && !!p) : typeof x === 'string' && x ? [x] : []);
@@ -215,6 +225,7 @@ export function mediaFilesOf(i: Record<string, any>): { file: string; kind: Medi
  *  the submit say it before any call. Uses the provider's default field forms; a body that sends a stricter form re-checks at build. */
 export function mediaIssue(r: { kind?: string; vendor?: string; direct?: { provider?: string } }, i: Record<string, any>): string | null {
   const p = providerOfRoute(r); if (!p) return null;
+  if (p === 'runpod') { const total = mediaFilesOf(i).reduce((n, { file }) => n + Math.max(0, sizeOf(file)), 0); return total > RUNPOD_MEDIA_MAX ? RUNPOD_TOO_BIG_LINE : null; } // one body for all files
   for (const { file, kind } of mediaFilesOf(i)) { const bad = handOffIssue(file, kind, p); if (bad) return bad; }
   return null;
 }

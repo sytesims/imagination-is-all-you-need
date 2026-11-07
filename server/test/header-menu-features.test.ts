@@ -40,6 +40,6 @@ const { CANVAS_NAV } = await import('../../web/src/ui/headerMenus.ts');
 assert.equal(CANVAS_NAV.to, '/canvas'); assert.equal(CANVAS_NAV.label, 'Canvas');
 const { readFileSync } = await import('node:fs'); const web = (p: string) => readFileSync(new URL(`../../web/src/${p}`, import.meta.url), 'utf8');
 const shell = web('ui/Shell.tsx'); assert.ok(shell.indexOf('CANVAS_NAV.to, CANVAS_NAV.label') > shell.indexOf('<MediaTrigger id="3d"'), 'Canvas comes after 3D');
-const chunks = web('platform/routeChunks.ts'); assert.match(chunks, /canvas: once\(\(\) => import\('\.\.\/canvas\/CanvasPage'\)\)/); assert.match(chunks, /'\/canvas': 'canvas'/);
+const chunks = web('platform/routeChunks.ts'); assert.match(chunks, /canvas: once\(\(\) => (Promise\.all\(\[)?import\('\.\.\/canvas\/CanvasPage'\)/); // its own chunk (wrapped by the Canvas plugin switch since step 7) assert.match(chunks, /'\/canvas': 'canvas'/);
 assert.ok(!/from 'tldraw'/.test(shell + chunks + web('App.tsx') + web('platform/router.tsx')), 'tldraw is imported only inside web/src/canvas');
 ok('canvas tab: after 3D, lazy chunk, no tldraw outside the canvas folder');

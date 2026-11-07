@@ -10,9 +10,14 @@
  * says what it does, then the card fades in, its prompt types itself in and its arrows draw). Notes, named frames, move_into and
  * point_at make the board read as a plan. Under reduced motion (or in a hidden tab) everything lands at once, with a plain outline.
  */
+import { GROUP_TOP } from './groupModel';
+import { unpricedPaid, NO_PRICE_UNDER_BUDGET } from '../../../server/src/shared/flowPrice';
 import { rect, rectHasPoint, unionRects, richText, type BoardApi, type NodeId, type Rect } from './boardApi';
 import { createCard, setCard, connect, describeCard, quoteCard, submit, listFlows } from './agentApi';
 import { submitInOrder } from './nodeRun';
+import type { RunFailure } from './nodeLogic';
+import type { PriceLock } from './priceLock';
+import { boardCtx } from './boardCtx';
 import { handOf, fx, workArea, boundsOf, animOK } from './agentHand';
 import { freeSpot } from './placement';
 import { readableArea } from './FollowAgent';
@@ -27,7 +32,7 @@ import { cardState, missingOf } from './cardState';
 import { batchIdsOf } from './genRun';
 import { compactQuote } from './genRun';
 import { setAgentBudgetHeader, getJob } from '../api';
-import { ownAccountsNow } from '../shared/billing';
+import { ownAccountsNow, usdPrice } from '../shared/billing';
 import { resultMedia } from '../shared/resultMedia';
 import { portInfoOf, outKindOfShape } from './ports';
 import { canFeed, takesLine, PORT_WORDS, settleProposal, type ProposalCard } from './nodeLogic';
@@ -40,14 +45,16 @@ import { uploadNodeName, uploadNodeSummary } from '../../../server/src/shared/ca
 
 export interface AgentOp {
   kind: 'say' | 'add_card' | 'update_card' | 'connect' | 'remove_card' | 'propose_run' | 'summary' | 'run_proposal' | 'free_area' | 'add_note' | 'add_frame' | 'move_into' | 'point_at' | 'next_steps' | 'place_result' | 'batch' | 'review_versions' | 'add_from_job' | 'add_upload' | 'spread_versions';
+  /** propose_run under a board budget: leave out paid steps with no price */ skip_unpriced?: boolean;
   text?: string; workflow?: string; prompt?: string; name?: string; model?: string; ids?: string[]; frame_id?: string; around?: string[]; color?: string; settings?: Record<string, string>; inputs_from?: string[];
   at?: { x: number; y: number }; card_id?: string; from_id?: string; to_id?: string; card_ids?: string[]; note?: string;
-  proposal_id?: string; budget_id?: string | null; out?: number; w?: number; h?: number; version?: number; job_id?: string; url?: string; title?: string; items?: BatchItem[]; cards?: { card_id: string; reviews: { version: number; verdict: 'fits' | 'check'; reason?: string }[]; recommend?: number | null }[]; by?: string;
+  proposal_id?: string; budget_id?: string | null; /** run_proposal: each card's approved price (the price lock) */ locks?: Record<string, PriceLock | null>; out?: number; w?: number; h?: number; version?: number; job_id?: string; url?: string; title?: string; items?: BatchItem[]; cards?: { card_id: string; reviews: { version: number; verdict: 'fits' | 'check'; reason?: string }[]; recommend?: number | null }[]; by?: string;
 }
 export interface FeedEntry { seq: number; id: string; at: number; type: 'message' | 'activity' | 'decision' | 'proposal'; text: string; from?: 'agent' | 'user'; cardId?: string; fromId?: string; toId?: string; proposalId?: string; decision?: 'go' | 'cancel'; meta?: any;
   /** your message reached your agent (read), or a channel pushed it into its session (sent) */ readAt?: number; readVia?: 'wait' | 'inbox' | 'channel'; pushedAt?: number }
-export interface ProposalItem { cardId: string; title: string; workflow: string; model: string | null; status: string; usd: number | null; credits: number | null; quote: any; problem: string | null }
-export interface Proposal { id: string; boardId: string; cardIds: string[]; note: string | null; items: ProposalItem[]; totalUsd: number; totalCredits: number; budget: any; overBudget: boolean; overByUsd: number | null; reason: string | null; runCardIds?: string[]; skipped?: { cardId: string; title: string; problem: string }[]; status: 'pending' | 'running' | 'approved' | 'cancelled' | 'failed' | 'drafts'; createdAt: number; decidedAt: number | null; jobIds: string[]; error: string | null }
+export interface ProposalItem { cardId: string; title: string; workflow: string; model: string | null; status: string; usd: number | null; credits: number | null; quote: any; problem: string | null;
+  quotedCredits?: number | null; routeId?: string | null; priceChanged?: { wasUsd: number | null; nowUsd: number | null; reason: 'dearer' | 'route' } | null }
+export interface Proposal { id: string; boardId: string; cardIds: string[]; note: string | null; items: ProposalItem[]; totalUsd: number; totalCredits: number; budget: any; boardBudget?: { usd: number; spentUsd: number; leftUsd: number } | null; overBudget: boolean; overByUsd: number | null; reason: string | null; runCardIds?: string[]; /** decision 9: rows Go starts that had no price beforehand */ unpricedIds?: string[]; skipped?: { cardId: string; title: string; problem: string }[]; failedIds?: string[]; /** asks again for rows of that proposal Go stopped on a price change */ repriceOf?: string | null; status: 'pending' | 'running' | 'approved' | 'cancelled' | 'failed' | 'drafts'; createdAt: number; decidedAt: number | null; jobIds: string[]; error: string | null }
 export interface PickAsk { id: string; boardId: string; cardIds: string[]; text: string; chosen: string | null; status: 'waiting' | 'picked' | 'cancelled'; createdAt: number }
 export interface BridgeHandlers {
   onConnection?: (open: boolean) => void;
@@ -80,7 +87,7 @@ export function priceView(q: any) {
   const local = q.localRun === true || cost?.billedTo === 'local';
   const demo = q.demo === true;
   return { usd: usd == null ? null : r4(usd), credits: typeof q.credits === 'number' ? q.credits : null,
-    label: demo ? 'Sample' : local ? 'Free' : usd != null ? `≈ $${usd.toFixed(2)}` : null, demo, local, runnable: q.runnable !== false };
+    label: demo ? 'Sample' : local ? 'Free' : usd != null ? usdPrice(usd, { approx: cost?.estimated !== false }) : null, /* the app's one $ format ($0.039, $0.46) */ demo, local, runnable: q.runnable !== false };
 }
 
 /** The workflow an MCP op names: an id from canvas_list_workflows or the workflow's shown name. */
@@ -121,7 +128,7 @@ function titleOf(board: BoardApi, id: NodeId): string {
   const s = board.getNode(id); if (!s) return 'Card'; const p = s.props as any;
   if (s.type === GEN_TYPE) return String(nameOf(board, id) || p.prompt || flowById(p.flow)?.name || 'Card').slice(0, 48);
   if (s.type === 'note') return plainText(p.richText).slice(0, 48) || 'Note';
-  if (s.type === 'frame') return String(p.name || 'Frame').slice(0, 48);
+  if (s.type === 'frame') return String(p.name || 'Group').slice(0, 48);
   if (s.type === RESULT_T) return String(p.title || p.model || 'Result').slice(0, 48);
   if (s.type === 'image' || s.type === 'video') { const a: any = p.assetId ? board.asset(p.assetId) : null; return String(a?.props?.name || (s.type === 'image' ? 'Picture' : 'Clip')).slice(0, 48); }
   return 'Card';
@@ -216,7 +223,9 @@ async function propose(board: BoardApi, op: AgentOp) {
     const ups = waitingInputsOf(board, id).map((w) => ({ id: w.id as string, name: w.name, status: String((board.getNode(w.id)?.props as any)?.status ?? '') }));
     let qErr = ''; const q = await quoteCard(board, id, { pending: true }).catch((e) => { qErr = String((e as Error)?.message ?? ''); return null; }); const pv = priceView(q);
     const usd = pv?.usd ?? null; const credits = pv?.credits ?? null; const title = String(nameOf(board, id) || d.prompt || d.flow || 'Card').slice(0, 140);
-    const other = q?.runnable === false ? String(q.reasonText ?? q.blockedReason ?? q.reason ?? 'This card cannot run right now.') : unpriced(q) ? `No price for these settings${q?.error || qErr ? `: ${String(q?.error || qErr).replace(/\.$/, '')}` : ''}` : null;
+    const other = q?.runnable === false ? String(q.reasonText ?? q.blockedReason ?? q.reason ?? 'This card cannot run right now.') : unpriced(q) ? `No price for these settings${q?.error || qErr ? `: ${String(q?.error || qErr).replace(/\.$/, '')}` : ''}`
+      /* decision 9: under a board budget, a paid step with no price beforehand is left out (cards after it wait on it, so they are too) */
+      : op.skip_unpriced && unpricedPaid({ usd, quote: q }) ? NO_PRICE_UNDER_BUDGET : null;
     cards.push({ id: cardId, title, usd, credits, missing: d.missing, missingFed, ups, other });
     items.push({ cardId, title, workflow: d.flow, model: d.model || null, status: d.status, usd, credits, quote: compactQuote(q), problem: null });
   }
@@ -241,7 +250,7 @@ async function summarize(board: BoardApi) {
       /* the person's own ideas too: an agent reads the stickies and text on the board */
       const t = plainText(p.richText); if (t) nodes.push({ id: s.id, type: 'note', kind: s.type, title: t.slice(0, 600), by: (s.meta as any)?.by === 'agent' ? 'agent' : 'you', frame: frameOfShape(board, s.id) });
     } else if (s.type === 'frame') {
-      nodes.push({ id: s.id, type: 'frame', kind: 'frame', title: String(p.name || 'Frame'), children: board.childrenOf(s.id) });
+      nodes.push({ id: s.id, type: 'frame', kind: 'frame', title: String(p.name || 'Group'), children: board.childrenOf(s.id) });
     } else if (s.type === 'bookmark') {
       const a: any = p.assetId ? board.asset(p.assetId) : null; nodes.push({ id: s.id, type: 'link', kind: 'bookmark', title: a?.props?.title || p.url || 'Link', url: p.url ?? a?.props?.src ?? null });
     }
@@ -249,15 +258,24 @@ async function summarize(board: BoardApi) {
   return { nodes };
 }
 
+/** Cards Go stopped because their price moved (priceLock.ts): a fresh proposal for them asks again (prices first; it waits for Go too). */
+function askAgain(cardIds: string[], proposalId: string | undefined, note: string) {
+  const boardId = boardCtx().boardId; if (!boardId || !cardIds.length) return;
+  void fetch(`/api/canvas/boards/${encodeURIComponent(boardId)}/agent/proposals`, { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ card_ids: [...new Set(cardIds)].slice(0, 20), note: note.slice(0, 400), ...(proposalId ? { reprice_of: proposalId } : {}) }) }).catch(() => undefined);
+}
 async function runProposal(board: BoardApi, op: AgentOp) {
-  const ids = op.card_ids ?? []; const jobIds: string[] = []; const failed: { cardId: string; error: string }[] = []; let firstError: Error | null = null;
+  const ids = op.card_ids ?? []; const jobIds: string[] = []; const failed: RunFailure[] = []; let firstError: Error | null = null;
   setAgentBudgetHeader(op.budget_id ?? null);
   try {
     /* one card the server refuses doesn't stop the others; a budget stop does (nothing after it may spend). Graph order (2026-10-28): a card
      * fed by another card in this proposal starts when that one is done, so it gets its input (it used to start at once, without it). */
-    const r = await submitInOrder(board, ids, { stop: e => /budget/i.test(e.message),
-      onLater: (id, x) => { if (x.error) handOf(board).say(`${titleOf(board, id as NodeId)} didn’t start: ${x.error}`); } });
-    jobIds.push(...r.jobIds); failed.push(...r.failed); if (r.failed.length) firstError = new Error(r.failed[0].error);
+    const r = await submitInOrder(board, ids, { stop: e => /budget/i.test(e.message), locks: op.locks ?? {},
+      onLater: (id, x) => { if (!x.error) return; handOf(board).say(`${titleOf(board, id as NodeId)} didn’t start: ${x.error}`);
+        if (x.failure?.code === 'price_changed') askAgain([id], op.proposal_id, `${titleOf(board, id as NodeId)}: ${x.error}. Asking again.`); } });
+    jobIds.push(...r.jobIds); failed.push(...r.failed); if (r.failed.some((f) => f.code !== 'price_changed')) firstError = new Error(r.failed.find((f) => f.code !== 'price_changed')!.error);
+    const repriced = r.failed.filter((f) => f.code === 'price_changed');
+    if (repriced.length) askAgain(repriced.map((f) => f.cardId), op.proposal_id, repriced.length === 1 ? `${titleOf(board, repriced[0].cardId as NodeId)}: ${repriced[0].error}. Asking again with the new price.` : `${repriced.length} prices changed since you approved them. Asking again with the new prices.`);
     for (const cid of ids) for (const j of batchIdsOf(board.getNode(cid as NodeId))) if (!jobIds.includes(j)) jobIds.push(j); /* Material Swap: every swatch's run */
   } finally { setAgentBudgetHeader(null); }
   if (firstError && !jobIds.length) { (firstError as any).jobIds = jobIds; throw firstError; }
@@ -305,7 +323,7 @@ async function spreadVersions(board: BoardApi, op: AgentOp) {
   const sorted = [...takes].sort((a, b) => keyOf(a) - keyOf(b)); const b = board.boundsOf(id); const at0 = op.at ?? (b ? { x: b.minX, y: b.maxY + 340 } : { x: 0, y: 0 }); const hand = handOf(board);
   const made: string[] = [];
   for (const [i, t] of sorted.entries()) { const job = await getJob(t.jobId).catch(() => null); if (!job) continue; const m = resultMedia(job, ownAccountsNow()); if (!m) continue;
-    const name = (t.from ?? []).at(-1)?.label || `Version ${i + 1}`; const at = { x: at0.x + 190 + i * 400, y: at0.y };
+    const name = (t.from ?? []).at(-1)?.label || `Version ${i + 1}`; const at = { x: at0.x + 190 + i * 440, y: at0.y }; /* 80 px between 360 px results: room for a link's lane */
     await hand.glideTo({ x: at.x - 160, y: at.y - 140 }, `Placing ${name.toLowerCase()}`);
     const rid = await addResultCard(board, job.id, { ...m, title: name }, at); fx.enter(rid); made.push(rid); }
   if (!made.length) throw new Error('None of the versions could be placed.');
@@ -336,13 +354,13 @@ async function addNote(board: BoardApi, op: AgentOp) {
   return { id, text };
 }
 async function addFrame(board: BoardApi, op: AgentOp) {
-  const name = String(op.name ?? '').trim().slice(0, 80) || 'Frame'; const around = (op.around ?? []).filter((x) => board.getNode(x as NodeId)) as NodeId[];
+  const name = String(op.name ?? '').trim().slice(0, 80); /* empty: the Group takes its first step's name */ const around = (op.around ?? []).filter((x) => board.getNode(x as NodeId)) as NodeId[];
   if (op.around?.length && !around.length) throw new Error('None of those nodes are on this board.');
   const fit = around.length ? boundsOf(board, around) : null;
-  const box = fit ? { x: fit.x - 40, y: fit.y - 40, w: fit.w + 80, h: fit.h + 80 }
+  const box = fit ? { x: fit.x - 40, y: fit.y - GROUP_TOP, w: fit.w + 80, h: fit.h + 40 + GROUP_TOP } /* room for the Group's header strip */
     : (() => { const w = Math.max(120, Number(op.w) || 820), h = Math.max(120, Number(op.h) || 520); const c = op.at ? null : freeSpot(board, w, h); return { x: op.at ? op.at.x : c!.x - w / 2, y: op.at ? op.at.y : c!.y - h / 2, w, h }; })();
   const hand = handOf(board); workArea(box);
-  await hand.glideTo({ x: box.x + 16, y: box.y - 6 }, `Making a frame: ${name}`);
+  await hand.glideTo({ x: box.x + 16, y: box.y - 6 }, name ? `Making a group: ${name}` : 'Making a group');
   const typed = animOK();
   let id = ''; board.batch(() => { id = board.addNode({ type: 'frame', x: box.x, y: box.y, meta: { by: 'agent' }, props: { w: box.w, h: box.h, name: typed ? '' : name } }); board.toBack([id]); });
   fx.enter(id);

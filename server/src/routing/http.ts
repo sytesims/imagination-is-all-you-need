@@ -19,7 +19,7 @@ import { getTool, listTools } from '../tools/registry.js';
 /** The reel tool whose GET price is quoteReel (routesBatch1.ts): Camera Moves' quote per clip. */
 const REEL_QUOTED_ON_CAMERA = 'app-photos-to-reel';
 import { jobs } from '../jobs.js';
-import { getBalance, canAfford } from '../ledger.js';
+import { getBalance } from '../ledger.js';
 import { routesFor, findRoute, isTwinAlias, toolKeys, mapTwinAlias } from './routes.js';
 import { requestMode, toolDefaults, setStatusInput, toolModes, lyricsFreeDefault, draftOn, draftCapableDefault } from './defaults.js';
 import { localRunnerName } from './routes.js';
@@ -33,7 +33,7 @@ import { freeSamples, SAMPLE_NOTE, adjustNotesById, option, autoOrder, plan, res
 import { mockKeys } from './keys.js';
 import { getPrefs, savePrefs, livePerModel, envUseLocal, setFavourite } from './prefs.js';
 import { CLOUD_DEFAULTS } from '../shared/cloudDefaults.js';
-import { providerSettings, storeKey, removeKey, isLoopback, ACCOUNT_ONLY } from './settings.js';
+import { providerSettings, storeKey, storeField, removeKey, isLoopback, ACCOUNT_ONLY, keyBaseWarnings } from './settings.js';
 import { continueCheck, continueOn, decline, plainRoute } from './run.js';
 import type { RoutingPrefs, RouteOption, ToolPin } from './types.js';
 import { preferRunnablePart } from './partPick.js';
@@ -57,13 +57,17 @@ import { recipeUploadsOf } from '../shared/workflows.js';
 import type { ToolDef } from '../tools/types.js';
 import { ledgerUsd } from '../shared/priceText.js';
 import { aKey } from '../shared/modelIds.js';
+import { addOnLine } from '../services/routeAddOns.js';
 /** Quote flags follow the route that would actually run: an open-weights model quoted on a cloud route (useLocal off → cloud first) is not "free · runs locally".
  *  No route at all (nothing ready, no place picked: a cloud-only model with no key) is no place either, never "local" (the billing hook would read it as
  *  "Free · on your computer"; the Canvas card said so for GPT Image 2.5 Flare on a fresh install). */
-const routeFlags = (kind: string | null | undefined, credits: number | null, label?: string, extra?: string | null) => (!kind ? { local: false, localRun: false } : kind === 'local' ? { local: true } : { local: false, free: false, basis: 'hosted',
-  breakdown: [{ label: `${label ?? kind} · ${credits != null ? usd(credits) : '?'}`, factor: 1 }, ...(extra ? [{ label: `Includes ${extra}`, factor: 0 }] : [])] });
-/** A route add-on's own breakdown line (RouteDef.extraLine: H3 Character Swap's first frame), from the same input its credits are priced on. */
-const extraLineOf = (tool: ToolDef, model: string, routeId: string | null | undefined, input: Record<string, any>) => (routeId ? routesFor(model, tool).find((r) => r.routeId === routeId)?.extraLine?.(input) ?? null : null); // the model's own route (a twin carries its add-on), as the price
+const routeFlags = (kind: string | null | undefined, credits: number | null, label?: string, extra?: string | null, cantRun?: string | null) => (!kind ? { local: false, localRun: false } : kind === 'local' ? { local: true } : { local: false, free: false, basis: 'hosted',
+  breakdown: cantRun != null ? [{ label: listPriceLine(credits, cantRun), factor: 0 }] : [{ label: `${label ?? kind} · ${credits != null ? usd(credits) : '?'}`, factor: 1 }, ...(extra ? [{ label: `Includes ${extra}`, factor: 0 }] : [])] });
+/** A route that can't run and has no price (not wired, coming soon, held until measured): its list price is a reference, never a quote (agent path
+ *  audit 2026-11-07 #2: "Comfy Router · $0.48" read as the price of a run). "List price (not a quote) ≈ $0.48 · can't run: Comfy Cloud isn’t ready yet". */
+export const listPriceLine = (list: number | null, why: string) => `List price (not a quote)${list != null && list > 0 ? ` ≈ ${usd(list)}` : ''} · can’t run: ${String(why).split(/(?<=\.)\s/)[0].replace(/\.$/, '')}`;
+/** A route add-on's own breakdown line (services/routeAddOns.ts: H3 Character Swap's first frame), from the same input its credits are priced on. */
+const extraLineOf = (tool: ToolDef, model: string, routeId: string | null | undefined, input: Record<string, any>) => (routeId ? addOnLine(routesFor(model, tool).find((r) => r.routeId === routeId), input) : null); // the model's own route (a twin carries its add-on), as the price
 /** Item 4: a demo preview on a cloud route (e.g. fal) is never "No credits · runs locally": the line is the demo copy plus the real list price
  *  (1 credit = $0.01). priceLine is the one display string for the quote / route; localRun says whether it runs on your ComfyUI. */
 const usd = (cr: number) => ledgerUsd(cr); // shared/priceText.ts: one $ formatter (prices in dollars, 2026-10-26)
@@ -335,7 +339,7 @@ export function listingInput(tool: ToolDef, modelId: string, rawInput: Record<st
 }
 setStatusInput((tool, modelId) => listingInput(tool, modelId));
 /** BH12: a keyless default route says plainly what happens: '<route> · sample output · needs a <owner> key for real runs' (or 'not connected here yet'). */
-export const routeName = (o: { label?: string; routeId: string }, modelName?: string | null) => { const l = String(o.label ?? o.routeId).replace(/\s*·\s*(free|✦?\d+.*)$/i, ''); return modelName && !/\bvia\b/.test(l) && /^(Comfy Cloud|Comfy Router|Comfy Cloud · partner API)$/.test(l) ? `${modelName} on ${l}` : l; };
+export const routeName = (o: { label?: string; routeId: string }, modelName?: string | null) => { const l = String(o.label ?? o.routeId).replace(/\s*·\s*(free|✦?\d+.*)$/i, ''); return modelName && !/\bvia\b/.test(l) && /^(Comfy Cloud|Comfy Router|Comfy Cloud · partner API|Comfy Cloud · partner model)$/.test(l) ? `${modelName} on ${l}` : l; };
 /** Short chip label next to demoLabel/demoReason (DP #27); the client used to slice this from the sentence. */
 export const DEMO_TAG = 'Sample';
 export const demoLabel = (o: { label?: string; routeId: string; envKey?: string | null; wired?: boolean }, modelName?: string | null) => `${routeName(o, modelName)} · sample output · ${o.wired === false ? "not ready in this app yet" : `needs ${aKey(keyOwnerOf(o.envKey))} for real runs`}`;
@@ -420,10 +424,13 @@ export function registerRouting(app: FastifyInstance) {
     const r = resolveModelId(toolId, id, req.query.types ? { types: req.query.types } : null);
     return r ? r : reply.code(404).send({ error: `${getTool(toolId)!.name} has no model "${id}".`, errorType: 'not_found', models: toolModels(toolId).map((m) => m.key) });
   });
-  app.get('/api/settings/providers', async () => ({ providers: providerSettings(), canStoreKeys: isLoopback(process.env.HOST), storeKeysNote: 'Keys can be saved here only when the server runs on this computer. Otherwise add them to the server’s settings file. Saved keys are never shown again.', storeKeysDetail: 'POST /api/settings/providers writes .env.local only when the server binds to 127.0.0.1/::1 (HOST env). Key values are never returned.' }));
+  app.get('/api/settings/providers', async () => ({ providers: providerSettings(), baseWarnings: keyBaseWarnings(), canStoreKeys: isLoopback(process.env.HOST), storeKeysNote: 'Keys can be saved here only when the server runs on this computer. Otherwise add them to the server’s settings file. Saved keys are never shown again.', storeKeysDetail: 'POST /api/settings/providers writes .env.local only when the server binds to 127.0.0.1/::1 (HOST env). Key values are never returned.' }));
   app.post('/api/settings/providers', async (req, reply) => {
     if (!isLoopback(process.env.HOST)) return reply.code(403).send({ error: 'Saving keys from the browser is off because the server isn’t running on this computer. Add the key to the server’s settings file instead.', errorType: 'forbidden', detail: 'The server is not bound to localhost: set HOST=127.0.0.1, or put the key in .env.local.' });
-    const b = (req.body ?? {}) as { id?: string; key?: string }; const r = storeKey(String(b.id ?? ''), String(b.key ?? ''));
+    const b = (req.body ?? {}) as { id?: string; key?: string; field?: string; value?: string };
+    if (b.field != null) { const f = storeField(String(b.id ?? ''), String(b.field), String(b.value ?? '')); if ('error' in f) return reply.code(400).send({ error: f.error, errorType: 'validation' }); // a connection setting (RunPod's Endpoint ID), not a key
+      const ps = providerSettings().find((x) => x.id === b.id); return { ok: true, id: b.id, field: b.field, fields: ps?.fields ?? [], configured: !!ps?.configured }; }
+    const r = storeKey(String(b.id ?? ''), String(b.key ?? ''));
     if ('error' in r) return reply.code(400).send({ error: r.error, errorType: 'validation' });
     const ps = providerSettings().find((x) => x.id === b.id); return { ok: true, id: b.id, envKey: r.envKey, configured: true, keySetAt: ps?.keySetAt ?? null, keyHint: ps?.keyHint ?? null, keySource: ps?.keySource ?? null, keyFormat: r.keyFormat };
   });
@@ -502,7 +509,7 @@ export function registerRouting(app: FastifyInstance) {
     const b = (req.body ?? {}) as { route?: string; decline?: boolean };
     if (b.decline) return decline(j) ? { id: j.id, status: j.status } : reply.code(409).send({ error: 'job is not waiting for a decision', errorType: 'validation' });
     const tool = getTool(j.toolId)!;
-    const price = j.routing?.prices[String(b.route)] ?? 0; if (price > 0 && !canAfford(price)) return reply.code(402).send({ error: `Not enough credits: needs ${price}, balance ${getBalance()}.`, errorType: 'credits' });
+    const price = j.routing?.prices[String(b.route)] ?? 0; { const bal = (await import('../spendGuard.js')).admitStage('balance', { credits: price, free: !(price > 0) }); if ('refused' in bal) return reply.code(402).send({ error: bal.refused.message, errorType: 'credits' }); } // team mode: the balance covers it
     const route = String(b.route ?? ''); const ck = continueCheck(j, tool, route);
     if ('error' in ck) return reply.code(ck.status).send({ error: ck.error, errorType: 'validation', alternatives: j.alternatives ?? [] });
     // S-01: the move to another (possibly differently billed) route goes through the submit's spend guard: quote it → agent budget (when one is set;
@@ -671,7 +678,7 @@ export function registerRouting(app: FastifyInstance) {
             const credits = needsKey || inputBlocked ? list : null; const why = np.reasonCode === 'local_only_unreachable' ? np.message /* a local-only model, no ComfyUI: set one up (never a key) */ : asked ? (asked.reason === NOT_WIRED_REASON ? notWiredSentence(asked.label) : asked.reason ? `${asked.label} can't run this job. ${reasonSentence(asked.reason)}` : null) : null;
             const keyRoute = asked?.reasonCode === 'key_missing'; const line = needsKey ? (!keyRoute ? String(np.message ?? noCharged(np.error)) : list != null ? `Needs ${aKey(keyOwnerOf(asked?.envKey))}. Price once it's added: ≈ ${usd(list)}.` : `Needs ${aKey(keyOwnerOf(asked?.envKey))}.`) : `${why ?? 'This route can\'t run this job.'}${list != null && list > 0 ? ` List price ≈ ${usd(list)}.` : ''}`;
             const npQ = { ...np, error: noCharged(np.error) }; // a quote charges nothing by definition: no 'Nothing was charged' in quote text (the 409 / 402 on submit keeps it)
-            return honestBreakdown(blockCam({ ...payload, ...defs, ...clipEstimateFor(clipEstimate, asked?.priceRef, tool.id, input, providerLabels(tool.id, model!).displayName) /* P3-02 */, ...routeFlags(asked?.kind, list, asked?.label, extraLineOf(tool, model, asked?.routeId, input)), ...unitFields(asked?.priceRef, payload.hosted), ...(resMapped ? { resolutionMapped: resMapped, resolution: resMapped.to } : {}), credits, ...batchQ(credits, list), ...(isQuote ? { perImage: credits == null ? null : credits / Math.max(1, Number(input.n) || 1) } : {}), priceAvailable: (needsKey || inputBlocked) && credits != null, chargeable: false, runnable: false, ...(inputBlocked && (asked?.inputStep || np.inputStep) ? { inputStep: true } : {}) /* the place is fine and priced; the job needs a step first (H3: who to swap) */, route: asked?.routeId ?? null, routeId: asked?.routeId ?? null, demo: false, demoMessage: null, priceRef: asked?.priceRef ?? null, routeKind: asked?.kind ?? null,
+            return honestBreakdown(blockCam({ ...payload, ...defs, ...clipEstimateFor(clipEstimate, asked?.priceRef, tool.id, input, providerLabels(tool.id, model!).displayName) /* P3-02 */, ...routeFlags(asked?.kind, list, asked?.label, extraLineOf(tool, model, asked?.routeId, input), credits == null ? why ?? noCharged(np.error) : null), ...unitFields(asked?.priceRef, payload.hosted), ...(resMapped ? { resolutionMapped: resMapped, resolution: resMapped.to } : {}), credits, ...batchQ(credits, list), ...(isQuote ? { perImage: credits == null ? null : credits / Math.max(1, Number(input.n) || 1) } : {}), priceAvailable: (needsKey || inputBlocked) && credits != null, chargeable: false, runnable: false, ...(inputBlocked && (asked?.inputStep || np.inputStep) ? { inputStep: true } : {}) /* the place is fine and priced; the job needs a step first (H3: who to swap) */, route: asked?.routeId ?? null, routeId: asked?.routeId ?? null, demo: false, demoMessage: null, priceRef: asked?.priceRef ?? null, routeKind: asked?.kind ?? null,
               needsKey, setup: np.setup ?? null, setupOptions: np.setupOptions ?? [], listCredits: list, priceLine: inputBlocked ? priceLine(asked?.kind, list, false) : line, ...(needsKey ? { keyMissing: true, ...(keyRoute ? { keyOwner: keyOwnerOf(asked?.envKey) } : {}) } : inputBlocked ? { blockedReason: why ?? noCharged(np.error), blockedCode: 'input_blocked' } : { unavailableReason: why ?? noCharged(np.error) }), reason: noCharged(pinOpt ? np.error : asked?.reason ?? np.error), ...(asked?.reasonCode ? { reasonCode: asked.reasonCode } : np.reasonCode ? { reasonCode: np.reasonCode } : {}), ...(np.localOnly ? { localOnly: true } : {}), ...(pinOpt ? { pinned: pinOpt.routeId, pinnedUnavailable: true } : {}), noProvider: npQ, valid: false, fallback: FB.planNotice(undefined, model, asked?.routeId ?? null, credits, mf), ...(asked?.kind === 'local' && asked?.fit ? hwBlock(tool, model, input, { fit: asked.fit }) : {}) }));
           }
           const c = pl.routing.prices[pl.first.routeId] ?? payload.credits; const n = Math.max(1, Number(input.n) || 1);

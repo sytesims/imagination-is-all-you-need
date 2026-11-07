@@ -10,18 +10,14 @@
  */
 import type { Job } from '../jobs.js';
 import { persistJob } from '../jobs.js';
-import { ComfyCloudV2 } from '../comfy/cloudV2.js';
-import { ComfyRouter } from '../comfyRouter.js';
-import { keyValue } from './keys.js';
+import { places } from '../services/places.js';
 import { COMFY_ENV } from './routes.js';
 import { CLOUD_RUNNER_ROUTES } from './runnable.js';
-import { env } from '../env.js';
 
 export type RemoteCancel = (cloudJobId: string) => Promise<boolean>;
 let testCancel: RemoteCancel | null = null;
 /** Tests: replace the Comfy Cloud transport (no network). */
 export const setOrphanCancel = (f: RemoteCancel | null) => { testCancel = f; };
-const cloudBase = () => env('COMFY_CLOUD_URL')?.trim() || 'https://cloud.comfy.org';
 /** The Comfy Cloud route this job's last attempt ran on, if any. */
 export function cloudRouteOf(j: Job): string | null {
   const last = j.routeAttempts?.[j.routeAttempts.length - 1]?.routeId ?? `comfy-cloud:${j.provider}`;
@@ -29,26 +25,31 @@ export function cloudRouteOf(j: Job): string | null {
 }
 /** Mark the interrupted attempt ended (it can never finish) and cancel the remote job. Returns true when Cloud confirmed the cancel. */
 export async function cancelOrphan(j: Job, why = 'The server restarted while this was running'): Promise<boolean> {
+  if (!places.managed) await import('../services/placesBuiltin.js'); // no boot (scripts, tests): the built-in places answer, as routing/run.ts and queue.ts load them
   const a = j.routeAttempts?.[j.routeAttempts.length - 1];
   if (a && a.status === 'running') { a.status = 'failed'; a.endedAt = Date.now(); a.error = why; }
   const h = j.remote; j.remote = null;
-  if (h && (h.kind === 'fal' || h.kind === 'replicate' || h.kind === 'direct')) { // fal / Replicate: their own cancel call (best effort); a lab API has none
+  if (h && (h.kind === 'fal' || h.kind === 'replicate' || h.kind === 'sunra' || h.kind === 'kie' || h.kind === 'runpod' || h.kind === 'direct')) { // fal / Replicate: their own cancel call (best effort); a lab API has none
     let ok: boolean | null = null; try { ok = testCancel ? await testCancel(h.id) : await (await import('./reattach.js')).cancelRemote(h); } catch { ok = false; }
     if (a) (a as any).remoteCanceled = ok === true; (j as any).orphanCanceled = { requestId: h.id, kind: h.kind, ok: ok === true, at: Date.now() }; try { persistJob(j); } catch { /* best effort */ }
     console.log(`[openhiggsfield] orphan ${j.id}: ${h.kind} request ${ok === true ? 'cancelled' : ok === null ? 'has no cancel call' : 'cancel not confirmed'}`); return ok === true; }
   const rr = (j as any).routerRequest as { id: string; cancelUrl?: string } | undefined;
   if (rr?.cancelUrl && a?.routeId?.startsWith('comfy-router:')) { // Comfy Router queued request: ask Router to cancel it (best effort; a completed run may still be billed)
-    const key = keyValue({ envKey: COMFY_ENV, envAliases: [] }); if (!key && !testCancel) return false;
-    let ok = false; try { ok = testCancel ? await testCancel(rr.id) : await new ComfyRouter(key!).cancel({ requestId: rr.id, cancelUrl: rr.cancelUrl, statusUrl: '', responseUrl: '', estimate: null }); } catch { ok = false; }
+    const place = places.get('comfy-router'); const ref = { routeId: a.routeId, envKey: COMFY_ENV, envAliases: [] }; // its place's cancel call, with its own key
+    const rh = { kind: 'router' as const, id: rr.id, cancelUrl: rr.cancelUrl, statusUrl: '', responseUrl: '', routeId: a.routeId, attempt: a.n, output: 0, outputs: 1, at: Date.now() };
+    let ok = false;
+    if (testCancel) { try { ok = await testCancel(rr.id); } catch { ok = false; } }
+    else { if (!place?.cancel) return false; let res: boolean | null = false; try { res = await place.cancel(rh, ref, (...x: Parameters<typeof fetch>) => fetch(...x)); } catch { res = false; } if (res === null) return false; ok = res; } // null: no Comfy key
     if (a) (a as any).remoteCanceled = ok; (j as any).orphanCanceled = { routerRequestId: rr.id, ok, at: Date.now() }; try { persistJob(j); } catch { /* best effort */ } return ok;
   }
   const id = j.cloudJobId ?? a?.requestId; const route = cloudRouteOf(j); if (!id || !route) return false;
   // H3 runner Step 1: a job on the user's own Comfy deployment is cancelled THERE (its own base URL + token), never on shared Comfy Cloud
-  const dep = route.startsWith('comfy-deploy:') ? (await import('../comfy/deploy.js')).deployTarget() : null; const key = keyValue({ envKey: COMFY_ENV, envAliases: [] });
-  const target = route.startsWith('comfy-deploy:') ? (dep ? { base: dep.base, token: dep.token } : null) : key ? { base: cloudBase(), token: key } : null;
-  const cancel: RemoteCancel | null = testCancel ?? (target ? (cid) => new ComfyCloudV2(target.base, target.token, `${j.id}-orphan`).cancel(cid) : null);
-  if (!cancel) return false;
-  let ok = false; try { ok = await cancel(id); } catch { ok = false; }
+  // (place-comfy-cloud: its cancel call picks the target with its own keys; null = nothing set to cancel it with)
+  const place = places.get('comfy-cloud'); const ref = { routeId: route, envKey: COMFY_ENV, envAliases: [] };
+  const ch = { kind: 'cloud' as const, id, routeId: route, attempt: a?.n ?? 1, output: 0, outputs: 1, at: Date.now() };
+  let ok = false;
+  if (testCancel) { try { ok = await testCancel(id); } catch { ok = false; } }
+  else { if (!place?.cancel) return false; let res: boolean | null = false; try { res = await place.cancel(ch, ref, (...x: Parameters<typeof fetch>) => fetch(...x)); } catch { res = false; } if (res === null) return false; ok = res; } // null: no key or deployment set to cancel it with
   if (a) (a as any).remoteCanceled = ok;
   (j as any).orphanCanceled = { cloudJobId: id, ok, at: Date.now() };
   try { persistJob(j); } catch { /* best effort */ }

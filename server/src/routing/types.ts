@@ -1,5 +1,5 @@
 /** Multi-provider routing types (approved feature, 2026-10-16). */
-export type RouteKind = 'local' | 'comfy-router' | 'comfy-cloud' | 'fal' | 'replicate' | 'direct';
+export type RouteKind = 'local' | 'comfy-router' | 'comfy-cloud' | 'fal' | 'replicate' | 'sunra' | 'kie' | 'runpod' | 'direct';
 export interface RouteDef {
   /** `<kind>:<id>` e.g. local:comfy-qwen-image, fal:fal-ai/qwen-image, replicate:qwen/qwen-image. */
   routeId: string;
@@ -28,10 +28,9 @@ export interface RouteDef {
   label: string;
   /** What this route can do for its tool (UI capability chips), e.g. OpenSoul { character, looks, colour, upscale }. Optional, additive. */
   caps?: Record<string, unknown>;
-  /** Extra credits on top of the route price for this job (e.g. OpenSoul cloud upscale via fal-ai/esrgan). */
-  extraCredits?: (input: Record<string, any>) => number;
-  /** The add-on's own line in the quote breakdown (null = none for this job), e.g. H3 Character Swap's first frame on Comfy Router. */
-  extraLine?: (input: Record<string, any>) => string | null;
+  /** Add-ons on top of the route price, by id (services/routeAddOns.ts: their extra credits and their own quote line come from the plugin that
+   *  registers them, ctx.pricing.addOn), e.g. 'soul-cloud-upscale' (OpenSoul cloud upscale via fal-ai/esrgan), 'charswap-anchor' (H3 Character Swap's first frame). */
+  addOns?: readonly string[];
   /** The job as the route bills it, when that differs from what was asked (H3 Talking Photo on Router: the clip is at least 5 s). Quote and charge both use it. */
   priceInput?: (input: Record<string, any>) => Record<string, any>;
   /** A short note when this route adjusts the job instead of refusing it (a length rounded, speech trimmed): shown on the quote and the job. */
@@ -96,7 +95,7 @@ export interface RouteOption {
   sourceUrl: string;
   caps?: Record<string, unknown>;
   /** B6: 0 = Comfy Cloud workflow (open weights), 1 = Comfy Cloud · partner API (partner / API nodes), 2 = direct API (fal, Replicate, BFL, vendor), 3 = local. */
-  tier?: 0 | 1 | 2 | 3; tierLabel?: 'Comfy Cloud' | 'Comfy Router' | 'API' | 'Local';
+  tier?: 0 | 1 | 2 | 3; tierLabel?: 'Comfy Cloud' | 'Comfy Router' | 'Comfy Cloud · partner model' | 'API' | 'Local';
   /** B6: a live executor exists for this route (a key alone makes it run). false = only the mock executor (partner nodes until I1/I2). */
   wired?: boolean;
   twinOf?: string; twinProvider?: string;
@@ -107,6 +106,10 @@ export interface RouteAttempt {
   charged: number; refunded: number; requestId?: string | null;
   /** D4: this failed attempt surely cost nothing (routing/run.ts failedAttemptNotCharged): never reached the provider, refused before running, or free by the provider's rule. */
   notCharged?: boolean;
+  /** Our own id for the request, made and written to disk before anything is sent (services/places.ts AttemptKit.requestId; live runs only). */
+  clientRequestId?: string;
+  /** What the place said this attempt cost (PlaceOutput.cost). Information only: what is charged is still the quote. */
+  reportedCost?: { usd: number; source: 'provider' | 'estimate' };
 }
 export interface JobRouting {
   modelId: string;

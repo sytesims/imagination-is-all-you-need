@@ -58,7 +58,7 @@ const hrefs = async (re) => [...new Set((await page.$$eval('a[href]', as => as.m
 
 // 1. The pages a visitor clicks through.
 const PAGES = ['/', '/image', '/video', '/audio', '/3d', '/canvas', '/film', '/workflows', '/models', '/assets', '/assets/images', '/assets/videos', '/assets/audio', '/assets/projects', '/assets/favourites', '/assets/trash',
-  '/settings', '/profile', '/spend', '/licenses', '/terms', '/mcp', '/api-docs', '/plugins', '/community', '/learn/ai-ecommerce'];
+  '/settings', '/profile', '/spend', '/licenses', '/terms', '/mcp', '/api-docs', '/plugins', '/workflows/yours', '/community', '/learn/ai-ecommerce'];
 for (const p of PAGES) { await visit(p); console.log('page', p); }
 
 // 2. Every workflow page, every video and audio workflow, every model page, a few asset viewers.

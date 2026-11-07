@@ -15,7 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { statfsSync, readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync } from './security/childProcess.js';
 import { config, DATA_DIR, comfyNeedsKey } from './config.js';
 import { env } from './env.js';
 import { getKv, setKv } from './db.js';

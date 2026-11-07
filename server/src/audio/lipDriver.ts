@@ -15,7 +15,7 @@
  * clips are at least 49 frames (2 s), the Talking photo minimum; any channel count is averaged to mono and resampled to 48 kHz first.
  * The DSP is pure (tests compare it with scipy's numbers); only prepareLipAudio touches ffmpeg and the disk.
  */
-import { spawn } from 'node:child_process';
+import { spawn } from '../security/childProcess.js';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';

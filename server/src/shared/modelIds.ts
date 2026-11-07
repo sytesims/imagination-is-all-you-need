@@ -11,8 +11,8 @@
  */
 
 /** Where a route runs and who bills it (one per account, not per endpoint). */
-export type RunOn = 'local' | 'comfy-cloud' | 'fal' | 'replicate' | 'bfl' | 'minimax' | 'ltx' | 'openai' | 'google' | 'byteplus' | 'dashscope' | 'luma' | 'direct';
-export const RUN_ON_IDS: readonly RunOn[] = ['local', 'comfy-cloud', 'fal', 'replicate', 'bfl', 'minimax', 'ltx', 'openai', 'google', 'byteplus', 'dashscope', 'luma', 'direct'];
+export type RunOn = 'local' | 'comfy-cloud' | 'fal' | 'replicate' | 'sunra' | 'kie' | 'runpod' | 'bfl' | 'minimax' | 'ltx' | 'openai' | 'google' | 'byteplus' | 'dashscope' | 'luma' | 'direct';
+export const RUN_ON_IDS: readonly RunOn[] = ['local', 'comfy-cloud', 'fal', 'replicate', 'sunra', 'kie', 'runpod', 'bfl', 'minimax', 'ltx', 'openai', 'google', 'byteplus', 'dashscope', 'luma', 'direct'];
 /** The one user-facing name of the local place (this computer's ComfyUI), used by server and web: the Run on chip, tabs, price lines.
  *  The id stays `local` (and the `gpu` group / #gpu anchor); only these words show. */
 export const LOCAL_LABEL = 'Your computer';
@@ -23,8 +23,10 @@ export const NEEDS_COMFYUI_SHORT = 'Needs ComfyUI';
 export const NEEDS_NVIDIA = 'Needs an NVIDIA graphics card';
 /** The price token of a local run ("Free · on your computer"; prices in dollars, 2026-10-26). */
 export const LOCAL_FREE = 'Free · on your computer';
+/** kie.ai is a reseller (installable place, off by default): this label goes with it everywhere. */
+export const KIE_LABEL = 'kie.ai · reseller, may change without notice';
 /** User-facing labels (MODEL-ROUTE-SPEC §2.1; Run on 2026-10-22: Comfy Cloud and Comfy Router are one place, "Comfy Cloud" in the UI; only the model info card names Router). */
-export const RUN_ON_LABELS: Record<RunOn, string> = { local: LOCAL_LABEL, 'comfy-cloud': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', bfl: 'Black Forest Labs', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google', byteplus: 'BytePlus', dashscope: 'Alibaba Cloud', luma: 'Luma AI', direct: 'The maker’s API (your key)' /* a lab's own API we can't name: never "Direct API" (audit 2026-11-01) */ };
+export const RUN_ON_LABELS: Record<RunOn, string> = { local: LOCAL_LABEL, 'comfy-cloud': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', sunra: 'Sunra', kie: KIE_LABEL, runpod: 'RunPod', bfl: 'Black Forest Labs', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google', byteplus: 'BytePlus', dashscope: 'Alibaba Cloud', luma: 'Luma AI', direct: 'The maker’s API (your key)' /* a lab's own API we can't name: never "Direct API" (audit 2026-11-01) */ };
 /** H3 runner Step 1: the Comfy detail line of a route on the user's own Comfy deployment (route id comfy-deploy:<engine>; Run on stays "Comfy"). */
 export const COMFY_DEPLOY_DETAIL = 'Your Comfy deployment';
 /** How a Comfy Cloud run works, the small secondary words under the one place name (2026-11-01: one Comfy key, one place, "Comfy Cloud"):
@@ -39,11 +41,11 @@ export function comfyHowLine(variants: readonly (string | null | undefined)[], m
   return [how, method].filter(Boolean).join(' · ');
 }
 /** Who bills each run-on (billing.ts PROVIDER_BILLING ids). */
-export const RUN_ON_BILLED_TO: Record<RunOn, string> = { local: 'local', 'comfy-cloud': 'comfy', fal: 'fal', replicate: 'replicate', bfl: 'bfl', minimax: 'minimax', ltx: 'ltx', openai: 'openai', google: 'google', byteplus: 'byteplus', dashscope: 'dashscope', luma: 'luma', direct: 'direct' };
+export const RUN_ON_BILLED_TO: Record<RunOn, string> = { local: 'local', 'comfy-cloud': 'comfy', fal: 'fal', replicate: 'replicate', sunra: 'sunra', kie: 'kie', runpod: 'runpod', bfl: 'bfl', minimax: 'minimax', ltx: 'ltx', openai: 'openai', google: 'google', byteplus: 'byteplus', dashscope: 'dashscope', luma: 'luma', direct: 'direct' };
 /** Accepted spellings (spec ids, route kinds, billing ids) → RunOn. */
 const RUN_ON_ALIASES: Record<string, RunOn | 'auto'> = {
   auto: 'auto', gpu: 'local', 'your-gpu': 'local', local: 'local', comfy: 'comfy-cloud', 'comfy-cloud': 'comfy-cloud', 'comfy-router': 'comfy-cloud', 'comfy-deploy': 'comfy-cloud', comfycloud: 'comfy-cloud',
-  fal: 'fal', replicate: 'replicate', bfl: 'bfl', 'black-forest-labs': 'bfl', minimax: 'minimax', ltx: 'ltx', lightricks: 'ltx', openai: 'openai', google: 'google', gemini: 'google', 'gemini-api': 'google', byteplus: 'byteplus', ark: 'byteplus', modelark: 'byteplus', dashscope: 'dashscope', alibaba: 'dashscope', 'alibaba-cloud': 'dashscope', luma: 'luma', direct: 'direct',
+  fal: 'fal', replicate: 'replicate', sunra: 'sunra', kie: 'kie', 'kie-ai': 'kie', runpod: 'runpod', bfl: 'bfl', 'black-forest-labs': 'bfl', minimax: 'minimax', ltx: 'ltx', lightricks: 'ltx', openai: 'openai', google: 'google', gemini: 'google', 'gemini-api': 'google', byteplus: 'byteplus', ark: 'byteplus', modelark: 'byteplus', dashscope: 'dashscope', alibaba: 'dashscope', 'alibaba-cloud': 'dashscope', luma: 'luma', direct: 'direct',
 };
 /** 'auto' | a RunOn | null (unknown). Case- and underscore-insensitive. */
 /** "an LTX key", "an OpenAI key"; "a … key" otherwise. */
@@ -54,7 +56,7 @@ export function runOnOfRoute(r: { kind: string; envKey?: string | null; vendor?:
   if (r.vendor && (RUN_ON_IDS as readonly string[]).includes(r.vendor)) return r.vendor as RunOn;
   if (r.kind === 'local') return 'local';
   if (r.kind === 'comfy-cloud' || r.kind === 'comfy-router') return 'comfy-cloud';
-  if (r.kind === 'fal' || r.kind === 'replicate') return r.kind;
+  if (r.kind === 'fal' || r.kind === 'replicate' || r.kind === 'sunra' || r.kind === 'kie' || r.kind === 'runpod') return r.kind;
   const k = r.envKey ?? '';
   return /BFL/.test(k) ? 'bfl' : /MINIMAX/.test(k) ? 'minimax' : /LTX/.test(k) ? 'ltx' : /OPENAI/.test(k) ? 'openai' : /GEMINI/.test(k) ? 'google' : /_ARK_/.test(k) ? 'byteplus' : /DASHSCOPE/.test(k) ? 'dashscope' : /LUMA/.test(k) ? 'luma' : /FAL/.test(k) ? 'fal' : /REPLICATE/.test(k) ? 'replicate' : /COMFY/.test(k) ? 'comfy-cloud' : 'direct';
 }
@@ -159,7 +161,7 @@ export const MODEL_MAKER: Record<string, string> = {
   vtracer: 'visioncortex', 'ideogram-vector-1': 'ideogram', // Image to vector (2026-11-03)
   'bria-rmbg-2.0': 'bria', 'ideogram-remove-background': 'ideogram', 'bria-expand': 'bria', 'ideogram-3-reframe': 'ideogram', 'bria-eraser': 'bria', 'fal-object-removal': 'fal', 'fashn-tryon-1.6': 'fashn',
   // 3D (shared/threeD.ts THREE_D_MODELS carries the same maker keys) and our own in-browser Turntable recorder
-  'cloud-tripo-31': 'tripo', 'fal-trellis2': 'microsoft', 'fal-hunyuan3d-31': 'tencent-hunyuan', 'comfy-pixal3d-trellis2': 'pixal3d', 'local-turntable': 'openhiggsfield', 'local-previz': 'openhiggsfield' /* Direct a Shot: drawn in the browser, our own renderer */, 'local-finish': 'openhiggsfield' /* Finish: our own ffmpeg looks */, 'comfy-ltx25-layout': 'lightricks' /* Render: LTX-2.5 + Layout to Render */, 'cloud-ltx25-layout': 'lightricks' /* its Comfy Cloud place */, 'cloud-ltx23-vfx': 'lightricks' /* Footage Effects · Comfy Cloud: LTX-2.3 templates */, 'comfy-ltx25-iclora': 'lightricks' /* Footage Effects: LTX-2.5 + Lightricks IC-LoRAs */,
+  'cloud-tripo-31': 'tripo', 'fal-trellis2': 'microsoft', 'fal-hunyuan3d-31': 'tencent-hunyuan', 'comfy-pixal3d-trellis2': 'pixal3d', 'local-turntable': 'openhiggsfield', 'local-previz': 'openhiggsfield' /* Direct a Shot: drawn in the browser, our own renderer */, 'local-finish': 'openhiggsfield' /* Finish: our own ffmpeg looks */, 'comfy-layers': 'openhiggsfield' /* Video to layers: our own pipeline of official pieces (SAM 3.1, BiRefNet, Depth Anything 3), named on the card */, 'cloud-layers': 'openhiggsfield' /* its Comfy Cloud place */, 'local-layers-edit': 'openhiggsfield' /* Video to layers: your changes, our own ffmpeg render */, 'comfy-ltx25-layout': 'lightricks' /* Render: LTX-2.5 + Layout to Render */, 'cloud-ltx25-layout': 'lightricks' /* its Comfy Cloud place */, 'cloud-ltx23-vfx': 'lightricks' /* Footage Effects · Comfy Cloud: LTX-2.3 templates */, 'comfy-ltx25-iclora': 'lightricks' /* Footage Effects: LTX-2.5 + Lightricks IC-LoRAs */,
 };
 /** Maker of a model key (null when unknown, e.g. a derived model). */
 export const makerOf = (modelKey: string): { key: string; name: string } | null => { const k = MODEL_MAKER[modelKey]; return k && MAKERS[k] ? { key: k, name: MAKERS[k].name } : null; };

@@ -7,7 +7,7 @@
  *  GET    /api/workflows/:id/models  the model files it loads: { comfy, modelsDirSet, files[{ file, folder, state: have|missing|unknown, url, bytes, pageUrl, linkFrom }], missing, downloadId }
  *  PUT    /api/workflows/:id/models  { folder, file, url } a Hugging Face / Civitai link for a file the app's model list doesn't know (saved in its folder)
  *  Download: POST /api/local/downloads { downloadId: 'workflow:<id>' } (routesHardware.ts), progress GET /api/local/downloads/:id.
- * On / off stays POST /api/plugins/:id { enabled }.
+ * On / off stays POST /api/workflow-folders/:id { enabled }.
  */
 import type { FastifyInstance } from 'fastify';
 import { HOSTED } from './hosted.js';
@@ -15,6 +15,8 @@ import { getKv, setKv } from './db.js';
 import { comfyNodes, localObjectInfo } from './comfyNodes.js';
 import { builtInObjectInfo, guessMapping, MAX_WORKFLOW_BYTES, readWorkflow, removeWorkflow, saveWorkflow, type SaveBody } from './workflowImport.js';
 import { getTool } from './tools/registry.js';
+import { pluginStatus } from './plugins.js';
+import path from 'node:path';
 import { graphNeeds, saveModelLink, workflowNeeds } from './workflowModels.js';
 import { comfyLoaderOptions } from './comfyNodes.js';
 import { PLUGIN_CATEGORIES, PLUGIN_TABS, TAB_LABEL } from './shared/pluginPlacement.js';
@@ -72,7 +74,7 @@ export function registerWorkflowImport(app: FastifyInstance) {
   });
   app.delete<{ Params: { id: string } }>('/api/workflows/:id', async (req, reply) => {
     if (HOSTED) return reply.code(403).send(hostedNo);
-    const r = removeWorkflow(String(req.params.id)); if (!r.ok) return reply.code(r.code).send({ error: r.error, errorType: r.code === 404 ? 'not_found' : 'forbidden' });
+    const r = await removeWorkflow(String(req.params.id)); if (!r.ok) return reply.code(r.code).send({ error: r.error, errorType: r.code === 404 ? 'not_found' : 'forbidden' });
     setKv('plugins_disabled', getKv<string[]>('plugins_disabled', []).filter((x) => x !== req.params.id));
     return { id: req.params.id, removed: true };
   });
@@ -91,4 +93,14 @@ export async function sourceLicence(raw: string, get: typeof fetch = fetch): Pro
       : (j?.cardData?.license ?? (j?.tags ?? []).find((t: string) => t.startsWith('license:'))?.slice(8) ?? null);
     const out = { licence: typeof lic === 'string' && lic ? lic.slice(0, 80) : null, source: host === 'github.com' ? 'GitHub' : 'Hugging Face' }; LIC_CACHE.set(key, out); return out; }
   catch { return null; }
+}
+
+/** GET /api/workflow-folders: the plugin load report (loaded + skipped, with validation errors). With folders off it lists none. */
+export function registerPluginList(app: FastifyInstance) {
+  app.get('/api/workflow-folders', async () => { const { isToolHidden } = await import('./tools/registry.js'); const { readFileSync: rf, existsSync: ex } = await import('node:fs');
+    return pluginStatus().map(({ dir, ...s }) => { let m: any = {}; try { m = JSON.parse(rf(path.join(dir, 'plugin.json'), 'utf8')); } catch { /* invalid manifest: fields stay null */ }
+      const t = s.toolId ? getTool(s.toolId) : undefined; const icon = m.icon ?? m.iconUrl ?? m.previewUrl ?? (t as any)?.app?.posterUrl ?? (ex(path.join(dir, 'icon.png')) ? `/plugins/${s.id}/icon.png` : null);
+      // Name, description and version are always present (null when absent); icon and homepageUrl are optional.
+      return { ...s, name: m.name ?? s.id, description: m.description ?? null, version: m.version ?? null, tab: t?.plugin?.tab ?? null, category: t?.plugin?.category ?? null, goal: t?.plugin?.goal ?? null, author: t?.plugin?.author ?? null, input: t?.plugin?.input ?? null, output: t?.plugin?.output ?? null, runsCode: !!t?.plugin?.handler, icon: icon ?? null, homepageUrl: m.homepageUrl ?? m.homepage ?? m.repository?.url ?? m.repository ?? null,
+        enabled: !(s.toolId && isToolHidden(s.toolId)), dir: path.relative(process.cwd(), dir) }; }); });
 }

@@ -6,7 +6,7 @@
  * Free (no model). Called from providers.runWithProvider once the run is done; a logo that can't be read (an SVG this ffmpeg can't open)
  * leaves the ads as they are, with a note.
  */
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR, WEB_PUBLIC_DIR } from './config.js';

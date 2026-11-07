@@ -4,19 +4,15 @@
  */
 import { BaseBoxShapeUtil, HTMLContainer, T, resizeBox, type TLResizeInfo, type TLShape } from 'tldraw';
 import type { BoardApi, NodeId, Point } from './boardApi';
+import { createGroupNode } from './groupModel';
 import { NODE_DEFS, nodeDefOf, adCardHeight, GROUP_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, AD_TYPE, type NodeKind } from './nodeTypes';
 import { AD_SHAPES, asShape } from './adPlatforms';
+import { auxProps, adProps, type AuxNodeProps, type AdNodeProps } from './auxModel';
+export { auxProps, adProps, type AuxNodeProps, type AdNodeProps };
 import { freeSpot } from './placement';
 import { AuxView } from './AuxNodes';
 import { keepNodeControls } from './nodeFrameModel';
 
-export interface AuxNodeProps { w: number; h: number; text: string; url: string; poster: string; mediaKind: string; label: string; title: string }
-/** The Ad layout card's own words (its picture comes in by arrow): up to 3 headlines, the offer line, the button, the brand ('' = the active one),
- *  and which size / headline the preview shows. Where it will run (platforms), the layout and the safe-zone toggle came later, so cards
- *  saved before them don't have them (adPlatforms.asPlatforms / adLayout.asPreset fill them in). `edits`: "Edit ad"'s hand edits per size
- *  (adEdit.ts, read through asEdits); none = the automatic layout. `style`: the look on every size (adLayout.AdStyle, read through asStyle);
- *  none = the look from before styles. */
-export interface AdNodeProps { w: number; h: number; headlines: string[]; offer: string; button: string; brandId: string; size: string; pick: number; platforms?: string[]; layout?: string; safeZones?: boolean; edits?: Record<string, unknown>; style?: Record<string, unknown> }
 declare module 'tldraw' {
   export interface TLGlobalShapePropsMap {
     [PROMPT_TYPE]: AuxNodeProps; [UPLOAD_TYPE]: AuxNodeProps; [NOTE_TYPE]: AuxNodeProps; [COMPARE_TYPE]: AuxNodeProps; [GROUP_TYPE]: AuxNodeProps; [AD_TYPE]: AdNodeProps;
@@ -25,10 +21,8 @@ declare module 'tldraw' {
 export type AuxNodeShape = TLShape<typeof PROMPT_TYPE>;
 
 const AUX_PROPS = { w: T.number, h: T.number, text: T.string, url: T.string, poster: T.string, mediaKind: T.string, label: T.string, title: T.string };
-export function auxProps(kind: NodeKind): AuxNodeProps { const d = NODE_DEFS[kind]; return { w: d.defaultW, h: d.defaultH, text: '', url: '', poster: '', mediaKind: '', label: '', title: d.label }; }
 const AD_PROPS = { w: T.number, h: T.number, headlines: T.arrayOf(T.string), offer: T.string, button: T.string, brandId: T.string, size: T.string, pick: T.number,
   platforms: T.optional(T.arrayOf(T.string)), layout: T.optional(T.string), safeZones: T.optional(T.boolean), edits: T.optional(T.jsonValue as any), style: T.optional(T.jsonValue as any) };
-export function adProps(): AdNodeProps { const d = NODE_DEFS.ad; return { w: d.defaultW, h: d.defaultH, headlines: ['', '', ''], offer: '', button: 'Shop now', brandId: '', size: '4x5', pick: 0, platforms: ['meta'], layout: 'bottom', safeZones: true }; }
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
 export interface AuxCreateOpts { at?: Point; text?: string; title?: string; media?: { url: string; poster: string; mediaKind: string; label: string }; select?: boolean; w?: number; h?: number }
@@ -44,21 +38,6 @@ export function createAuxNode(board: BoardApi, kind: NodeKind, o: AuxCreateOpts 
   const c = o.at ?? freeSpot(board, props.w, props.h);
   board.mark(`new ${kind} node`);
   let id = ''; board.batch(() => { id = board.addNode({ type: def.type, x: c.x - props.w / 2, y: c.y - props.h / 2, props: props as any }); });
-  if (o.select !== false) board.select([id]);
-  return id;
-}
-
-/** A group frame around the selected nodes (or an empty frame in the middle of the view), sent behind them. */
-export function createGroupNode(board: BoardApi, o: AuxCreateOpts = {}): NodeId {
-  const def = NODE_DEFS.group; const picked = board.selection().map(id => board.getNode(id)).filter((s): s is NonNullable<typeof s> => !!s && !!nodeDefOf(s.type) && s.type !== GROUP_TYPE);
-  let box: { x: number; y: number; w: number; h: number };
-  const bounds = picked.map(s => board.boundsOf(s.id)).filter(Boolean) as { minX: number; minY: number; maxX: number; maxY: number }[];
-  if (bounds.length) {
-    const minX = Math.min(...bounds.map(b => b.minX)), minY = Math.min(...bounds.map(b => b.minY)), maxX = Math.max(...bounds.map(b => b.maxX)), maxY = Math.max(...bounds.map(b => b.maxY));
-    box = { x: minX - 28, y: minY - 58, w: Math.max(def.minW, maxX - minX + 56), h: Math.max(def.minH, maxY - minY + 86) };
-  } else { const c = o.at ?? board.viewportBounds().center; box = { x: c.x - def.defaultW / 2, y: c.y - def.defaultH / 2, w: def.defaultW, h: def.defaultH }; }
-  board.mark('new group');
-  let id = ''; board.batch(() => { id = board.addNode({ type: GROUP_TYPE, x: box.x, y: box.y, props: { ...auxProps('group'), w: box.w, h: box.h } }); board.toBack([id]); });
   if (o.select !== false) board.select([id]);
   return id;
 }

@@ -30,7 +30,7 @@ assert.equal(priceDelta({ credits: 40, chargeable: true, cost: { estUsd: 0.4 } }
 assert.equal(priceDelta({ credits: 40, chargeable: true, cost: { estUsd: 0.4 } }, { credits: 40, chargeable: true, cost: { estUsd: 0.4 } }, true), null, 'same price: nothing shown');
 assert.equal(etaText({ lowSec: 240, highSec: 250 }), 'about 4 min'); assert.equal(etaText({ lowSec: 180, highSec: 300 }), 'about 3–5 min'); assert.equal(etaText({ lowSec: 30, highSec: 50 }), 'about 40 s'); assert.equal(etaText(null), null);
 assert.match(localLine({ eta: { lowSec: 240, highSec: 250 } }), /^Free · on your computer · about 4 min$/); assert.match(localLine({ eta: null }), /^Free · on /);
-assert.equal(rateText({ perSecond: { usd: 0.1716, credits: 17.16 } }, true), '$0.1716 per second'); assert.equal(rateText({ perSecond: { usd: 0.08, credits: 8 } }, true), '$0.08 per second'); assert.equal(rateText({ perSecond: null }, true), null);
+assert.equal(rateText({ perSecond: { usd: 0.1716, credits: 17.16 } }, true), '$0.1716 per second'); assert.equal(rateText({ perSecond: { usd: 0.08, credits: 8 } }, true), '$0.080 per second'); assert.equal(rateText({ perSecond: null }, true), null);
 console.log('ok helper units');
 
 // ---- 2) live agreement on a spare port ----

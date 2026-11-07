@@ -1,6 +1,7 @@
 // A quote starts ONE run (audit 2026-11-01 #6). Pure unit test of src/quotes.ts, no server. Run: npx tsx test/quotes.ts
 import assert from 'node:assert/strict';
-import { issueQuote, useQuote, checkQuote } from '../src/quotes.js';
+import { issueQuote, useQuote, checkQuote, fmtUsd as mcpUsd } from '../src/quotes.js';
+import { fmtUsd as appUsd } from '../../server/src/shared/runCost.js';
 const ok = (m: string) => console.log('ok ' + m);
 const { quote_id } = issueQuote({ toolId: 'h3-video', hash: 'h1', credits: 88, usd: 0.88, routeId: 'fal:x' });
 const a = useQuote(quote_id, 'h3-video', 'h1'); assert.ok(a.ok); a.done('job1');
@@ -19,3 +20,6 @@ assert.ok(useQuote(q3, 't', 'h', 'cr-1').ok, 'same client_request_id → replay 
 assert.equal(useQuote(q3, 't', 'other', 'cr-1').ok, false, 'replay must be the same request');
 ok('same client_request_id = replay of the first job; another id or none = refused');
 assert.equal(checkQuote(undefined, 't', 'h').ok, false); ok('no quote_id → refused');
+// the connector's $ labels follow the app's rule (server/src/shared/runCost.ts fmtUsd): 3 decimals under $0.10, else 2
+for (const v of [0, 0.0001, 0.004, 0.03, 0.045, 0.0999, 0.1, 0.42, 1, 5, 12.4, 1234.5, -0.03, -2.5, null, undefined, NaN]) assert.equal(mcpUsd(v), appUsd(v), `fmtUsd(${v})`);
+assert.equal(mcpUsd(0.03), '$0.030'); assert.equal(mcpUsd(5), '$5.00'); ok('fmtUsd agrees with the app (3 decimals under $0.10)');

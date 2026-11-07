@@ -73,6 +73,12 @@ glTF Transform (Don McCurdy) and meshoptimizer (Arseny Kapoulkine)
   Direct a Shot (server/src/glbLight.ts). https://gltf-transform.dev,
   https://github.com/zeux/meshoptimizer.
 
+Cordis (Shigma and contributors)
+  MIT. npm dependency of the server (cordis, with cosmokit and
+  @standard-schema/spec), installed from its authors' package, not copied in.
+  It runs the server's plugin tree (server/src/kernel, server/src/boot.ts).
+  https://github.com/cordiverse/cordis.
+
 Comfy-Org/comfy-openjutsu (Comfy Org)
   MIT. The H3 Character Swap recipe settings follow Comfy's Openjutsu app
   (https://github.com/Comfy-Org/comfy-openjutsu), and its swap prompt and

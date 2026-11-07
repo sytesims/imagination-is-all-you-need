@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync, existsSync } from 'node:fs';
 import { env } from './env.js';
+import { bootSettings } from './kernel/settings.js'; // read once (kernel/settings.ts), after filming mode
 
 export type Backend = 'mock' | 'comfy';
 
@@ -10,13 +11,13 @@ export const WORKFLOWS_DIR = path.resolve(HERE, '../../workflows');
 /** Plugin folder (docs/PLUGINS.md): repo-root plugins/, override with OPENHIGGSFIELD_PLUGINS_DIR. */
 export const PLUGINS_DIR = path.resolve(process.env.OPENHIGGSFIELD_PLUGINS_DIR || process.env.OPENJUTSU_PLUGINS_DIR || path.resolve(HERE, '../../plugins'));
 /** Persistent data dir (SQLite db + uploads + outputs). OPENHIGGSFIELD_DATA_DIR, default server/data (gitignored). */
-export const DATA_DIR = path.resolve(env('DATA_DIR') || path.resolve(HERE, '../data'));
+export const DATA_DIR = bootSettings().dataDir;
 /** Workflows people add in the app ("Add a workflow", workflowImport.ts): one plugin folder each, kept with the library so an app update never
  *  touches them. OPENHIGGSFIELD_USER_PLUGINS_DIR, default <data>/plugins. The folders in PLUGINS_DIR are the ones that ship with the app. */
-export const USER_PLUGINS_DIR = path.resolve(env('USER_PLUGINS_DIR') || path.join(DATA_DIR, 'plugins'));
+export const USER_PLUGINS_DIR = bootSettings().userPluginsDir;
 /** Our own demo media (scripts/make-samples.sh); also the source of mock results. */
 /** [R44] Days to keep finished results (0 = keep forever). OPENHIGGSFIELD_RESULT_TTL_DAYS. */
-export const RESULT_TTL_DAYS = Math.max(0, Number(env('RESULT_TTL_DAYS')) || 0);
+export const RESULT_TTL_DAYS = bootSettings().resultTtlDays;
 export const SAMPLES_DIR = path.resolve(HERE, '../samples');
 /** The web app's shipped public files (web/public): the Featured generations in /showcase are read from here by the sample server and the seed. */
 export const WEB_PUBLIC_DIR = path.resolve(HERE, '../../web/public');
@@ -78,7 +79,7 @@ const baseMap = loadNodeMap();
 
 export const config = {
   /** comfy (the default since 2026-10-29: real runs, or a connect sheet when nothing is set up) · mock = development and tests only (sample results). */
-  backend: (env('BACKEND') === 'mock' ? 'mock' : 'comfy') as Backend,
+  backend: bootSettings().backend as Backend,
   comfyApiKey: process.env.COMFY_API_KEY || '',
   comfyBaseUrl: process.env.COMFY_BASE_URL || '',
   workflowPath: path.join(

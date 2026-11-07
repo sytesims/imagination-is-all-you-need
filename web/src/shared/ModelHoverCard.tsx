@@ -14,7 +14,7 @@ import { aKey } from '../../../server/src/shared/modelIds';
  * (shared/ModelPreviewCard.tsx) beside the menu instead.
  * No network: prices come from the model listing (runsOn[].credits, list price per run) and the menu's batch quote for the row's place.
  */
-const KEY_WORD: Record<string, string> = { 'comfy-cloud': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', bfl: 'BFL', minimax: 'MiniMax', dashscope: 'Alibaba Cloud', luma: 'Luma', ltx: 'LTX', openai: 'OpenAI', google: 'Google', byteplus: 'BytePlus' };
+const KEY_WORD: Record<string, string> = { 'comfy-cloud': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', sunra: 'Sunra', kie: 'kie.ai', runpod: 'RunPod', bfl: 'BFL', minimax: 'MiniMax', dashscope: 'Alibaba Cloud', luma: 'Luma', ltx: 'LTX', openai: 'OpenAI', google: 'Google', byteplus: 'BytePlus' };
 export const keyWord = (runOn: string, label?: string | null) => KEY_WORD[runOn] ?? RUN_ON_CHIP[runOn] ?? label ?? runOn;
 const live = (r: RunOnRow) => r.status !== 'coming-soon' && r.status !== 'unavailable';
 

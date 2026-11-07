@@ -128,9 +128,9 @@ html:has(.cv-root) .notify-opt{display:none!important}
 .cv-zsep{width:1px;height:18px;background:rgba(255,255,255,.08);margin:0 2px}
 
 /* ---- Assets button + drawer (right) ---- */
-.cv-assets-btn{position:absolute;top:12px;right:12px;z-index:21;display:flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:12px;color:var(--text-1,#F7F7F8);font:600 13px/1 var(--font-ui,Inter,sans-serif);transition:right var(--dur-slow,300ms) var(--ease,cubic-bezier(.4,0,.2,1)),background var(--t-state,150ms) ease}
+.cv-assets-btn{position:relative;display:flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:12px;color:var(--text-1,#F7F7F8);font:600 13px/1 var(--font-ui,Inter,sans-serif);transition:background var(--t-state,150ms) ease}
 .cv-assets-btn:hover{background:rgba(28,30,32,.96)}
-.cv-assets-btn.on{right:356px;box-shadow:inset 0 0 0 1px rgba(255,122,26,.32),0 4px 20px rgba(0,0,0,.28)}
+.cv-assets-btn.on{box-shadow:inset 0 0 0 1px rgba(255,122,26,.32),0 4px 20px rgba(0,0,0,.28)}
 .cv-assets-btn.on svg{color:#FF7A1A}
 .cv-drawer{position:absolute;top:0;right:0;bottom:0;z-index:22;width:344px;display:flex;flex-direction:column;background:rgba(19,21,23,.97);border-left:1px solid rgba(255,255,255,.08);box-shadow:-12px 0 32px rgba(0,0,0,.35);transform:translateX(100%);transition:transform var(--dur-slow,300ms) var(--ease,cubic-bezier(.4,0,.2,1));pointer-events:auto}
 .cv-drawer.open{transform:none}

@@ -33,8 +33,8 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
   ok('Router: 429 (Retry-After 7 s) → waited, same Idempotency-Key, one request collected; always busy → 5 tries, then queue_full marked busy');
   const F = await import('../src/providers/fal.ts'); let subs = 0;
   const ff = (async (u: any, init: any = {}) => { const url = String(u);
-    if (init.method === 'POST') return ++subs === 1 ? new Response('rate limited', { status: 429, headers: { 'retry-after': '0' } }) : js(200, { request_id: 'f1', status_url: 'https://q/s', response_url: 'https://q/r' });
-    if (url === 'https://q/s') return js(200, { status: 'COMPLETED' }); return js(200, { images: [{ url: 'https://x/i.png' }] }); }) as typeof fetch;
+    if (init.method === 'POST') return ++subs === 1 ? new Response('rate limited', { status: 429, headers: { 'retry-after': '0' } }) : js(200, { request_id: 'f1', status_url: 'https://queue.fal.run/q/s', response_url: 'https://queue.fal.run/q/r' });
+    if (url === 'https://queue.fal.run/q/s') return js(200, { status: 'COMPLETED' }); return js(200, { images: [{ url: 'https://x/i.png' }] }); }) as typeof fetch;
   const fr = await F.falRun('fal-ai/x', { prompt: 'x' }, 'k', { timeoutMs: 5000, pollMs: 1, f: ff }); assert.equal(fr.requestId, 'f1'); assert.equal(subs, 2);
   ok('fal: submit 429 then 200 → one queued request (the refused one never started)'); }
 

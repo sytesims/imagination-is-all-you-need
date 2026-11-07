@@ -154,7 +154,7 @@ setInterval(flushJobs, 400).unref();
 export function persistJob(j: Job) { const s = JSON.stringify(j); store(j); lastSaved.set(j.id, s); }
 /** See Job.remote. statusUrl / responseUrl / cancelUrl: fal and Router (as the provider returned them); pollUrl: a lab API; id alone: Replicate, Comfy Cloud. */
 export interface RemoteHandle {
-  kind: 'fal' | 'replicate' | 'direct' | 'router' | 'cloud'; routeId: string; attempt: number; id: string;
+  kind: 'fal' | 'replicate' | 'sunra' | 'kie' | 'runpod' | 'direct' | 'router' | 'cloud'; routeId: string; attempt: number; id: string;
   /** this request's index in the attempt, and how many requests the attempt makes (Cloud: graph passes) */ output: number; outputs: number;
   statusUrl?: string; responseUrl?: string; cancelUrl?: string; pollUrl?: string; model?: string; at: number;
   /** set while a restart / Retry download polls it again (runRouted reuses the attempt, nothing is submitted) */ resuming?: boolean;

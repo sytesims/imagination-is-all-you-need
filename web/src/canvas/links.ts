@@ -66,7 +66,9 @@ export function routeThread(from: LBox, to: LBox, others: LBox[]): { x: number; 
     const x2 = Math.min(bx, ex - LANE); const p = [{ x: sx, y: sy }, { x: x1, y: sy }, { x: x1, y }, { x: x2, y }, { x: x2, y: ey }, { x: ex, y: ey }];
     if (pathClear(p)) return dedupe(p);
   }
-  return dedupe([{ x: sx, y: sy }, { x: ax, y: sy }, { x: ax, y: ys.at(-1)! }, { x: bx, y: ys.at(-1)! }, { x: bx, y: ey }, { x: ex, y: ey }]); /* fallback: around everything */
+  /* fallback (no clear lane): just below both cards, never the lane farthest away (that was often the top of the board, 2026-11-07 audit) */
+  const below = Math.max(from.y + from.h, to.y + to.h) + 2 * LANE;
+  return dedupe([{ x: sx, y: sy }, { x: ax, y: sy }, { x: ax, y: below }, { x: bx, y: below }, { x: bx, y: ey }, { x: ex, y: ey }]);
 }
 const dedupe = (p: { x: number; y: number }[]) => p.map((q) => ({ x: Math.round(q.x), y: Math.round(q.y) })).filter((q, i, a) => i === 0 || q.x !== a[i - 1].x || q.y !== a[i - 1].y);
 /** The SVG path of a thread, with rounded corners. */

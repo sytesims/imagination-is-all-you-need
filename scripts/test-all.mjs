@@ -46,7 +46,7 @@ const LONG = {
   'model-runon.e2e.ts': 900, // 1301 quote+submit pairs; the server it starts keeps ~7 cores busy (2 min alone on an M1 Max, ~4 min beside other tests)
   'pb-1018b.e2e.ts': 600, // ~1.5 min alone, ~4 min beside other tests (timed out at 240 s in a parallel run, 2026-10-25)
   'model-health.e2e.ts': 1200, // ~8 min alone on an M1 Max (every video model × mode × option)
-  'model-health-ui.e2e.ts': 1500, // ~15 min alone (one headless click-through per video model × mode)
+  'model-health-ui.e2e.ts': 2400, // ~20 min alone at ~11 s a case × 212 (one headless click-through per video model × mode); room for a busy machine
   'story.e2e.ts': 600, // several stories, each polled up to ~300 s (timed out at 100 s per story on a 2-core CI runner, 2026-11-01)
 };
 
@@ -175,7 +175,8 @@ function runOne(file) {
       OPENHIGGSFIELD_ENV_FILE: path.join(dir, 'none.env'), OPENHIGGSFIELD_FILMING_FILE: path.join(dir, 'filming.json'), FORCE_COLOR: '0', NO_COLOR: '1',
       OPENHIGGSFIELD_BACKEND: 'mock' /* tests run on the mock backend unless they ask for comfy (the app's own default is comfy since 2026-10-29) */,
       OPENHIGGSFIELD_COMFY_DETECT_URLS: '' /* never look for a real ComfyUI on this machine's usual ports */,
-      OPENHIGGSFIELD_TOOLS_CACHE_MS: '0' /* GET /api/tools rebuilt on every read (tests drop files and read the change back at once); payload-perf tests the cache */ };
+      OPENHIGGSFIELD_TOOLS_CACHE_MS: '0' /* GET /api/tools rebuilt on every read (tests drop files and read the change back at once); payload-perf tests the cache */,
+      OPENHIGGSFIELD_PLUGIN_CHOICES: 'ignore' /* the profile exactly as written: every plugin in the edition, none of the Plugins page's start-off defaults (plugins-ui.e2e.ts tests those) */ };
     const log = fs.openSync(path.join(LOGS, file.replace(/\.ts$/, '.log')), 'w'); const start = Date.now();
     const p = spawn(process.execPath, [TSX, path.join('test', file)], { cwd: SERVER, env, stdio: ['ignore', log, log], detached: !WIN /* Windows: detached opens a console window per test */ });
     running.set(file, p); progress(); let timedOut = false;

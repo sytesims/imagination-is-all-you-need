@@ -6,10 +6,10 @@
 // 4. Synchronous / submit error bodies (fail()) carry the same provider info.
 // In process, fake fetch, no network, no spend. Run: npx tsx test/router-provider-error.test.ts
 import assert from 'node:assert/strict'; import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
-Object.assign(process.env, { COMFY_API_KEY: '', OPENHIGGSFIELD_DATA_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'rperr-')), OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_COMFY_ROUTER_URL: 'http://router.test' });
+Object.assign(process.env, { COMFY_API_KEY: '', OPENHIGGSFIELD_DATA_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'rperr-')), OPENHIGGSFIELD_BACKEND: 'mock', OPENHIGGSFIELD_COMFY_ROUTER_URL: 'https://router.test' });
 const { ComfyRouter, RouterError, sanitizeProviderText, providerSaid, routerErrorFor } = await import('../src/comfyRouter.ts');
 const ok = (m: string) => console.log('ok ' + m);
-const BASE = 'http://router.test'; const RID = 'a4d5f6b6-40c6-4bdd-9468-4da1c64c965a';
+const BASE = 'https://router.test'; const RID = 'a4d5f6b6-40c6-4bdd-9468-4da1c64c965a';
 const json = (status: number, b: unknown, h: Record<string, string> = {}) => new Response(JSON.stringify(b), { status, headers: { 'content-type': 'application/json', ...h } });
 function fakeRouter(collect: () => Response | Promise<Response>) {
   const seen: string[] = [];

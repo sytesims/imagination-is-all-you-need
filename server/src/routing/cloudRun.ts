@@ -9,7 +9,7 @@
 import { persistJob, type Job } from '../jobs.js';
 import type { RouteAttempt, RouteDef } from './types.js';
 import { env } from '../env.js';
-import { keyValue } from './keys.js';
+import { CORE_KEYS, type KeyReader } from '../kernel/coreKeys.js';
 import { ComfyCloudV2, CloudError, cloudFailure } from '../comfy/cloudV2.js';
 import { runNative } from '../comfy/runNative.js';
 import { buildCloudPlan, CLOUD_WORKFLOWS, isStandalone } from '../comfy/cloudWorkflows.js';
@@ -22,13 +22,14 @@ import { cannotPickUp } from './reattach.js';
 export { CLOUD_RUNNER_ROUTES }; // the set lives in runnable.ts (select.ts gate)
 export const cloudBase = () => env('COMFY_CLOUD_URL')?.trim() || 'https://cloud.comfy.org';
 /** B2: a real Comfy key makes the run real on any backend (a keyed cloud workflow route never renders mock output, so it is never charged for one). */
-export const cloudLive = (r: Pick<RouteDef, 'routeId' | 'envKey' | 'envAliases'>) => CLOUD_RUNNER_ROUTES.has(r.routeId) && (isDeployRoute(r.routeId) ? !!deployTarget() : !!keyValue(r));
+export const cloudLive = (r: Pick<RouteDef, 'routeId' | 'envKey' | 'envAliases'>, keys: KeyReader = CORE_KEYS) => CLOUD_RUNNER_ROUTES.has(r.routeId) && (isDeployRoute(r.routeId) ? !!deployTarget((n) => keys.get(n)) : !!keys.value(r));
 /** H3 runner Step 1: routes that run on the user's own Comfy deployment (comfy/deploy.ts), not on shared Comfy Cloud. */
 export const isDeployRoute = (routeId: string) => { const w = CLOUD_WORKFLOWS[routeId]; return isStandalone(w) && w.target === 'deploy'; };
 /** Per-route base URL + token (names only in docs: COMFY_CLOUD_URL / COMFY_API_KEY, or COMFY_DEPLOY_URL / COMFY_RUNNER_URL + COMFY_RUNNER_TOKEN). Never logged. */
-export function cloudTargetFor(r: Pick<RouteDef, 'routeId' | 'envKey' | 'envAliases'>): { base: string; token: string } | null {
-  if (isDeployRoute(r.routeId)) { const t = deployTarget(); return t ? { base: t.base, token: t.token } : null; }
-  const k = keyValue(r); return k ? { base: cloudBase(), token: k } : null;
+/** keys: place-comfy-cloud's ctx.keys (its declared keys); code without a ctx reads them as before. */
+export function cloudTargetFor(r: Pick<RouteDef, 'routeId' | 'envKey' | 'envAliases'>, keys: KeyReader = CORE_KEYS): { base: string; token: string } | null {
+  if (isDeployRoute(r.routeId)) { const t = deployTarget((n) => keys.get(n)); return t ? { base: t.base, token: t.token } : null; }
+  const k = keys.value(r); return k ? { base: cloudBase(), token: k } : null;
 }
 /** Tests: inject a fetch (no network). */
 let testFetch: typeof fetch | null = null; let testPollMs: number | null = null;
@@ -52,10 +53,10 @@ export function noteCloudSubmitted(job: Job, r: Pick<RouteDef, 'routeId'>, attem
   job.remote = { kind: 'cloud', id, routeId: r.routeId, attempt: attempt.n, output, outputs, at: Date.now() };
   try { persistJob(job); } catch { /* the 400 ms flush has it */ }
 }
-export async function runCloudWorkflow(job: Job, r: RouteDef, attempt: RouteAttempt) {
+export async function runCloudWorkflow(job: Job, r: RouteDef, attempt: RouteAttempt, keys: KeyReader = CORE_KEYS) {
   // Price-first: a row whose price is not measured never runs for real (nothing is sent, so nothing is billed; run.ts gives the credits back).
   if (r.priceRef && HOSTED_BY_ID[r.priceRef]?.priceUnmeasured && !allowUnmeasuredCloud()) { job.reasonCode = 'price_unmeasured' as any; job.errorType = 'validation' as any; throw new Error(UNMEASURED_PRICE_REASON); }
-  const tg = cloudTargetFor(r); if (!tg) { job.reasonCode = (isDeployRoute(r.routeId) ? 'deploy_missing' : 'key_missing') as any; job.errorType = 'validation' as any; throw new Error(isDeployRoute(r.routeId) ? DEPLOY_MISSING_REASON : 'No Comfy API key is set'); }
+  const tg = cloudTargetFor(r, keys); if (!tg) { job.reasonCode = (isDeployRoute(r.routeId) ? 'deploy_missing' : 'key_missing') as any; job.errorType = 'validation' as any; throw new Error(isDeployRoute(r.routeId) ? DEPLOY_MISSING_REASON : 'No Comfy API key is set'); }
   // a pick-up (restart / Retry download, routing/reattach.ts): the Cloud job from before is only polled, and only a one-pass graph (an earlier pass's
   // files are not kept across a restart); its uploads go again under new Idempotency-Keys (free), never the graph
   const rm = cloudResumeOf(job, r, attempt);

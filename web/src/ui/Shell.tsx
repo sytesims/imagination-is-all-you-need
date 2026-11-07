@@ -15,6 +15,8 @@ import { Link, useSearch } from '../platform/router';
 import { SearchIcon, AssetsIcon, ImageIcon, VideoIcon, AudioIcon, CubeIcon, ToolIconFor, ExploreIcon, MoreIcon, UserIcon, UsageIcon, ProjectsIcon, FavouritesIcon, SettingsIcon, DocsIcon, PriceTagIcon, BrandIcon } from './Icons';
 import { fetchMenuModels, ModelGroup } from '../shared/batch1';
 import { MakerTile } from '../shared/MakerTile';
+import { PluginsButton } from './plugins/PluginsButton';
+import { usePluginOn, useLinkOn, linkOn } from '../shared/plugins';
 import { FEATURED_MODELS, MAX_MODELS, MENU_MODELS_FIRST, TOOL_TAGLINE, CANVAS_NAV, menuFeatureRows, type Medium } from './headerMenus';
 import { MENU_FEATURES, IMAGE_FEATURES } from '../shared/imageFeatures';
 import { workflowOpenHref } from '../shared/workflowLinks';
@@ -61,6 +63,9 @@ export const audioWorkflowRows = (all: ToolInfo[]) => availableAudioWorkflows(al
  *  page's own path (current when no workflow is picked). The mega panel then keeps MENU_FEATURE_ORDER's 8 (headerMenus menuFeatureRows). */
 export type MenuFeature = { key: string; to: string; name: string; line: string; tile: (size: number) => React.ReactNode; badgeTool?: ToolInfo | null; home?: string; /** a plugin's row (shared/pluginPlacement.ts) */ plugin?: PluginBadgeInfo | null; /** opens in another tab (Direct a Shot: '3D') */ opensIn?: string };
 export function menuFeatures(media: Medium, all: ToolInfo[], mediaTools: ToolInfo[], imageList: readonly (typeof MENU_FEATURES)[number][] = MENU_FEATURES): MenuFeature[] {
+  return allMenuFeatures(media, all, mediaTools, imageList).filter(r => linkOn(r.to)); /* a row into a studio turned off in Plugins (Edit's workflows in the Video menu) hides */
+}
+function allMenuFeatures(media: Medium, all: ToolInfo[], mediaTools: ToolInfo[], imageList: readonly (typeof MENU_FEATURES)[number][]): MenuFeature[] {
   if (media === 'video') return videoWorkflowRows(all, mediaTools).map(r => ({ key: r.key, to: r.to, name: r.name, line: r.line, tile: (n: number) => <ToolIconFor id={r.icon} ui={r.ui} size={n} />, badgeTool: r.t, home: r.key === 'create' ? VIDEO_PAGE : undefined, opensIn: (r as { opensIn?: string }).opensIn, plugin: (r as { plugin?: PluginBadgeInfo | null }).plugin ?? null }));
   return [...tabFeatures(media, all, imageList), ...pluginMenuRows(all, media).map(p => ({ key: p.key, to: p.to, name: p.name, line: p.line, tile: (n: number) => <ToolIconFor id={p.toolId} size={n} />, badgeTool: null, plugin: p.plugin }))];
 }
@@ -229,6 +234,7 @@ const toolLine = (t: ToolInfo) => TOOL_TAGLINE[t.id] || firstSentence(t.descript
 
 /** Image / Video / Audio trigger. Hovering any of the three shows the same shared panel; only its content swaps. */
 function MediaTrigger({ id, label, to, icon: I, on, hm }: { id: MenuId; label: string; to: string; icon: typeof ImageIcon; on: boolean; hm: HM }) {
+  if (!useLinkOn()(to)) return null; /* its studio is off in Plugins: no tab */
   return <div className="nav-dd" {...hm.wrap(id)} data-testid={`nav-dd-${id}`}>
     <Link to={to} className={`top-link ${on ? 'on' : ''} ${hm.open === id ? 'open' : ''}`} {...hm.trigger(id)}><I size={14} className="tl-ic" />{label}</Link>
   </div>;
@@ -307,6 +313,7 @@ export function TopNav({ tools, path }: { tools: ToolInfo[]; path: string }) {
   const curMedia = ['/workflows', '/community', '/plugins', '/mcp', '/api-docs'].some(on) ? null : routeMedia(tools, path);
   /* E3: like the reference, a click goes straight into the main tool's page (/image, /video, /audio, /3d; hover still opens the panel; its "See all" row keeps the hub) */
   const imgTools = ofMedia('image'), vidTools = ofMedia('video'), audTools = ofMedia('audio'), d3Tools = ofMedia('3d');
+  const canvasOn = usePluginOn('canvas');
   const bp = (id: string) => badgeOf(byId(id)) ?? undefined; const qs = useSearch(); const hm = useHeaderMenus(path, qs); const { ref: hdr, fold } = useHeaderFold();
   return (
     <header ref={hdr} className={`topnav hn ${scrolled ? 'hn-scrolled' : ''}`}>
@@ -317,7 +324,7 @@ export function TopNav({ tools, path }: { tools: ToolInfo[]; path: string }) {
         <MediaTrigger id="video" label="Video" to={VIDEO_PAGE} icon={VideoIcon} hm={hm} on={curMedia === 'video'} />
         <MediaTrigger id="audio" label="Audio" to={AUDIO_PAGE} icon={AudioIcon} hm={hm} on={curMedia === 'audio'} />
         <MediaTrigger id="3d" label="3D" to={THREE_D_PAGE} icon={CubeIcon} hm={hm} on={curMedia === '3d'} />{/* 3D (2026-10-23): after Audio; always shown like Image/Video/Audio (2026-10-31) */}
-        {L(CANVAS_NAV.to, CANVAS_NAV.label, undefined, 'hn-canvas')}{/* Canvas (2026-10-24): after 3D, a plain tab */}
+        {canvasOn && L(CANVAS_NAV.to, CANVAS_NAV.label, undefined, 'hn-canvas')}{/* Canvas (2026-10-24): after 3D, a plain tab; gone while the Canvas plugin is off */}
         {(hm.open === 'image' || hm.open === 'video' || hm.open === 'audio' || hm.open === '3d') && (() => { const ts = hm.open === 'image' ? imgTools : hm.open === 'video' ? vidTools : hm.open === '3d' ? d3Tools : audTools; return ts.length ? <MegaPanel media={hm.open} tools={ts} all={tools} groups={groups} path={path} hm={hm} /> : null; })()}
         {(() => { const ti = (id: string, label?: string): NavItem | null => { const t = byId(id); return t ? { to: t.route, label: label ?? t.name, desc: toolLine(t), icon: <ToolIconFor id={t.id} ui={t.ui} size={22} />, badge: bp(id), on: under(t.route) } : null; };
           const folded: NavItem[] = [...(fold >= 3 ? [{ to: '/workflows', label: 'Workflows', desc: 'Every workflow, with where it comes from', icon: glyph('M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'), on: on('/workflows') }] : [])];
@@ -328,13 +335,14 @@ export function TopNav({ tools, path }: { tools: ToolInfo[]; path: string }) {
         <NavMenu id="more" label="More" testid="nav-more" hm={hm} items={[...folded,
           { to: '/models', label: 'Models', desc: 'Every model, what it makes, open or not, and where it runs', icon: glyph('M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9'), on: on('/models') }, /* Models page (2026-10-28): first, so it's easy to find */
           { to: '/assets/brands', label: 'Brands', desc: 'Your brand profiles: colours, fonts and mood on every result; export to Figma, Canva and code', icon: <BrandIcon size={22} />, on: on('/assets/brands') }, /* Brands (2026-10-27): live in Assets › Brands; this is a shortcut */
-          { to: '/plugins', label: 'Your workflows', desc: 'Add a ComfyUI workflow', icon: glyph('M9 3v4M15 3v4M6 7h12v5a6 6 0 0 1-12 0zM12 18v3'), on: on('/plugins') },
+          { to: '/workflows/yours', label: 'Your workflows', desc: 'Add a ComfyUI workflow', icon: glyph('M9 3v4M15 3v4M6 7h12v5a6 6 0 0 1-12 0zM12 18v3'), on: on('/workflows/yours') },
           { to: '/mcp', label: 'MCP', desc: 'Let your AI assistant run tools for you', icon: glyph('M4 12h4l2-5 4 10 2-5h4'), badge: 'new', on: on('/mcp') },
           { to: '/api-docs', label: 'API', desc: 'HTTP endpoints for every tool and job', icon: glyph('M8 6l-5 6 5 6M16 6l5 6-5 6M13.5 4l-3 16'), badge: 'new', on: on('/api-docs') }, ...tail]} /></>; })()}
       </nav>
       <div className="topnav-right">
         <button type="button" className="tn-icon tn-search" aria-label="Search (Ctrl+K)" {...tip('Search')} onClick={() => setSearch(true)}><SearchIcon size={17} /></button>{search && createPortal(<SearchOverlay onClose={() => setSearch(false)} />, document.body)}
         <OpenWeightsOnlyPill className="tn-ow" />
+        <PluginsButton path={path} />{/* Plugins (step 7, 2026-11-07): puzzle button + quick menu, next to Assets */}
         <Link to="/assets" className={`tn-btn tn-assets ${path === '/assets' || path === '/history' ? 'on' : ''}`}><AssetsIcon size={15} /><span className="tn-assets-l">Assets</span></Link>
         <AvatarMenu credits={own ? null : credits} own={own} />
       </div>
@@ -361,7 +369,8 @@ export function MobileTop({ title, tools = [], path = '' }: { title: string; too
   const on = (to: string) => path === to || path.startsWith(to + '/');
   // One active row: a link with ?query is active only when that query is current; the bare path only when no section query is set.
   const isOn = (to: string) => { const [pth, q] = to.split(/[?#]/); const cur = new URLSearchParams(location.search); if (q && to.includes('?')) { const want = new URLSearchParams(q); return pth === path && [...want].every(([k, v]) => cur.get(k) === v); } return on(pth) && !(pth === '/assets' && cur.get('section')) && !(pth === '/' && path !== '/'); };
-  const more: [string, string][] = [[CANVAS_NAV.to, CANVAS_NAV.label], ['/workflows', 'Workflows'], ['/models', 'Models'], ['/assets/brands', 'Brands'], ['/plugins', 'Your workflows'], ['/api-docs', 'API'], ['/licenses', 'Models & licences'], ['/account/usage', own ? 'Spend' : 'Usage'], ['/assets?section=Projects', 'Projects'], ['/assets?section=Favourites', 'Favourites'], ['/settings', 'Settings'], ['/profile', 'View profile']];
+  const canvasOn = usePluginOn('canvas');
+  const more: [string, string][] = [...(canvasOn ? [[CANVAS_NAV.to, CANVAS_NAV.label] as [string, string]] : []), ['/workflows', 'Workflows'], ['/models', 'Models'], ['/assets/brands', 'Brands'], ['/workflows/yours', 'Your workflows'], ['/plugins', 'Plugins'], ['/api-docs', 'API'], ['/licenses', 'Models & licences'], ['/account/usage', own ? 'Spend' : 'Usage'], ['/assets?section=Projects', 'Projects'], ['/assets?section=Favourites', 'Favourites'], ['/settings', 'Settings'], ['/profile', 'View profile']];
   const curGroup: DrawerGroup | null = ((m0) => (m0 === '3d' ? null : m0))(routeMedia(tools, path)) ?? (more.some(([to]) => isOn(to)) ? 'more' : null); /* 3D has no drawer group yet (desktop first) */
   const openMenu = () => { setExp(curGroup); setOpen(true); };
   const A = (to: string, label: React.ReactNode, icon?: React.ReactNode, extra?: React.ReactNode, key?: string) => <Link key={key ?? to} to={to} className={`md-link md-row ${isOn(to) ? 'on' : ''}`} aria-current={isOn(to) ? 'page' : undefined}>{icon && <span className="md-ic" aria-hidden>{icon}</span>}<span className="md-lbl">{label}</span>{extra}</Link>;
@@ -371,7 +380,7 @@ export function MobileTop({ title, tools = [], path = '' }: { title: string; too
   const rowsOf = (m: Medium) => menuFeatures(m, tools, media(m)); /* the same builder as the header panel */
   const toolRows = (m: Medium, all: string) => <>{rowsOf(m).map(r => <Link key={r.key} to={r.to} className={`md-tool ${routeOn(r.to, path) || (!!r.home && routeOn(r.home, path)) ? 'on' : ''}`} aria-current={routeOn(r.to, path) || (!!r.home && routeOn(r.home, path)) ? 'page' : undefined}><span className="md-tic" aria-hidden>{r.tile(18)}</span><span className="md-ttxt"><b>{r.name}</b><small>{r.line}</small></span></Link>)}
     <Link to={`/${m}`} className={`md-tool md-all ${path === `/${m}` ? 'on' : ''}`}><span className="md-ttxt"><b>{all}</b></span><span aria-hidden>›</span></Link></>;
-  const create = tools.find(t => t.id === 'h3-video');
+  const create = tools.find(t => t.id === 'h3-video'); const linkOn = useLinkOn();
   return <header className="m-top">
     <button ref={btn} type="button" className="m-burger" aria-label="Open menu" aria-expanded={open} aria-controls="m-drawer" data-testid="m-burger" onClick={openMenu}><span /><span /><span /></button>
     <Link to="/" className="wordmark" aria-label="Imagination Is All You Need"><Wordmark compact /></Link><span className="m-title">{title}</span>
@@ -383,7 +392,7 @@ export function MobileTop({ title, tools = [], path = '' }: { title: string; too
           <Link to={create?.route ?? VIDEO_PAGE} className="md-create" data-testid="md-create"><span className="md-plus" aria-hidden>+</span><span className="md-lbl">Make something<small>Video</small></span><span aria-hidden>›</span></Link>
           <nav aria-label="Main">
             <div className="md-flat">{A('/', 'Explore', <ExploreIcon size={18} />)}{A('/assets', 'Assets', <AssetsIcon size={18} />)}              {A('/mcp', 'MCP', glyph('M4 12h4l2-5 4 10 2-5h4'), <span className="md-pill">Connect</span>)}{A(REPO_URL, 'GitHub', glyph('M4 5h16v6H4zM4 13h16v6H4zM8 8h.01M8 16h.01'))}</div>
-            <div className="md-accs">{acc('image', 'Image', <ImageIcon size={18} />, toolRows('image', 'All image tools'))}{acc('video', 'Video', <VideoIcon size={18} />, toolRows('video', 'All video tools'))}{acc('audio', 'Audio', <AudioIcon size={18} />, toolRows('audio', 'All audio tools'))}
+            <div className="md-accs">{linkOn(IMAGE_PAGE) && acc('image', 'Image', <ImageIcon size={18} />, toolRows('image', 'All image tools'))}{linkOn(VIDEO_PAGE) && acc('video', 'Video', <VideoIcon size={18} />, toolRows('video', 'All video tools'))}{linkOn(AUDIO_PAGE) && acc('audio', 'Audio', <AudioIcon size={18} />, toolRows('audio', 'All audio tools'))}
               {acc('more', 'More', <MoreIcon size={18} />, more.map(([to, l]) => <Link key={to} to={to} className={`md-tool md-sub ${isOn(to) ? 'on' : ''}`} aria-current={isOn(to) ? 'page' : undefined}><span className="md-ttxt"><b>{l}</b></span></Link>))}</div>
           </nav>
         </div>

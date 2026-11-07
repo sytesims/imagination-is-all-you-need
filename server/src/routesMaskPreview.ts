@@ -17,7 +17,7 @@ import { comfyAuthFor } from './security/keyHosts.js';
 import { createWriteStream, existsSync } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { DATA_DIR, SAMPLES_DIR, config } from './config.js';

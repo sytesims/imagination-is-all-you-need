@@ -44,9 +44,9 @@ const GEN: { id: GenMedium; label: string; hint: string; icon: (p: { size?: numb
   { id: 'image', label: 'Image', hint: 'Create, Relight, Upscale…', icon: ImageIcon }, { id: 'video', label: 'Video', hint: 'Create, Extend, Lip Sync…', icon: VideoIcon },
   { id: 'audio', label: 'Audio', hint: 'Music, sound, speech', icon: AudioIcon }, { id: '3d', label: '3D', hint: 'Text or photos to 3D', icon: CubeIcon }];
 const NODES: { id: 'prompt' | 'upload' | 'note' | 'compare' | 'group' | 'ad'; label: string; hint: string; icon: (p: { size?: number }) => JSX.Element }[] = [
-  { id: 'prompt', label: 'Prompt', hint: 'Feeds a generate node', icon: Ic.PromptIcon }, { id: 'upload', label: 'Upload', hint: 'Image, clip or sound', icon: Ic.UploadIcon },
+  { id: 'prompt', label: 'Prompt', hint: 'Feeds a generate card', icon: Ic.PromptIcon }, { id: 'upload', label: 'Upload', hint: 'Image, clip or sound', icon: Ic.UploadIcon },
   { id: 'note', label: 'Note', hint: 'Plain text for you', icon: Ic.NoteIcon }, { id: 'compare', label: 'Compare', hint: 'Before / after slider', icon: Ic.CompareIcon },
-  { id: 'group', label: 'Group', hint: 'A frame with Run all', icon: Ic.GroupIcon }, { id: 'ad', label: 'Ad layout', hint: 'Headline, price and logo', icon: Ic.AdIcon }];
+  { id: 'group', label: 'Group', hint: 'Cards that run together', icon: Ic.GroupIcon }, { id: 'ad', label: 'Ad layout', hint: 'Headline, price and logo', icon: Ic.AdIcon }];
 
 type Make = (kind: 'gen' | 'prompt' | 'upload' | 'note' | 'compare' | 'group' | 'ad', flow?: string) => void;
 const plural = (n: number) => `${n} workflow${n === 1 ? '' : 's'}`;
@@ -67,17 +67,17 @@ export function NewNodeButton() {
   const make: Make = (kind, flow) => { close(); board.setTool('select'); createNode(board, kind, kind === 'gen' ? { flow: flow ?? DEFAULT_FLOW.image } : {}); };
   const g = step && GEN.find(k => k.id === step); const list = step ? flows.filter(f => f.medium === step) : [];
   return <>
-    <button ref={btn} type="button" className={`cv-tool cv-new${open ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={open} aria-label="New node (G)" {...tip(open ? null : 'New node · G')} data-testid="cv-new" onClick={() => open ? close() : setOpen(true)}><Ic.PlusIcon /></button>
-    <BarPopover open={open} anchor={btn} onClose={close} onEscape={step ? back : close} label={g ? `New ${g.label} node` : 'New node'} placement="right" width={326} testId="cv-new-pop" role="menu">
+    <button ref={btn} type="button" className={`cv-tool cv-new${open ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={open} aria-label="New card (G)" {...tip(open ? null : 'New card · G')} data-testid="cv-new" onClick={() => open ? close() : setOpen(true)}><Ic.PlusIcon /></button>
+    <BarPopover open={open} anchor={btn} onClose={close} onEscape={step ? back : close} label={g ? `New ${g.label} card` : 'New card'} placement="right" width={326} testId="cv-new-pop" role="menu">
       {!g ? <>
         <PopSection label="Generate"><div className="cv-new-grid" role="group">{GEN.map(k => { const n = count(k.id); return <Tile key={k.id} {...k} more={n > 1 ? n : undefined} onClick={() => pick(k.id)} />; })}</div></PopSection>
-        <PopSection label="Nodes"><div className="cv-new-grid" role="group">{NODES.map(k => <Tile key={k.id} {...k} onClick={() => make(k.id)} />)}</div></PopSection>
+        <PopSection label="Cards"><div className="cv-new-grid" role="group">{NODES.map(k => <Tile key={k.id} {...k} onClick={() => make(k.id)} />)}</div></PopSection>
       </> : <div className="cv-new-step">
         <div className="cv-new-head"><button type="button" className="cv-new-back" aria-label="Back" data-testid="cv-new-back" onClick={back}><Ic.ChevronLeftIcon size={16} /></button>
           <i><g.icon size={15} /></i><b>{g.label}</b><span>{plural(list.length)}</span></div>
         <div className="cv-new-flows" role="group" aria-label={`${g.label} workflows`}>{list.map(f => <PopRow key={f.id} role="menuitem" className="cv-new-flow" icon={<FlowIcon flow={f.id} medium={f.medium} size={15} />} label={f.name} hint={f.tagline || f.needs} testId={`cv-new-wf-${f.id}`} onClick={() => make('gen', f.id)} />)}</div>
       </div>}
-      <p className="cv-new-note">A draft node with its price. Nothing runs until you press Generate.</p>
+      <p className="cv-new-note">A draft card with its price. Nothing runs until you press Generate.</p>
     </BarPopover>
   </>;
 }

@@ -3,7 +3,7 @@
  * Each control maps to the engine's own parameter where it has one ('native'), otherwise our ffmpeg
  * post-process applies it at 0 credits ('post'), otherwise it is 'unsupported' (non-default value → 400).
  */
-import { spawn } from 'node:child_process';
+import { spawn } from '../../security/childProcess.js';
 import { rename, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { QWEN3_TTS, QWEN3_TTS_SPEAKERS, QWEN3_TTS_DEFAULT_SPEAKER, QWEN3_TTS_LANGUAGES, QWEN3_TTS_MAX_CHARS } from './qwen3tts.js';

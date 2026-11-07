@@ -14,6 +14,7 @@ import { config } from '../config.js';
 import { env, FILMING } from '../env.js';
 import { ROUTER_RUNNER_ROUTES } from './routerModels.js';
 import { aKey } from '../shared/modelIds.js';
+import { places, QUEUE_PLACES } from '../services/places.js';
 export { ROUTER_RUNNER_ROUTES };
 /** B2: the Comfy Cloud workflow routes with a real runner (keys of comfy/cloudWorkflows.ts CLOUD_WORKFLOWS; test cloud-runner asserts they match). */
 export const CLOUD_RUNNER_ROUTES = new Set(['comfy-cloud:cloud-ltx25-fast-api', 'comfy-cloud:cloud-ltx25-pro-api', 'comfy-cloud:cloud-infinitetalk', 'comfy-cloud:cloud-h3-extend', 'comfy-cloud:cloud-ltx25-layout', 'comfy-cloud:cloud-h3-wf', 'comfy-cloud:cloud-ltx-camera', 'comfy-cloud:cloud-reshoot', /* H3 runner Step 1: the user's own Comfy deployment */ 'comfy-deploy:deploy-smoke', 'comfy-deploy:cloud-h3-crossview' /* Step 3 */, 'comfy-cloud:cloud-h3-charswap' /* Oct 26: H3 Character Swap · Comfy Cloud (imported LoRA) */, 'comfy-cloud:cloud-ltx25-video', 'comfy-cloud:cloud-ltx25-extend' /* Oct 27: LTX-2.5 22B · Comfy Cloud */, 'comfy-cloud:cloud-minimax-music' /* Oct 27: MiniMax Music 3 · Comfy Cloud */, 'comfy-cloud:cloud-ltx23-vfx' /* Oct 27: Footage Effects · Comfy Cloud */, 'comfy-cloud:cloud-h3-fast' /* Oct 27: MiniMax H3 Fast · Comfy Cloud */, 'comfy-cloud:cloud-h3-pika' /* Nov 1: Pika H3 Flex · Comfy Cloud */, 'comfy-cloud:cloud-h3-keyframes' /* Oct 27: MiniMax H3 Keyframes · Comfy Cloud */]);
@@ -24,9 +25,10 @@ export const cloudRunnerLive = () => config.backend !== 'mock' || /^(1|true)$/i.
 /** BUG-HUNT-10 PB re-check 2: plain user copy (reasonCode stays 'not_wired'). As a reason chip: "Not available on this server yet". */
 export const NOT_WIRED_REASON = 'not ready in this app yet';
 /** Sentence for 409s / notices: "<label> isn't available on this server yet." */
-export const notWiredSentence = (label: string) => `${label.replace(/\bComfy Router\b/g, 'Comfy Cloud')} isn’t ready yet. Pick another model.`;
+export const notWiredSentence = (label: string) => `${label.replace(/\bComfy Router\b/g, 'Comfy Cloud').replace(/\s*·\s*partner (model|API)\b/, '')} isn’t ready yet. Pick another model.`;
 export function routeRunnable(r: Pick<RouteDef, 'kind' | 'routeId' | 'direct' | 'request' | 'routerOff'> & { cloudRun?: unknown }): boolean {
-  if (r.kind === 'local' || r.kind === 'fal' || r.kind === 'replicate') return true;
+  if (r.kind === 'local' || (QUEUE_PLACES.has(r.kind) && !places.off(r.kind))) return true; // fal / Replicate run any route of theirs (the route is the model slug), when their place plugin is on
+  if (r.kind === 'runpod' && !places.off('runpod')) return true; // your RunPod endpoint runs any of its routes (our ComfyUI graphs, place-runpod)
   if (r.direct) return true; // official lab APIs (providers/direct.ts)
   if (r.cloudRun) return true; // 3D: a partner-node graph this route runs on Comfy Cloud itself (tools/threeD.ts)
   return CLOUD_RUNNER_ROUTES.has(r.routeId) || (ROUTER_RUNNER_ROUTES.has(r.routeId) && !r.routerOff); // + Comfy Router models (routing/routerModels.ts, routerRun.ts)

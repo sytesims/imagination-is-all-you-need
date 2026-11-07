@@ -51,9 +51,9 @@ try {
   const snap = TOOL_SNAPSHOT.map((t) => t.id).sort();
   const missingSnap = liveIds.filter((id) => !snap.includes(id)); const extraSnap = snap.filter((id) => !liveIds.includes(id));
   assert.deepEqual({ missingSnap, extraSnap }, { missingSnap: [], extraSnap: [] }, 'src/catalog.snapshot.ts is stale: run `OPENHIGGSFIELD_API=<a running API> npm run gen:catalog --prefix mcp`');
-  const runTool: any = mcpTools.find((t) => t.name === 'run'); const en: string[] = runTool?.inputSchema?.properties?.tool_id?.enum ?? [];
-  const missing = liveIds.filter((id) => !en.includes(id)); assert.deepEqual(missing, [], `server tools missing from MCP run: ${missing.join(', ')}`);
-  ok(`all ${liveIds.length} server tools are in run's tool_id list and the snapshot`);
+  // 2026-11-07: run.tool_id is a plain string checked against the live catalogue on each call (a new tool needs no restart; a typo answers "did you mean")
+  const runTool: any = mcpTools.find((t) => t.name === 'run'); assert.equal(runTool?.inputSchema?.properties?.tool_id?.type, 'string'); assert.equal(runTool?.inputSchema?.properties?.tool_id?.enum, undefined);
+  ok(`all ${liveIds.length} server tools are in the snapshot; run takes any live tool id (checked per call)`);
   for (const t of live) {
     const d = await call('describe', { id: t.id }); assert.equal(d.err, false, `${t.id}: ${text(d.raw)}`);
     assert.equal(d.r.id, t.id); assert.deepEqual(Object.keys(d.r.fields.properties).sort(), [...new Set((t.inputs ?? []).map((i: any) => i.name))].sort(), `${t.id}: schema = inputs`);

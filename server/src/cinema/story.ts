@@ -37,7 +37,8 @@ import { getTool } from '../tools/registry.js';
 import { resolveElements } from '../elements/resolve.js';
 import { listElements } from '../library.js';
 import { CAMERA_MOVES } from './timeline.js';
-import { AGENT_HEADER, admitBudget, budgetById, budgetOfRequest, type AgentBudget } from '../agentBudget.js';
+import { AGENT_HEADER, budgetById, budgetOfRequest, type AgentBudget } from '../agentBudget.js';
+import { admitStage } from '../spendGuard.js';
 
 export const STORY_MIN_SHOTS = 2;
 export const STORY_MAX_SHOTS = 12;
@@ -187,7 +188,7 @@ export function registerStory(app: FastifyInstance) {
    *  (unknown / closed fails closed, before quoting). refused → the reply was sent. */
   function agentGate(reply: any, b: AgentBudget | { error: string; status: number } | undefined, q: StoryQuote | null, model: string): { agent: { id: string; name: string } | null } | { sent: any } {
     const credits = q ? Math.round(q.shots.filter((x) => x.ok && !x.demo).reduce((a, x) => a + x.credits, 0)) * q.takes : 0;
-    const a = admitBudget(q || (b && 'error' in b) ? b : undefined, { jobId: `story:${randomUUID().slice(0, 8)}`, toolId: 'cinema', model, estUsd: q?.total.estUsd ?? 0, credits, hold: false });
+    const a = admitStage('budget', { budget: q || (b && 'error' in b) ? b : undefined, budgetUsd: q?.total.estUsd ?? 0, budgetCredits: credits, credits, free: false, jobId: `story:${randomUUID().slice(0, 8)}`, toolId: 'cinema', model, hold: false }); // ctx.spend, the agent budget stage
     return 'refused' in a ? { sent: reply.code(a.refused.status).send(q ? { ...a.refused.body, quote: q } : a.refused.body) } : a;
   }
   const changed = (reply: any, q: StoryQuote) => reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: 'The price changed since you looked. Review the new total and press Generate again.', quote: q, charged: false, calm: true, refund: nothing });

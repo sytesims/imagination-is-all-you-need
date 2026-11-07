@@ -22,7 +22,7 @@ async function submit(tool: string, form: Record<string, string>, files: Record<
 const wait = async (id: string) => { for (let i = 0; i < 600; i++) { const j = await get(`/api/jobs/${id}`); if (['done', 'failed', 'blocked', 'canceled'].includes(j.status)) return j; await new Promise((r) => setTimeout(r, 200)); } throw new Error('timeout'); };
 /** Fill what the prefill says is still needed, the way a user would. */
 const fillNeeds = (p: any) => { const extra: Record<string, string> = {}; const nf: Record<string, string> = {};
-  for (const n of p.needs ?? []) { if (n === 'prompt') extra.prompt = 'a slow cinematic take'; else if (n === 'refs' || n === 'image' || n === 'mask' || n === 'lastFrame' || n === 'presenterImage' || n === 'face' /* Face Swap */ || n === 'person' /* Person Swap */ || n === 'garment' /* Try On */ || n === 'personA' || n === 'personB' /* Swap Two People */ || n === 'material' /* Material Swap */) nf[n] = SAMPLE.image; else if (n === 'video') nf[n] = SAMPLE.video; else if (n === 'angles') extra.angles = JSON.stringify([{ start: 0, end: 3, angle: 'low angle' }]); else throw new Error(`unexpected need ${n} for ${p.tool}`); }
+  for (const n of p.needs ?? []) { if (n === 'prompt') extra.prompt = 'a slow cinematic take'; else if (n === 'refs' || n === 'image' || n === 'mask' || n === 'lastFrame' || n === 'presenterImage' || n === 'face' /* Face Swap */ || n === 'person' /* Person Swap */ || n === 'garment' /* Try On */ || n === 'personA' || n === 'personB' /* Swap Two People */ || n === 'material' /* Material Swap */) nf[n] = SAMPLE.image; else if (n === 'video') nf[n] = SAMPLE.video; else if (n === 'angles') extra.angles = JSON.stringify([{ start: 0, end: 3, angle: 'low angle' }]); else if (n === 'objects') extra.objects = JSON.stringify(['person']); /* Video to layers: the names to split out */ else throw new Error(`unexpected need ${n} for ${p.tool}`); }
   if (p.tool === 'app-expand') extra.target = '16:9'; /* the sample image is 1:1 like it was asked (2026-10-26); Expand needs another shape */
   return { extra, nf }; };
 let TOOLS: Record<string, any> = {}; let parentChecks = 0;
@@ -128,9 +128,9 @@ try {
     ok('director&focus=palette: video → cinema mode=edit slot video, image → mode=image slot refs (as=ref), palette=auto; both submitted → 200'); }
 
   // ---- available:false (tool turned off) instead of an error ----
-  { const r = await req('POST', '/api/plugins/cutout', { enabled: false }); assert.ok(r.status < 300, JSON.stringify(r.body));
+  { const r = await req('POST', '/api/workflow-folders/cutout', { enabled: false }); assert.ok(r.status < 300, JSON.stringify(r.body));
     const p = await req('GET', `/api/jobs/${vid.id}/prefill?action=send-to&tool=cutout`); assert.equal(p.status, 200); assert.equal(p.body.available, false); assert.ok(p.body.reason); assert.equal(p.body.form, null);
-    await req('POST', '/api/plugins/cutout', { enabled: true }); ok(`disabled tool → 200 available:false ("${p.body.reason}")`); }
+    await req('POST', '/api/workflow-folders/cutout', { enabled: true }); ok(`disabled tool → 200 available:false ("${p.body.reason}")`); }
 
   // ---- errors ----
   { const e = async (u: string, s: number, code?: string) => { const r = await req('GET', u); assert.equal(r.status, s, `${u} ${JSON.stringify(r.body)}`); if (code) assert.equal(r.body.code, code); return r.body; };

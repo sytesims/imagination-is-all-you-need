@@ -10,6 +10,8 @@
  *    Keys never leave the server except in the request to that provider's own API; billing / top-up endpoints are never called.
  * Team mode (billingMode.ts) keeps the credit ledger exactly as before; the spend log is written in both modes.
  */
+import { keyedFetch, type KeyScope } from './security/keyedFetch.js';
+import { FAL_SCOPE, BFL_SCOPE, COMFY_SCOPE } from './security/keyScopes.js';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { all, put, getKv } from './db.js';
 import { config } from './config.js';
@@ -26,6 +28,8 @@ import { r4, comfyUnits, exactWithinCent, providerUnits } from './shared/runCost
 import { RUN_ON_LABELS, runOnOfRoute, LOCAL_LABEL } from './shared/modelIds.js';
 import { metaOf, listProjects } from './library.js';
 import { spendCapUsd, saveSpendCap, capVerdict } from './spendCap.js';
+import { pricing, isQuoteRequest } from './services/pricing.js';
+import { moneyFeature } from './services/spendFeatures.js';
 import { periodStart, isSpendPeriod, buckets, quoteAccuracy, overQuoteByTool, shareByTool, type SpendPeriod } from './shared/spendInsights.js';
 import { policyRefusalCharge } from './shared/policyBilling.js';
 
@@ -54,6 +58,15 @@ export const PROVIDER_BILLING: ProviderBilling[] = [
   { id: 'replicate', name: 'Replicate', failureRule: 'not-charged', failureNote: 'Replicate says: if a run fails, you are not charged (public models).', failureSource: 'https://replicate.com/docs/topics/billing',
     actualCost: 'none', actualNote: 'Predictions report run time, not cost.', balance: 'none', balanceNote: 'Replicate has no balance or usage API.', scopedKeys: 'Not documented.',
     billingUrl: 'https://replicate.com/account/billing', docsUrl: 'https://replicate.com/docs/reference/http' },
+  { id: 'sunra', name: 'Sunra', failureRule: 'not-charged', failureNote: 'Sunra says: failed predictions are not charged; credits reserved for the request are released.', failureSource: 'https://docs.sunra.ai/platform/errors',
+    actualCost: 'per-job', actualNote: 'The request status reports the settled charge (billing.amount in USD); it is recorded as the run’s cost. Sunra adds a 5% fee to each API top-up (not in our prices).', balance: 'none', balanceNote: 'Sunra shows the API balance in its dashboard.', scopedKeys: 'Yes: budget keys with a spending cap.',
+    billingUrl: 'https://sunra.ai/dashboard/billing', docsUrl: 'https://docs.sunra.ai/platform/pricing' },
+  { id: 'kie', name: 'kie.ai · reseller, may change without notice', failureRule: 'not-charged', failureNote: 'kie.ai says failed tasks consume no credits (creditsConsumed 0). It is a reseller: prices and models may change without notice.', failureSource: 'https://docs.kie.ai/market/common/get-task-detail',
+    actualCost: 'per-job', actualNote: 'Each finished task reports creditsConsumed (200 credits = $1); it is recorded as the run’s cost.', balance: 'none', balanceNote: 'kie.ai shows the credit balance in its dashboard.', scopedKeys: 'Not documented.',
+    billingUrl: 'https://kie.ai/pricing', docsUrl: 'https://docs.kie.ai/' },
+  { id: 'runpod', name: 'RunPod', failureRule: 'may-charge', failureNote: 'RunPod bills the GPU seconds a job ran, also when the workflow fails or is cancelled while running. A file refused before sending costs nothing.', failureSource: 'https://docs.runpod.io/serverless/pricing',
+    actualCost: 'per-job', actualNote: 'Each job reports its GPU time (executionTime); the cost is those seconds × your GPU rate (Settings, default the 48 GB rate). The price before a run is an estimate.', balance: 'none', balanceNote: 'RunPod shows the balance in its console.', scopedKeys: 'Yes: keys can be limited to read or to some endpoints.',
+    billingUrl: 'https://www.runpod.io/console/user/billing', docsUrl: 'https://docs.runpod.io/serverless/endpoints/send-requests' },
   { id: 'bfl', name: 'Black Forest Labs', failureRule: 'not-charged', failureNote: 'BFL says only finished generations (status Ready) use credits; moderated requests are free.', failureSource: 'https://help.bfl.ai/articles/4212278032-my-prompt-is-getting-moderated',
     actualCost: 'per-job', actualNote: 'Each request returns its cost in BFL credits (1 credit = $0.01).', balance: 'api', balanceNote: 'Read from BFL’s credits endpoint.', scopedKeys: 'Not documented.',
     billingUrl: 'https://docs.bfl.ai/quick_start/pricing', docsUrl: 'https://docs.bfl.ai/api-reference/get-the-users-credits' },
@@ -86,7 +99,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 export function billedToOf(kind: string | null | undefined, routeId?: string | null): BilledTo {
   if (!kind || kind === 'local') return 'local';
   if (kind === 'comfy-router' || kind === 'comfy-cloud') return 'comfy';
-  if (kind === 'fal' || kind === 'replicate') return kind;
+  if (kind === 'fal' || kind === 'replicate' || kind === 'sunra' || kind === 'kie' || kind === 'runpod') return kind;
   const r = routeId ? findRoute(routeId) : undefined; return providerForEnvKey(r?.envKey) ?? (routeId?.startsWith('direct:bfl') ? 'bfl' : 'direct');
 }
 export interface CostEstimate { billedTo: BilledTo; billedToName: string; estUsd: number; estUnits?: number; unitLabel?: string; failureRule: FailureRule; failureNote: string; estimated: boolean;
@@ -102,7 +115,10 @@ export interface CostEstimate { billedTo: BilledTo; billedToName: string; estUsd
 export { comfyUnits }; // shared/runCost.ts: one rounding for the quote and the bar's option prices
 const unitsOf = (billedTo: BilledTo, usd: number) => providerUnits(billedTo, usd); // shared/runCost.ts (the bar's option prices use the same)
 /** ✦ credits (1 credit = $0.01, the existing quote field) → the cost object. */
-export function costOf(o: { kind: string | null | undefined; routeId?: string | null; credits: number | null; demo?: boolean; listCredits?: number | null; estimated?: boolean; exactUsd?: number | null; unconfirmed?: boolean }): CostEstimate {
+/** The price words for a request that can't run here and has no price: an agent read the old "Free" as a free run (2026-11-07). */
+export const NOT_AVAILABLE_TEXT = 'Not available';
+/** unavailable: the request can't run here and has no price (credits null: not wired, coming soon, held until measured): usdText "Not available", never "Free". */
+export function costOf(o: { kind: string | null | undefined; routeId?: string | null; credits: number | null; demo?: boolean; listCredits?: number | null; estimated?: boolean; exactUsd?: number | null; unconfirmed?: boolean; unavailable?: boolean }): CostEstimate {
   const billedTo = billedToOf(o.kind, o.routeId); const info = billingInfo(billedTo);
   const real = billedTo === 'local' ? 0 : o.demo ? (o.listCredits ?? null) : o.credits;
   const realUsd = real == null ? null : r4(real / 100); const estUsd = o.demo || billedTo === 'local' ? 0 : realUsd ?? 0;
@@ -113,7 +129,7 @@ export function costOf(o: { kind: string | null | undefined; routeId?: string | 
   const checkedAt = billedTo === 'local' ? null : hp?.checkedAt ?? (route as any)?.checkedAt ?? null; const sourceUrl = billedTo === 'local' ? null : hp?.sourceUrl ?? (route as any)?.sourceUrl ?? null;
   const plan = billedTo === 'comfy' ? effectiveComfyPlan() : null; const estimated = billedTo !== 'local' && (o.estimated ?? true);
   const shownUsd = o.demo ? realUsd ?? 0 : estUsd;
-  const usdText = billedTo === 'local' ? LOCAL_FREE : shownUsd > 0 ? usdToken(shownUsd, { approx: estimated }) : 'Free';
+  const usdText = billedTo === 'local' ? LOCAL_FREE : o.unavailable && o.credits == null && !o.demo ? NOT_AVAILABLE_TEXT : shownUsd > 0 ? usdToken(shownUsd, { approx: estimated }) : 'Free';
   const cost: CostEstimate = { billedTo, billedToName: info.name, estUsd, ...units, failureRule: info.failureRule, failureNote: info.failureNote, estimated, demo: !!o.demo && billedTo !== 'local', realRunUsd: billedTo === 'local' ? 0 : realUsd, actualReported: info.actualCost === 'per-job',
     checkedAt, sourceUrl, plan, usdText, ...(billedTo !== 'local' && (o.unconfirmed || (hp && hp.usd == null && typeof hp.estimateUsd === 'number')) ? { unconfirmed: true } : {}) };
   cost.detail = costDetail(cost); return cost;
@@ -256,7 +272,8 @@ export function spendTally(now = new Date()) {
   const projects = [...by.values()].map((g) => ({ ...g, thisMonthUsd: r4(g.thisMonthUsd), lastMonthUsd: r4(g.lastMonthUsd) })).filter((g) => g.thisMonthUsd > 0 || g.lastMonthUsd > 0)
     .sort((a, b) => b.thisMonthUsd - a.thisMonthUsd || b.lastMonthUsd - a.lastMonthUsd);
   const thisMonth = month(true, thisFrom); const cap = capVerdict({ capUsd: spendCapUsd(), spentUsd: thisMonth.spentUsd, runUsd: 0, now });
-  return { thisMonth, lastMonth: month(false, lastFrom), projects, cap: { monthlyUsd: cap.capUsd, spentUsd: cap.spentUsd, leftUsd: cap.leftUsd, resetsOn: cap.resetsOn } };
+  // cap: the Spend page's monthly-limit card; left out when the spend-cap plugin is off (no card, no check)
+  return { thisMonth, lastMonth: month(false, lastFrom), projects, ...(moneyFeature('spend-cap') ? { cap: { monthlyUsd: cap.capUsd, spentUsd: cap.spentUsd, leftUsd: cap.leftUsd, resetsOn: cap.resetsOn } } : {}) };
 }
 export const spentUsd = (provider: string, period: 'day' | 'month', now = new Date(), excludeJobId?: string) => { const from = startOf(period, now); return r4(rows().filter((r) => r.billedTo === provider && r.createdAt >= from && r.jobId !== excludeJobId).map(live).reduce((s, r) => s + countedUsd(r), 0)); };
 
@@ -334,17 +351,17 @@ export function plansView() {
     detectNote: 'Comfy’s API doesn’t report the plan, so pick yours. It only changes the detail line: every Comfy plan and top-up works out to about 211 Comfy credits per $1.',
     options: COMFY_PLANS } };
 }
-const get = async (url: string, headers: Record<string, string>) => { const r = await fetch(url, { headers: { accept: 'application/json', ...headers }, signal: AbortSignal.timeout(8000) });
+const get = async (scope: KeyScope, url: string, headers: Record<string, string>) => { const r = await keyedFetch(scope, url, { headers: { accept: 'application/json', ...headers }, signal: AbortSignal.timeout(8000) });
   if (!r.ok) { const e: any = new Error(`HTTP ${r.status}`); e.status = r.status; throw e; } return r.json() as Promise<any>; };
 /** Read-only endpoints only. Never billing writes, never top-ups. */
 const READERS: Record<string, Reader> = {
   // GET https://api.fal.ai/v1/account/billing?expand=credits → credits.current_balance, credits.currency (scope billing:usage:read)
-  fal: async (key) => { const j = await get('https://api.fal.ai/v1/account/billing?expand=credits', { authorization: `Key ${key}` }); const b = Number(j?.credits?.current_balance); if (!Number.isFinite(b)) throw new Error('no balance in reply');
+  fal: async (key) => { const j = await get(FAL_SCOPE, 'https://api.fal.ai/v1/account/billing?expand=credits', { authorization: `Key ${key}` }); const b = Number(j?.credits?.current_balance); if (!Number.isFinite(b)) throw new Error('no balance in reply');
     const cur = String(j?.credits?.currency ?? 'USD').toUpperCase(); return { balance: b, balanceUnit: cur, balanceUsd: cur === 'USD' ? b : NaN }; },
   // GET https://api.bfl.ai/v1/credits (x-key) → { credits } (1 credit = $0.01)
-  bfl: async (key) => { const j = await get('https://api.bfl.ai/v1/credits', { 'x-key': key }); const c = Number(j?.credits); if (!Number.isFinite(c)) throw new Error('no credits in reply'); return { balance: c, balanceUnit: 'BFL credits', balanceUsd: c / 100 }; },
+  bfl: async (key) => { const j = await get(BFL_SCOPE, 'https://api.bfl.ai/v1/credits', { 'x-key': key }); const c = Number(j?.credits); if (!Number.isFinite(c)) throw new Error('no credits in reply'); return { balance: c, balanceUnit: 'BFL credits', balanceUsd: c / 100 }; },
   // GET https://cloud.comfy.org/api/billing/usage/timeseries (X-API-Key) → summary.balance.amount_micros (cents, despite the name), summary.spend_micros (millionths of USD)
-  comfy: async (key) => { const from = new Date(startOf('month')).toISOString(); const j = await get(`https://cloud.comfy.org/api/billing/usage/timeseries?granularity=month&starting_on=${encodeURIComponent(from)}`, { 'x-api-key': key });
+  comfy: async (key) => { const from = new Date(startOf('month')).toISOString(); const j = await get(COMFY_SCOPE, `https://cloud.comfy.org/api/billing/usage/timeseries?granularity=month&starting_on=${encodeURIComponent(from)}`, { 'x-api-key': key });
     const cents = Number(j?.summary?.balance?.amount_micros); if (!Number.isFinite(cents)) throw new Error('no balance in reply'); const spend = Number(j?.summary?.spend_micros);
     return { balance: Math.round((cents / 100) * COMFY_CREDITS_PER_USD), balanceUnit: 'Comfy credits', balanceUsd: cents / 100, monthSpendUsd: Number.isFinite(spend) ? spend / 1e6 : null, plan: planInReply(j) }; },
 };
@@ -366,10 +383,12 @@ async function account(id: string, refresh: boolean): Promise<AccountView> {
     v = { ...base, connected: true, fetchedAt: new Date().toISOString(), source: 'unavailable', note: why, keyCheck }; }
   cache.set(id, { at: Date.now(), v }); return v;
 }
+/** Did the provider refuse this key on the last balance read? Cached reads only: never calls the provider (Plugins page: the orange dot). */
+export const keyRejected = (id: string): boolean => cache.get(id)?.v.keyCheck === 'rejected';
 export const accounts = (refresh = false) => Promise.all(PROVIDER_BILLING.filter((p) => p.id !== 'local').map((p) => account(p.id, refresh)));
 
 // ---------- HTTP ----------
-const canWrite = (req: FastifyRequest) => isLoopback(process.env.HOST) || isLoopback(req.ip);
+export const canWrite = (req: FastifyRequest) => isLoopback(process.env.HOST) || isLoopback(req.ip);
 const WRITE_NOTE = 'Billing settings can be changed only from this computer (the server’s own address).';
 function summary(period: 'day' | 'month') {
   const from = startOf(period); const list = rows().filter((r) => r.createdAt >= from).map(live);
@@ -396,6 +415,7 @@ export function registerBilling(app: FastifyInstance) {
     const b = (req.body ?? {}) as { mode?: string; comfyPlan?: unknown }; const cur = billingSettings(); // an old client's `limits` is ignored (spending limits were removed)
     if (b.comfyPlan !== undefined && b.comfyPlan !== null && !isComfyPlanId(b.comfyPlan)) return reply.code(400).send({ error: "comfyPlan must be 'standard', 'creator', 'pro', 'payg' or null", errorType: 'validation', issues: [{ code: 'invalid', field: 'comfyPlan', message: "Use 'standard', 'creator', 'pro', 'payg' or null." }] });
     if (b.mode != null && b.mode !== 'own-accounts' && b.mode !== 'team') return reply.code(400).send({ error: "mode must be 'own-accounts' or 'team'", errorType: 'validation', issues: [{ code: 'invalid', field: 'mode', message: "Use 'own-accounts' or 'team'." }] });
+    if (b.mode === 'team' && !moneyFeature('billing-team-mode')) return reply.code(400).send({ error: 'Team mode isn’t set up in this app (the billing-team-mode plugin is off).', errorType: 'validation', code: 'team_mode_off', issues: [{ code: 'team_mode_off', field: 'mode', message: 'Team mode isn’t set up in this app.' }] });
     if (b.mode != null && b.mode !== cur.mode && modeLocked()) return reply.code(409).send({ error: 'The billing mode is set by OPENHIGGSFIELD_BILLING_MODE on this server, so it can’t be changed here.', errorType: 'validation', code: 'mode_locked' });
     const next = saveBillingSettings({ mode: (b.mode as BillingMode) ?? cur.mode, ...(b.comfyPlan !== undefined ? { comfyPlan: (b.comfyPlan as ComfyPlanSetting) ?? null } : {}) });
     console.log(`[billing-settings] write caller=${req.ip} mode=${next.mode}`);
@@ -423,35 +443,35 @@ export function registerBilling(app: FastifyInstance) {
     return reply.header('cache-control', 'no-store').send(spendOverview(p));
   });
   app.get('/api/spend/tally', async (req, reply) => reply.header('cache-control', 'no-store').send({ ...spendTally(), canWrite: canWrite(req) }));
-  app.put('/api/settings/spend-cap', async (req, reply) => {
+  app.get<{ Querystring: { refresh?: string } }>('/api/accounts', async (req) => ({ accounts: await accounts(/^(1|true)$/i.test(req.query.refresh ?? '')), cacheSeconds: CACHE_MS / 1000, mockBackend: config.backend === 'mock' }));
+  // Every quote (GET /api/tools/:id/price, /api/models/quote; POST /price re-enters as a GET) goes through ctx.pricing's quote/compute
+  // waterfall: `cost` + `billingMode` (the core step below), then the monthly limit (spend-cap) and the agent budget (agent-budgets).
+  // Registered after the routing hook, so it sees the final route and credits.
+  app.addHook('preSerialization', async (req, _reply, payload: any) => (isQuoteRequest(req, payload) ? pricing.compute(req, payload) : payload));
+}
+
+/** PUT /api/settings/spend-cap (the spend-cap plugin registers it): save or turn off the monthly limit, from this computer only. */
+export async function putSpendCap(req: FastifyRequest, reply: import('fastify').FastifyReply) {
     if (!canWrite(req)) return reply.code(403).send({ error: 'The monthly limit can be changed only from this computer.', errorType: 'forbidden' });
     const r = saveSpendCap((req.body as { monthlyUsd?: unknown } | null)?.monthlyUsd);
     if (!r.ok) return reply.code(400).send({ error: r.error, errorType: 'validation', issues: [{ code: 'invalid', field: 'monthlyUsd', message: r.error }] });
     console.log(`[spend-cap] write caller=${req.ip} on=${r.monthlyUsd != null}`);
     return { ...spendTally(), canWrite: true };
-  });
-  app.get<{ Querystring: { refresh?: string } }>('/api/accounts', async (req) => ({ accounts: await accounts(/^(1|true)$/i.test(req.query.refresh ?? '')), cacheSeconds: CACHE_MS / 1000, mockBackend: config.backend === 'mock' }));
-  // Every quote (GET /api/tools/:id/price, /api/models/quote; POST /price re-enters as a GET) gets `cost` + `billingMode` (no spending limits since 2026-10-28).
-  // Registered after the routing hook, so it sees the final route and credits.
-  app.addHook('preSerialization', async (req, reply, payload: any) => {
-    if (payload?.composite === true && payload.toolId === 'app-photos-to-reel') return payload; // Already summed from the child quotes, including their billing modes.
-    const url = req.url.split('?')[0];
-    if (req.method !== 'GET' || !(url === '/api/models/quote' || /^\/api\/tools\/[^/]+\/price$/.test(url)) || !payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
-    if (!('credits' in payload) && !('routeKind' in payload)) return payload;
-    try {
-      const kind = payload.routeKind ?? (payload.local === true || payload.localRun === true ? 'local' : null);
-      const routeId = payload.routeId ?? payload.route ?? null;
-      const credits = typeof payload.credits === 'number' ? payload.credits : null;
-      if (kind == null && credits == null) return { ...payload, billingMode: billingMode(), cost: null };
-      // Every pre-run price is an estimate (list price × the job's units); only the spend log's actualUsd is a provider-reported figure.
-      // exactUsd: set by the routing hook from the routed price (routing/http.ts routeExactUsd), so it always belongs to these credits
-      const exactUsd = typeof payload.exactUsd === 'number' ? payload.exactUsd : null;
-      const cost = costOf({ kind: kind ?? (credits ? 'direct' : 'local'), routeId, credits, demo: payload.demo === true, listCredits: payload.listCredits ?? null, estimated: true, exactUsd, unconfirmed: payload.unconfirmed === true });
-      // Monthly cap (spendCap.ts): the quote says first when this run would go past it, so Generate shows why before a click.
-      const cv = checkSpendCap(runCountsUsd(cost, payload.free === true));
-      const capView = cv.capUsd == null ? {} : { spendCap: { monthlyUsd: cv.capUsd, spentUsd: cv.spentUsd, leftUsd: cv.leftUsd, resetsOn: cv.resetsOn, ok: cv.ok } };
-      if (!cv.ok && payload.runnable !== false) return { ...payload, billingMode: billingMode(), cost, ...capView, runnable: false, blockedReason: cv.reason, blockedCode: 'spend_cap' };
-      return { ...payload, billingMode: billingMode(), cost, ...capView };
-    } catch { return payload; }
-  });
 }
+
+/** quote/compute, core step (order 0): `cost` + `billingMode` on every quote (no spending limits since 2026-10-28). */
+pricing.setCore({ id: 'cost', order: 0, run(q) {
+  const payload = q.payload;
+  if (payload?.composite === true && payload.toolId === 'app-photos-to-reel') return payload; // Already summed from the child quotes, including their billing modes.
+  if (!('credits' in payload) && !('routeKind' in payload)) return payload;
+  const kind = payload.routeKind ?? (payload.local === true || payload.localRun === true ? 'local' : null);
+  const routeId = payload.routeId ?? payload.route ?? null;
+  const credits = typeof payload.credits === 'number' ? payload.credits : null;
+  if (kind == null && credits == null) return { ...payload, billingMode: billingMode(), cost: null };
+  // Every pre-run price is an estimate (list price × the job's units); only the spend log's actualUsd is a provider-reported figure.
+  // exactUsd: set by the routing hook from the routed price (routing/http.ts routeExactUsd), so it always belongs to these credits
+  const exactUsd = typeof payload.exactUsd === 'number' ? payload.exactUsd : null;
+  const cost = costOf({ kind: kind ?? (credits ? 'direct' : 'local'), routeId, credits, demo: payload.demo === true, listCredits: payload.listCredits ?? null, estimated: true, exactUsd, unconfirmed: payload.unconfirmed === true,
+    unavailable: payload.runnable === false /* can't run and no price (credits null): "Not available", never "Free" (agent path audit 2026-11-07 #2) */ });
+  q.cost = cost; return { ...payload, billingMode: billingMode(), cost };
+} });

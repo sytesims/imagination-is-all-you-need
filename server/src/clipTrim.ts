@@ -23,6 +23,7 @@ import { EDIT_MODELS } from './tools/promptEdit.js';
 import { FINISH_TOOL, FINISH_MIN_SECONDS, FINISH_MAX_SECONDS } from './shared/finishPresets.js';
 import { FOOTAGE_FX_TOOL, FOOTAGE_FX_MAX_SECONDS } from './shared/footageFx.js';
 import { CROSSVIEW_PROVIDER, CROSSVIEW_SECONDS } from './shared/crossview.js';
+import { LAYERS_TOOL, LAYERS_MAX_SECONDS } from './layers/constants.js';
 
 export interface ClipTrimLimits { min: number; max: number }
 type Span = { min?: number; max?: number };
@@ -40,6 +41,7 @@ const byTool = (toolId: string, providerId: string): Span | null => {
   if (toolId === 'two-person-swap') return TWO_SWAP_SECONDS;
   if (toolId === FINISH_TOOL) return { min: FINISH_MIN_SECONDS, max: FINISH_MAX_SECONDS }; // Finish: up to 20 s (a longer clip used its start)
   if (toolId === FOOTAGE_FX_TOOL) return { min: 1, max: FOOTAGE_FX_MAX_SECONDS }; // Footage Effects: 5 s a run (a longer clip used its start; parse takes ≥ 0.7 s)
+  if (toolId === LAYERS_TOOL) return { min: 1, max: LAYERS_MAX_SECONDS }; // Layers (plugin layers): up to 15 s
   if (toolId === 'h3-extend' && providerId === LTX25_EXTEND_ID) return { min: 1, max: EXTEND_MAX_SEC }; // LTX-2.5 Extend checks its own source rule (ownLimits)
   const ev = EDIT_VIDEO_LIMITS[toolId]; return ev ? { min: ev.minSeconds, max: ev.maxSeconds } : null;
 };
@@ -62,8 +64,10 @@ const cutsItself = (t: ToolDef) => t.inputs.some((i) => i.name === 'trimStart');
 
 /** Give a tool with a clip the shared range (trimStart / trimEnd). Tools that already cut it themselves (Video Swap, Swap Two People) are left as
  *  they are. A range is billed as its own length, as the quote sends it (quote = charge). */
+const TRIMMED = new WeakSet<ToolDef>();
 export function withClipTrim(tool: ToolDef): ToolDef {
-  if (!hasClip(tool) || cutsItself(tool)) return tool;
+  if (!hasClip(tool) || cutsItself(tool) || TRIMMED.has(tool)) return tool; // once per tool: a studio turned off and on again registers the same tool
+  TRIMMED.add(tool);
   tool.inputs = [...tool.inputs, { name: 'trimStart', kind: 'number' }, { name: 'trimEnd', kind: 'number' }];
   const parse = tool.parseInput.bind(tool);
   tool.parseInput = async (fields, files) => {

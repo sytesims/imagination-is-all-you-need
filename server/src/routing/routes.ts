@@ -22,13 +22,15 @@ import { H3_CAMERA_MOVES, H3_EXTEND_OVERLAP_FRAMES } from '../tools/h3/catalog.j
 import { routerBase, ROUTER_NO_FALLBACK } from '../comfyRouter.js';
 import { capsFor, GEMINI_ASPECTS_10 } from '../shared/imageCaps.js';
 import { REPLICATE_FLUX2_ASPECTS } from '../shared/hostedAspects.js';
-import { keyValue } from './keys.js';
 import { bflSpec, b64 } from '../providers/directSpecs.js';
 import { LAYOUT_BOXES_LOCAL_ONLY, withFlux3BoxRows } from '../shared/layoutBoxes.js';
 import { DIRECT_ROUTES, NATIVE_DIRECT } from './directRoutes.js';
+import { SUNRA_ROUTES, KIE_ROUTES } from './aggregatorRoutes.js';
+import { runpodRouteOf } from './runpodRoutes.js';
 import { DEPLOY_ROUTES, isDeployRouteId, deployRoute } from './deployRoutes.js';
 import { charswapCloudIssue } from '../comfy/h3CharSwapCloud.js';
-import { charswapAnchorCredits, charswapAnchorLine } from '../comfy/h3CharSwapAnchor.js';
+import { places } from '../services/places.js';
+import '../comfy/h3CharSwapAnchor.js'; // its add-on 'charswap-anchor' (first frame) for unbooted code (services/routeAddOns.ts)
 import { PIKA_PROVIDER, pikaIssue } from '../comfy/pikaH3Flex.js';
 import { charswapWhoIssue } from '../shared/cloudSwap.js';
 import { LTX_DFR, ltxDfrAdjustNote, ltxDfrPriceInput, ltxDfrResolution } from '../shared/ltxDfr.js';
@@ -180,6 +182,8 @@ export const EXTRA_ROUTES: Record<string, RouteDef[]> = {
 EXTRA_ROUTES['cloud-h3-crossview'] = [{ ...deployRoute('cloud-h3-crossview', 'cloud-h3-crossview', { typicalLatencySec: 360, output: 'video', caps: { audio: true, keepsAudio: true, resolutions: ['480p', '768p'], minSeconds: 5, maxSeconds: 15, fps: 24, oneAngle: true } }), replacesNative: true }];
 // Official lab APIs, batch 1 (routing/directRoutes.ts): extra places on existing models.
 for (const [m, rs] of Object.entries(DIRECT_ROUTES)) EXTRA_ROUTES[m] = [...(EXTRA_ROUTES[m] ?? []), ...rs];
+// Sunra and kie.ai (2026-11-06, routing/aggregatorRoutes.ts): hidden until their key is set; kie.ai only with place-kie in the profile.
+for (const [m, rs] of [...Object.entries(SUNRA_ROUTES), ...Object.entries(KIE_ROUTES)]) EXTRA_ROUTES[m] = [...(EXTRA_ROUTES[m] ?? []), ...rs];
 /** BH10 P2 #16: where a local route runs. Copy wave 1 (2026-10-27): always "Your computer" (LOCAL_LABEL), ComfyUI graph or not. */
 export const localRunnerName = (_p: { id: string; via?: string; workflows?: string[] }) => LOCAL_LABEL; // copy wave 1: one name for every local runner (ComfyUI or not)
 /** The route the model already had before routing existed. */
@@ -192,10 +196,12 @@ export function nativeRoute(p: ProviderDef): RouteDef {
   const cloud = p.id.startsWith('cloud-');
   return { routeId: `${cloud ? 'comfy-cloud' : 'comfy-router'}:${p.id}`, kind: cloud ? 'comfy-cloud' : 'comfy-router', modelId: p.id, endpoint: p.nodes?.join(', ') || p.via, priceRef: p.id,
     sourceUrl: p.docUrl ?? h?.sourceUrl ?? 'https://docs.comfy.org/tutorials/partner-nodes/pricing', checkedAt: CHECKED, typicalLatencySec: /video|kling|veo|seedance|h3/i.test(p.id) ? 120 : 15,
-    latencyEstimated: true, latencySource: 'estimated', envKey: COMFY_ENV, label: cloud && comfyCloudOpen(p) ? 'Comfy Cloud' : PARTNER_LABEL };
+    latencyEstimated: true, latencySource: 'estimated', envKey: COMFY_ENV, label: cloud ? (comfyCloudOpen(p) ? 'Comfy Cloud' : CLOUD_PARTNER_LABEL) : PARTNER_LABEL };
 }
 /** Partner/API nodes use the Comfy key but are not labelled plain 'Comfy Cloud'. */
 export const PARTNER_LABEL = 'Comfy Router';
+/** A partner (closed) model run on Comfy Cloud (comfy-cloud:* routes that aren't an open Comfy Cloud workflow): not Comfy Router (2026-11-07). */
+export const CLOUD_PARTNER_LABEL = 'Comfy Cloud · partner model';
 /** Comfy Router as an EXTRA Run on place of a model whose native route is elsewhere (2026-10-25: Nano Banana 2 Lite, native = the Gemini API).
  *  Same model card; the body, block and refs come from routing/routerModels.ts (keyed by the model id, so the runner finds it from the route id);
  *  priceRef = the route id (its own Router price row in shared/hostedPrices.ts). Like a native Router route, a job it can't take is refused up
@@ -204,7 +210,7 @@ export const routerPlace = (modelId: string, caps: Record<string, unknown>, over
   const r: RouteDef = { routeId, kind: 'comfy-router', modelId, endpoint: `POST ${routerBase()}/v2/models/${rm.id}${rm.queue ? '/requests' : ''}${ROUTER_NO_FALLBACK}`, priceRef: routeId,
     sourceUrl: rm.doc, checkedAt: '2026-10-25', typicalLatencySec: 15, latencyEstimated: true, latencySource: 'estimated', envKey: COMFY_ENV, label: PARTNER_LABEL, output: rm.out === 'image' ? 'image' : rm.out === 'video' ? 'video' : undefined,
     ...over, caps: { routerModel: rm.id, maxRefs: rm.maxRefs, ...caps } };
-  r.unavailableFor = (i) => (keyValue(r) ? rm.block?.(i) ?? null : null); return r; };
+  r.unavailableFor = (i) => (places.keyOf(r) ? rm.block?.(i) ?? null : null); return r; };
 EXTRA_ROUTES['direct-gemini-nb2-lite'] = [...(EXTRA_ROUTES['direct-gemini-nb2-lite'] ?? []), routerPlace('direct-gemini-nb2-lite', { resolutions: ['1K'], aspects: [...GEMINI_ASPECTS_10] })];
 // H3 Camera Motion on Comfy Router (2026-10-26): prompt-directed (the move in words, no camera LoRA), billed as MiniMax H3 on Router (4–15 s; a shorter
 // move is made as 4 s and the job says so, 2026-10-28).
@@ -230,7 +236,8 @@ export function tierOf(r: { kind: string; routeId: string }): 0 | 1 | 2 | 3 {
   return 2;
 }
 export const TIER_LABELS = ['Comfy Cloud', PARTNER_LABEL, 'API', 'Local'] as const;
-export const tierLabel = (r: { kind: string; routeId: string }) => TIER_LABELS[tierOf(r)];
+/** A partner model on a comfy-cloud:* route says so ("Comfy Cloud · partner model"); Comfy Router's own routes stay "Comfy Router". */
+export const tierLabel = (r: { kind: string; routeId: string }) => { const t = tierOf(r); return t === 1 && r.kind === 'comfy-cloud' ? CLOUD_PARTNER_LABEL : TIER_LABELS[t]; };
 /**
  * B6 change 1: Comfy Cloud workflow twins as routes of their open model (one card, chips Comfy Cloud · API · Local). The twin's own provider id
  * stays a hidden alias (provider=cloud-ltx-camera still runs, saved pins and old jobs resolve). Each twin serves only its tools and jobs:
@@ -238,7 +245,8 @@ export const tierLabel = (r: { kind: string; routeId: string }) => TIER_LABELS[t
  *  - comfy-open on Camera Moves → comfy-cloud:cloud-ltx-camera (the LTX moves only),
  *  - comfy-open on Re-shoot → comfy-cloud:cloud-reshoot.
  */
-const TWINS: { model: string; twin: string; tools: string[]; /** only the tool itself, never a gallery app built on it (app-transition, app-ugc-ad) */ exactTool?: boolean; /** picked by the mode alone, never a Run-on choice */ notAChoice?: boolean; modes?: string[]; unavailableFor?: (i: Record<string, any>) => string | null; priceInput?: RouteDef['priceInput']; adjustNote?: RouteDef['adjustNote']; extraCredits?: RouteDef['extraCredits']; extraLine?: RouteDef['extraLine']; needsInput?: RouteDef['needsInput']; caps?: Record<string, unknown>; /** an unmeasured price keeps the model as it was before the twin (select.ts twinHeld) */ heldUntilMeasured?: boolean; /** provider=<twin> is read as model + this route on quote and submit (mapTwinAlias) */ aliasOk?: boolean }[] = [
+type Twin = { model: string; twin: string; tools: string[]; /** only the tool itself, never a gallery app built on it (app-transition, app-ugc-ad) */ exactTool?: boolean; /** picked by the mode alone, never a Run-on choice */ notAChoice?: boolean; modes?: string[]; unavailableFor?: (i: Record<string, any>) => string | null; priceInput?: RouteDef['priceInput']; adjustNote?: RouteDef['adjustNote']; addOns?: RouteDef['addOns']; needsInput?: RouteDef['needsInput']; caps?: Record<string, unknown>; /** an unmeasured price keeps the model as it was before the twin (select.ts twinHeld) */ heldUntilMeasured?: boolean; /** provider=<twin> is read as model + this route on quote and submit (mapTwinAlias) */ aliasOk?: boolean };
+const TWINS: Twin[] = [
   { model: 'comfy-h3', twin: 'cloud-h3-wf', tools: ['h3-video'], modes: ['t2v', 'i2v'] },
   // Oct 27: MiniMax H3 Keyframes · Comfy Cloud (comfy/h3KeyframesCloud.ts): the official multiframe template, the H3 card's Keyframes mode (2–5 stills at
   // chosen times → one shot). The only place that makes Keyframes; billed per second of clip at the picked size (an estimate until measured).
@@ -256,7 +264,7 @@ const TWINS: { model: string; twin: string; tools: string[]; /** only the tool i
   { model: 'comfy-h3-pika', twin: PIKA_PROVIDER, tools: ['h3-video'], exactTool: true, modes: ['t2v', 'i2v', 'flf'], unavailableFor: pikaIssue },
   // Nov 2: + Openjutsu's first frame (GPT Image 2.5 Sunburst on Comfy Router, comfy/h3CharSwapAnchor.ts), on by default for Person swap: its price is
   // added to the quote and the charge alike and shown as its own breakdown line.
-  { model: 'comfy-h3-charswap', twin: 'cloud-h3-charswap', tools: ['object-swap', 'motion-transfer'], unavailableFor: charswapCloudIssue, needsInput: charswapWhoIssue, extraCredits: charswapAnchorCredits, extraLine: charswapAnchorLine },
+  { model: 'comfy-h3-charswap', twin: 'cloud-h3-charswap', tools: ['object-swap', 'motion-transfer'], unavailableFor: charswapCloudIssue, needsInput: charswapWhoIssue, addOns: ['charswap-anchor'] },
   // Oct 27: LTX-2.5 22B on shared Comfy Cloud (comfy/ltx25Cloud.ts): Generate Video (text, start frame, Loop, first + last) and Transitions' Morph; Extend with the
   // picture-and-sound continuation. Billed per RENDERED second (Extend includes the kept context). 720p runs here only (LOCAL_ROUTE_BLOCK below).
   // DFR (2026-10-29, shared/ltxDfr.ts + comfy/ltx25Dfr.ts): the official DFR template on image to video, priced per second with or without the 48 fps pass
@@ -288,6 +296,11 @@ const TWINS: { model: string; twin: string; tools: string[]; /** only the tool i
   { model: 'comfy-ltx25-iclora', twin: 'cloud-ltx23-vfx', tools: ['footage-fx'], unavailableFor: vfxCloudIssue, heldUntilMeasured: true, aliasOk: true,
     caps: { localOnly: false, slow: false, resolutions: ['448p', '576p'], durations: [2, 3, 4, 5], effects: FOOTAGE_CLOUD_EFFECTS.map((e) => e.id), note: 'LTX-2.3 on Comfy Cloud: remove people, day to night, rain, flood, restore old footage, remove an object or subtitles, or extend the frame. 2–5 s, Draft or Sharper, your sound kept.' } },
 ];
+/** A plugin's own Comfy Cloud place for its local model (Layers: one card, two places). Added when the plugin loads; aliases follow. */
+export function addTwin(t: Twin): void {
+  if (TWINS.some((x) => x.model === t.model && x.twin === t.twin)) return;
+  TWINS.push(t); TWIN_ALIASES[t.twin] = { model: t.model, route: `comfy-cloud:${t.twin}`, tools: t.tools }; if (t.notAChoice) NOT_A_CHOICE.add(`comfy-cloud:${t.twin}`);
+}
 /** MiniMax Music 3 · Comfy Cloud bills the song length the graph asks for (max_duration): shared/audioLengths.ts songSeconds, the rule comfy/plans.ts
  *  songPlan uses (the clip's length for a video, else the picked length; 60 s when none; at least 30 s, the model's shortest; 1–360 s), so the quote
  *  and the charge price the same seconds. A clip under 30 s is billed for the 30 s song it is cut from. */
@@ -317,12 +330,15 @@ export function mapTwinAlias(tool: { id: string; app?: any; providers?: string[]
 export const isTwinAlias = (providerId: string, toolIds: string[]) => !!TWIN_ALIASES[providerId] && TWIN_ALIASES[providerId].tools.some((t) => toolIds.includes(t));
 function twinRoutes(modelId: string, toolIds: string[]): RouteDef[] {
   return TWINS.filter((t) => t.model === modelId && (t.exactTool ? t.tools.includes(toolIds[0]) : t.tools.some((x) => toolIds.includes(x)))).flatMap((t) => { const p = getProvider(t.twin); if (!p) return [];
-    const r = nativeRoute(p); return [{ ...r, modelId, twinProvider: t.twin, tools: t.tools, label: 'Comfy Cloud', ...(t.notAChoice ? { notAChoice: true } : {}), ...(t.modes ? { modes: t.modes } : {}), ...(t.unavailableFor ? { unavailableFor: t.unavailableFor } : {}), ...(t.priceInput ? { priceInput: t.priceInput } : {}), ...(t.adjustNote ? { adjustNote: t.adjustNote } : {}), ...(t.extraCredits ? { extraCredits: t.extraCredits } : {}), ...(t.extraLine ? { extraLine: t.extraLine } : {}), ...(t.needsInput ? { needsInput: t.needsInput } : {}), ...(t.heldUntilMeasured ? { heldUntilMeasured: true } : {}), ...(t.caps ? { caps: { ...(r.caps ?? {}), ...t.caps } } : {}) }]; });
+    const r = nativeRoute(p); return [{ ...r, modelId, twinProvider: t.twin, tools: t.tools, label: 'Comfy Cloud', ...(t.notAChoice ? { notAChoice: true } : {}), ...(t.modes ? { modes: t.modes } : {}), ...(t.unavailableFor ? { unavailableFor: t.unavailableFor } : {}), ...(t.priceInput ? { priceInput: t.priceInput } : {}), ...(t.adjustNote ? { adjustNote: t.adjustNote } : {}), ...(t.addOns ? { addOns: t.addOns } : {}), ...(t.needsInput ? { needsInput: t.needsInput } : {}), ...(t.heldUntilMeasured ? { heldUntilMeasured: true } : {}), ...(t.caps ? { caps: { ...(r.caps ?? {}), ...t.caps } } : {}) }]; });
 }
 /** The tool ids a route list is built for: the tool itself and, for gallery apps, its base tool. */
 export const toolKeys = (tool?: { id: string; app?: any } | null): string[] => (tool ? [tool.id, ...((tool as any).app?.gallery?.base ? [(tool as any).app.gallery.base] : []), ...(REEL_TOOL_IDS.includes(tool.id) ? ['camera'] : [])] : []);
 /** Routes of one model. With a tool (B6), Comfy Cloud workflow twins serving that tool are added as routes of the open model. */
-export function routesFor(modelId: string, tool?: { id: string; app?: any } | string | null): RouteDef[] {
+/** The model's routes on places that are on in this profile (a place plugin that is off hides its routes: services/places.ts). */
+export const routesFor = (modelId: string, tool?: { id: string; app?: any } | string | null): RouteDef[] => allRoutesFor(modelId, tool).filter((r) => !places.off(r.kind) && !places.hidden(r)); // Sunra / kie: hidden until their key is set
+/** Routes the model would have with every place on (routesFor hides those of a place that is off). */
+export function allRoutesFor(modelId: string, tool?: { id: string; app?: any } | string | null): RouteDef[] {
   const p = getProvider(modelId); if (!p) return [];
   const tk = typeof tool === 'string' ? [tool] : toolKeys(tool ?? null);
   const native = nativeRoute(p); if (modelId === 'direct-flux3-upscale') Object.assign(native, { label: 'FLUX 3 Upscaler via BFL API', sourceUrl: 'https://docs.bfl.ai/flux_tools/flux_video_upscale', checkedAt: '2026-10-17', endpoint: 'POST https://api.bfl.ai/v1/flux-tools/video-upscale-v1', typicalLatencySec: 180, output: 'video' }, UPSCALE_BFL);
@@ -344,12 +360,14 @@ export function routesFor(modelId: string, tool?: { id: string; app?: any } | st
   if (rm) { // Comfy Router (routing/routerModels.ts): the Router model id, and what this route can take. With a Comfy key set, a job it can't take is refused up front (nothing charged).
     native.endpoint = `POST ${routerBase()}/v2/models/${rm.id}${rm.queue ? '/requests' : ''}${ROUTER_NO_FALLBACK}`; native.sourceUrl = rm.doc;
     native.caps = { ...(native.caps ?? {}), routerModel: rm.id, ...(rm.idFor ? { routerEditModel: rm.idFor({ types: ['edit'], refPaths: ['photo.png'] }) } /* FIBO 2.0: edits call bria/fibo */ : {}), ...(rm.out === 'image' ? { maxRefs: Math.min(rm.maxRefs, capsFor(modelId)?.supports.maxRefs ?? rm.maxRefs) } : {}) };
-    const prev = native.unavailableFor; native.unavailableFor = (i) => prev?.(i) ?? (keyValue(native) ? rm.block?.(i) ?? null : null); } // keyless samples stay as before
+    const prev = native.unavailableFor; native.unavailableFor = (i) => prev?.(i) ?? (places.keyOf(native) ? rm.block?.(i) ?? null : null); } // keyless samples stay as before
   if (modelId === 'router-ltx-25-pro' && rm) native.modes = ['t2v']; // 2026-10-27: the Router schema is text only; image jobs of this card run on its Comfy Cloud partner-node twin (TWINS), with or without a key
   // Tool-scoped extra routes (RouteDef.tools) are listed on their tools only; one that replacesNative stands in for the native route there.
   const extra = (EXTRA_ROUTES[modelId] ?? []).filter((r) => !r.tools || !tk.length || r.tools.some((t) => tk.includes(t)));
   const dropNative = extra.some((r) => r.replacesNative && (!r.tools ? true : tk.length > 0 && r.tools.some((t) => tk.includes(t)))); // no tools = everywhere (H3 CrossView: deployment only)
-  const all = [...(dropNative ? [] : [native]), ...extra, ...(tk.length ? twinRoutes(modelId, tk) : [])];
+  const runpod = runpodRouteOf(native); // RunPod (place-runpod, installable): the same image graph on your endpoint; hidden until its key and Endpoint ID are set
+  const onTool = (r: RouteDef) => !r.tools || !tk.length || r.tools.some((t) => tk.includes(t));
+  const all = [...(dropNative ? [] : [native]), ...extra, ...(runpod && onTool(runpod) ? [runpod] : []), ...(tk.length ? twinRoutes(modelId, tk) : [])];
   for (const r of all) if (!/h3|wan22-5b|ltx25-video/.test(r.modelId) && !r.caps?.videoCaps) { // H3 keeps tools/h3/videoCaps.ts
     const vc = ROUTE_VIDEO_CAPS[r.routeId] ?? (r.kind === 'local' && LOCAL_VIDEO_MODELS.has(r.modelId) ? localVideoCaps(r.routeId, String(r.endpoint)) : null); if (vc) r.caps = { ...(r.caps ?? {}), videoCaps: vc }; }
   return all;
@@ -360,7 +378,7 @@ export const findRoute = (routeId: string): RouteDef | undefined => {
   const [kind, ...rest] = routeId.split(':'); const id = rest.join(':');
   if (kind === 'comfy-deploy') return Object.values(EXTRA_ROUTES).flat().find((r) => r.routeId === routeId) ?? DEPLOY_ROUTES[routeId]; // H3 runner Step 1: your Comfy deployment
   const extra = Object.values(EXTRA_ROUTES).flat().find((r) => r.routeId === routeId); if (extra || kind === 'fal' || kind === 'replicate') return extra;
-  const p = getProvider(id); return p ? routesFor(p.id).find((r) => r.routeId === routeId) : undefined;
+  const p = getProvider(id); return p ? allRoutesFor(p.id).find((r) => r.routeId === routeId) : undefined; // found even when its place is off (its quote then says so)
 };
 export const allExtraRoutes = () => Object.values(EXTRA_ROUTES).flat();
 /** HW-SHAPES: the charswap note is generated from the manifest sizes + the VRAM formula (hardware/requirements.ts), loaded lazily (no import cycle). */

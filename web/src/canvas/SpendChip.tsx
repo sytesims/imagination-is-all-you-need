@@ -2,52 +2,65 @@
  * The board's spend chip (top bar, next to the board switcher): "This board" in dollars + runs, with a thin cap bar when the
  * server has one. Clicking opens an Orbit-style popover with the board's latest runs (thumbnail, model, price) and a link to
  * /spend. Summed by the server from the jobs started on this board (GET /api/canvas/boards/:id/spend, the Spend page's log).
- * Sample runs say so and show what real runs would have cost, marked as an estimate. Refreshes when a run starts or ends,
+ * Sample runs get the shared Sample tag next to the total. With a board budget the popover says what is left in one line, and that
+ * line opens the budget setting (the board menu's dialog). Refreshes when a run starts or ends,
  * and every 8 s while one runs.
  */
 import { useEffect, useRef, useState } from 'react';
 import { BarPopover, PopNote, PopRow, PopSection } from '../shared/BarPop';
 import { fmtUsd } from '../shared/billing';
+import { GenPrice } from '../shared/GenPrice';
 import { Link } from '../platform/router';
 import { ImageIcon, VideoIcon, AudioIcon } from '../ui/Icons';
 import { SPEND_EVT } from './genRun';
 import { CoinIcon, ChevronRightIcon } from './icons';
 
 interface SpendRun { id: string; model: string; status: string; url: string; poster: string; createdAt: number; demo: boolean; local: boolean; estUsd: number; countedUsd: number }
-type Spend = { runs: number; running: number; estUsd: number; countedUsd: number; simulated: number; local: number; recent?: SpendRun[] };
+type Spend = { runs: number; running: number; estUsd: number; countedUsd: number; simulated: number; local: number; recent?: SpendRun[];
+  /** the board budget the person set (release 1): what counts against it is the estimate at start */ budget?: { usd: number; spentUsd: number; leftUsd: number } | null };
+/** The board budget changed (the board menu): the chip reloads. */
+export const BUDGET_EVT = 'ohf-canvas-budget';
+/** "Change the budget" from anywhere on the page (an over-budget proposal in the dock): CanvasPage opens the board budget dialog. */
+export const BUDGET_ASK_EVT = 'ohf-canvas-budget-ask';
+export const askBudget = () => dispatchEvent(new Event(BUDGET_ASK_EVT));
 
 const kindOf = (r: SpendRun): 'image' | 'video' | 'audio' => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(r.url) ? 'video' : /\.(mp3|wav|m4a|ogg|aac)(\?|$)/i.test(r.url) ? 'audio' : 'image';
 const ended = (r: SpendRun) => r.status === 'failed' || r.status === 'blocked' || r.status === 'canceled'; // ended without a result: only what was charged
 const runPrice = (r: SpendRun) => r.demo ? 'Sample' : r.local ? 'Free' : ended(r) ? fmtUsd(r.countedUsd) : r.countedUsd ? fmtUsd(r.countedUsd) : `≈ ${fmtUsd(r.estUsd)}`;
 const runHint = (r: SpendRun) => r.status === 'running' ? 'Running' : r.status === 'queued' ? 'Queued' : r.status === 'failed' ? 'Failed' : r.status === 'canceled' ? 'Canceled' : r.demo ? 'Sample run' : r.local ? 'Local run' : 'Done';
 
-export function SpendChip({ boardId }: { boardId: string }) {
+export function SpendChip({ boardId, onBudget }: { boardId: string; /** opens the board budget setting (the board menu's dialog) */ onBudget?: () => void }) {
   const [s, setS] = useState<Spend | null>(null); const [open, setOpen] = useState(false); const btn = useRef<HTMLButtonElement>(null);
   useEffect(() => { let on = true; let t = 0;
     const load = () => fetch(`/api/canvas/boards/${encodeURIComponent(boardId)}/spend`).then(r => (r.ok ? r.json() : null)).then(d => { if (!on || !d) return; setS(d); clearTimeout(t); if (d.running) t = window.setTimeout(load, 8000); }).catch(() => undefined);
-    void load(); const f = () => { clearTimeout(t); t = window.setTimeout(load, 600); }; addEventListener(SPEND_EVT, f);
-    return () => { on = false; clearTimeout(t); removeEventListener(SPEND_EVT, f); }; }, [boardId]);
+    void load(); const f = () => { clearTimeout(t); t = window.setTimeout(load, 600); }; addEventListener(SPEND_EVT, f); addEventListener(BUDGET_EVT, f);
+    return () => { on = false; clearTimeout(t); removeEventListener(SPEND_EVT, f); removeEventListener(BUDGET_EVT, f); }; }, [boardId]);
   if (!s) return null;
   const samples = s.runs > 0 && s.simulated === s.runs; const free = s.runs > 0 && s.local === s.runs;
   const money = !s.runs ? '$0.00' : free ? 'Free' : samples ? (s.estUsd > 0 ? `≈ ${fmtUsd(s.estUsd)}` : 'Sample') : `${s.running ? '≈ ' : ''}${fmtUsd(s.countedUsd)}`; // ≈ while a run is going: its price is still the estimate
   const title = !s.runs ? 'Runs started on this board add up here.' : free ? 'Every run on this board ran locally: nothing was billed.'
     : samples ? `Sample runs on this server: nothing was billed.${s.estUsd > 0 ? ` Real runs would cost about ${fmtUsd(s.estUsd)} (an estimate).` : ''}`
     : `What runs started here cost${s.estUsd !== s.countedUsd ? ` (estimated at ${fmtUsd(s.estUsd)} when started)` : ''}. Details on the Spend page.`;
+  const bud = s.budget ?? null; const budUsed = bud ? Math.min(1, bud.usd > 0 ? bud.spentUsd / bud.usd : 1) : 0; const budOver = !!bud && bud.leftUsd <= 0.004;
+  const budText = bud ? `${fmtUsd(bud.spentUsd)} of ${fmtUsd(bud.usd)}` : null;
   return <>
-    <button ref={btn} type="button" className="cv-spend2" data-testid="cv-spend" data-samples={samples ? '1' : undefined} aria-haspopup="dialog" aria-expanded={open}
+    <button ref={btn} type="button" className={`cv-spend2${bud ? ' has-budget' : ''}${budOver ? ' over' : ''}`} data-testid="cv-spend" data-samples={samples ? '1' : undefined} aria-haspopup="dialog" aria-expanded={open}
       aria-label={`This board: ${s.runs} run${s.runs === 1 ? '' : 's'}, ${money}. ${title}`} onClick={() => setOpen(o => !o)}>
       <span className="cv-spend2-ico" aria-hidden><CoinIcon size={15} /></span>
-      <span className="cv-spend2-t"><small>This board</small><b data-testid="cv-spend-usd">{money}</b></span>
+      <span className="cv-spend2-t"><small>{bud ? 'Board budget' : 'This board'}</small><b data-testid="cv-spend-usd">{budText ?? money}</b></span>
+      {bud && <span className="cv-spend2-bar" aria-hidden data-testid="cv-spend-budget-bar"><i style={{ width: `${Math.round(budUsed * 100)}%` }} /></span>}
       <span className="cv-spend2-runs"><span data-testid="cv-spend-runs">{s.runs}</span><i>run{s.runs === 1 ? '' : 's'}</i></span>
       {s.running > 0 && <span className="cv-spend2-live" aria-hidden />}
     </button>
     <BarPopover open={open} anchor={btn} onClose={() => setOpen(false)} label="This board's spend" placement="bottom" width={360} testId="cv-spend-pop" className="cv-spend2-pop">
-      <PopSection label="This board" aside={money}>
+      <PopSection label="This board" aside={samples && money !== 'Sample' ? <>{money}<GenPrice demo testId="cv-spend-sample" /></> : money}>
         <div className="cv-spend2-stats">
           <div className="cv-spend2-stat"><b>{s.runs}</b><small>Run{s.runs === 1 ? '' : 's'}</small></div>
           <div className="cv-spend2-stat"><b>{s.running}</b><small>Running now</small></div>
         </div>
-        {samples && <PopNote>Sample runs on this server: nothing was billed.{s.estUsd > 0 ? ` Real runs would cost about ${fmtUsd(s.estUsd)}.` : ''}</PopNote>}
+        {bud && <PopRow role="menuitem" className={`cv-spend2-bud${budOver ? ' over' : ''}`} testId="cv-spend-budget-edit" title="Change the board budget" disabled={!onBudget}
+          label={budOver ? `${fmtUsd(bud.usd)} budget used up` : `${fmtUsd(bud.leftUsd)} left of ${fmtUsd(bud.usd)}`} hint={budOver ? 'New runs wait until you raise it.' : 'Runs that would go over don’t start.'}
+          aside={<ChevronRightIcon size={14} />} onClick={() => { setOpen(false); onBudget?.(); }} />}
         {free && <PopNote>Every run here ran locally: nothing was billed.</PopNote>}
       </PopSection>
       <PopSection label="Recent runs" aside={s.recent?.length ? `${s.recent.length}` : undefined}>

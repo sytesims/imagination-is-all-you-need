@@ -86,7 +86,7 @@ export function FollowAgent() {
 export function FollowToggle({ busy }: { busy: boolean }) {
   const on = useValue('follow agent', () => followAtom.get(), []);
   const flip = () => { const next = !on; setFollow(next); if (next) { const h = handAtom.get(); if (h.area) handAtom.set({ ...h, key: Date.now() }); else { const f = agentFocusAtom.get(); if (f) agentFocusAtom.set({ ...f, key: Date.now() }); } } };
-  return <button type="button" role="switch" aria-checked={on} className={`cv-follow${on ? ' on' : ''}${busy ? ' busy' : ''}`} data-testid="cv-follow" onClick={flip}
+  return <button type="button" role="switch" aria-checked={on} aria-label="Follow agent" className={`cv-follow${on ? ' on' : ''}${busy ? ' busy' : ''}`} data-testid="cv-follow" onClick={flip}
     {...tip(on ? 'The board follows the agent. Pan or zoom to look around on your own' : 'Follow the agent: the board moves to what it is working on')}>
     <i className="cv-follow-sw" aria-hidden><i /></i><span>Follow<span className="cv-follow-x"> agent</span></span>{busy && <b className="cv-follow-dot" aria-hidden />}
   </button>;

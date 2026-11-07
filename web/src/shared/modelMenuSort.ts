@@ -32,7 +32,7 @@ const inTab = (m: Pick<ToolModel, 'runsOn'>, t: MenuTab, placeId: string) => { c
 /** Short chip names for makers whose catalogue name is long. */
 const MAKER_SHORT: Record<string, string> = { bfl: 'BFL', 'alibaba-qwen': 'Qwen', 'alibaba-wan': 'Wan', kling: 'Kling', 'tencent-hunyuan': 'Hunyuan', luma: 'Luma', tongyi: 'Tongyi' };
 /** Short provider names (the menu's own RUN_ON_CHIP words), duplicated here to keep this file free of React. */
-const PLACE_SHORT: Record<string, string> = { 'comfy-cloud': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', bfl: 'BFL', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google', byteplus: 'BytePlus', dashscope: 'Alibaba', luma: 'Luma', local: LOCAL_LABEL };
+const PLACE_SHORT: Record<string, string> = { 'comfy-cloud': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', sunra: 'Sunra', kie: 'kie.ai', runpod: 'RunPod', bfl: 'BFL', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google', byteplus: 'BytePlus', dashscope: 'Alibaba', luma: 'Luma', local: LOCAL_LABEL };
 export interface Chip { id: string; label: string; count: number }
 const makerOf = (m: Pick<ToolModel, 'maker' | 'makerName' | 'family'>) => ({ id: m.maker || m.makerName || m.family || 'other', label: (m.maker && MAKER_SHORT[m.maker]) || m.makerName || m.family || 'Other' });
 /** The local place's state for the Local chips: installed (ready), needs download, or neither (turned off, missing node…). */

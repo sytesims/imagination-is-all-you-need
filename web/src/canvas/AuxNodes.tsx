@@ -23,9 +23,10 @@ import { NodeFrame } from './NodeFrame';
 import { keepNodeControls } from './nodeFrameModel';
 import type { AuxNodeProps, AuxNodeShape } from './auxShapes';
 import { nodeDefOf } from './nodeTypes';
-import { groupGenIds, runAllCommit, runAllConfirm, runAllPriceLabel, type RunAllConfirm } from './nodeLogic';
+import { groupGenIds } from './nodeLogic';
+import { runOrderOf, stepsWords } from './groupModel';
+import { RunFlow } from './rf/GroupStrip';
 import { cardInputs } from './graph';
-import { quoteNode, submitInOrder } from './nodeRun';
 import * as Ic from './icons';
 import { AdView } from './AdNode';
 
@@ -93,32 +94,18 @@ function CompareView({ shape, p, Icon }: { shape: AuxNodeShape; p: AuxNodeProps;
   </NodeFrame>;
 }
 
+/** An old group card, still on a board the classic (tldraw) engine opened before the move (release 2 moves it over on load everywhere
+ *  else). It runs the same way as a Group: "Run the flow" prices its steps in the dock, and only when its cards are linked. */
 function GroupView({ shape, p, Icon }: { shape: AuxNodeShape; p: AuxNodeProps; Icon: any }) {
-  const board = useBoardApi(); const toast = useToast(); const [confirm, setConfirm] = useState<RunAllConfirm | null>(null); const [busy, setBusy] = useState(false);
+  const board = useBoardApi();
   const members = useValue('group members', () => {
     const b = board.boundsOf(shape.id); if (!b) return [] as string[];
     return groupGenIds(b, board.nodes().map(s => ({ id: s.id, type: s.type, bounds: board.boundsOf(s.id) })));
   }, [board, shape.id, p.w, p.h]);
-  const runnable = useValue('group runnable', () => members.filter(id => { const s = board.getNode(id as NodeId); const st = (s?.props as any)?.status; return st === 'draft' || st === 'failed'; }), [board, members.join(',')]);
-  const key = runnable.join(',');
-  useEffect(() => { setConfirm(null); }, [key]);
-  useEffect(() => { if (!confirm) return; const t = setTimeout(() => setConfirm(null), 10000); return () => clearTimeout(t); }, [confirm]);
-  const press = async () => {
-    if (busy) return;
-    if (confirm) { const ids = runAllCommit(confirm); if (!ids) { setConfirm(null); return; } setConfirm(null); setBusy(true); let n = 0;
-      /* graph order (2026-10-28): a node fed by another node in the group starts when that one is done, with its input */
-      try { const r = await submitInOrder(board, ids, { stop: () => true, onLater: (_id, x) => { if (x.error) toast(x.error, 'error'); } }); n = r.jobIds.length;
-        if (r.failed.length) toast(r.failed[0].error || 'That node could not start.', 'error');
-        setBusy(false); if (n || r.later.length) toast(`${n} run${n === 1 ? '' : 's'} started${r.later.length ? `, ${r.later.length} more when the ones before them finish` : ''}`); }
-      catch (e) { setBusy(false); toast((e as Error).message || 'That node could not start.', 'error'); }
-      return; }
-    if (!runnable.length) return;
-    setBusy(true); try { const quotes = await Promise.all(runnable.map(id => quoteNode(board, id as NodeId).catch(() => null))); setConfirm(runAllConfirm(runnable, quotes)); }
-    catch (e) { toast((e as Error).message || 'Could not price these nodes.', 'error'); } finally { setBusy(false); }
-  };
-  const label = busy ? (confirm ? 'Starting…' : 'Pricing…') : confirm ? `Run ${confirm.count} · ${runAllPriceLabel(confirm.total)}` : 'Run all';
-  const sub = busy ? 'Please wait' : confirm ? 'Press again to run' : runnable.length ? 'Price first' : 'Nothing to run';
-  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title="Group" status={<span className="nf-status">{members.length} node{members.length === 1 ? '' : 's'}</span>}
-    actions={<button type="button" className={`nf-runall${confirm ? ' confirm' : ''}`} data-testid="group-run" data-confirm={confirm ? '1' : undefined} disabled={busy || (!runnable.length && !confirm)} onClick={() => void press()} {...tip(confirm ? 'Runs every draft / failed generate node in this group now' : 'Prices every draft / failed generate node in this group first; a second press runs them')}><span>{label}</span><small>{sub}</small></button>}
+  const key = members.join(',');
+  const runIds = useValue('group run ids', () => runOrderOf(board, members as NodeId[]).filter(id => (board.getNode(id)?.props as any)?.status !== 'running'), [board, key]);
+  const linked = useValue('group linked', () => { const set = new Set(members); return board.links().some(l => !!l.from && !!l.to && set.has(l.from) && set.has(l.to)); }, [board, key]);
+  return <NodeFrame shapeId={shape.id} type={shape.type} icon={<Icon />} title="Group" status={<span className="nf-status">{stepsWords(members.length)}</span>}
+    actions={linked && members.length ? <RunFlow id={shape.id as NodeId} runIds={runIds} steps={members.length} name="Group" /> : undefined}
     rootAttrs={{ 'data-members': String(members.length) }} />;
 }

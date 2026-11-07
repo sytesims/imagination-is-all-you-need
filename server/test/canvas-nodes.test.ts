@@ -3,7 +3,7 @@
 // Run: npx tsx test/canvas-nodes.test.ts   (no server, no network, no browser)
 import assert from 'node:assert/strict';
 import { NODE_DEFS, NODE_KINDS, NODE_TYPES, GEN_TYPE, RESULT_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, GROUP_TYPE, AD_TYPE, nodeDefOf, adCardFit, adCardHeight } from '../../web/src/canvas/nodeTypes.ts';
-import { canConnectTo, pickPortTarget, groupGenIds, runAllConfirm, runAllCommit, runAllTotal, runAllPriceLabel } from '../../web/src/canvas/nodeLogic.ts';
+import { canConnectTo, pickPortTarget, groupGenIds } from '../../web/src/canvas/nodeLogic.ts';
 import { linkShapes, inputOfShape, withInputs } from '../../web/src/canvas/graph.ts';
 import { boardOf } from '../../web/src/canvas/boardApiTldraw.ts';
 import { addVersions, MAX_VERSIONS } from '../../web/src/canvas/cardModel.ts';
@@ -134,19 +134,7 @@ const members = groupGenIds(frame, [
 assert.deepEqual(members, ['g1']); assert.deepEqual(groupGenIds(null, []), []);
 ok('group membership: only generate nodes inside the frame');
 
-// ---- Run all: the first press only prices; nothing runs without the second, fresh press ----
-const quotes = [{ credits: 4, cost: { estUsd: 0.04 } }, { credits: 6, cost: { estUsd: 0.06 } }];
-const total = runAllTotal(quotes); assert.equal(total.usd, 0.1); assert.equal(total.priced, 2); assert.equal(runAllPriceLabel(total), '≈ $0.10');
-assert.equal(runAllTotal([{ credits: 3 }, { credits: 4 }]).credits, 7, 'falls back to credits');
-assert.equal(runAllTotal([{ credits: 3 }, null]).priced, 1, 'never invents a total for an unpriced node');
-const now = 1_000_000;
-const confirm = runAllConfirm(['g1', 'g2'], quotes, now);
-assert.equal(confirm.phase, 'confirm'); assert.equal(confirm.count, 2); assert.equal(confirm.total.usd, 0.1);
-assert.equal('run' in confirm, false, 'the first press carries no run list');
-assert.deepEqual(runAllCommit(null, now), null, 'no confirm, no run');
-assert.deepEqual(runAllCommit(confirm, now + 500), ['g1', 'g2'], 'the second fresh press runs');
-assert.deepEqual(runAllCommit(confirm, now + 10_001), null, 'a stale confirm never runs');
-ok('Run all: first press only prices (no run list), second fresh press runs, stale press refused');
+// (release 2: the two-press Run all is gone; a Group's "Run the flow" is tested in canvas-group.test.ts)
 
 // ---- run order (2026-10-28): a card fed by another card in the same run waits for it, never runs without its input ----
 {   const ups: Record<string, { id: string; name: string; status: string }[]> = { clip: [{ id: 'hero', name: 'Bike hero', status: 'draft' }], lone: [], orphan: [{ id: 'other', name: 'Other', status: 'draft' }], chained: [{ id: 'busy', name: 'Busy', status: 'running' }] };

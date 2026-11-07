@@ -5,7 +5,7 @@
  * GPT Image 2.5 Sunburst on Comfy Router (quality low, size auto, their ANCHOR_PROMPT verbatim plus which person when the user clicked or named one).
  * The result goes into the H3 graph as <Picture 2> and as the frame-0 guide (comfy/h3CharSwapCloud.ts). On by default for Person swap; off with
  * charswapAnchor=off; never for Motion transfer. If the call fails, the swap runs without it and the job says so (their behaviour).
- * Price: one GPT Image 2.5 low edit with two input images, added to the route's quote and charge (routing/routes.ts extraCredits, quote = charge).
+ * Price: one GPT Image 2.5 low edit with two input images, added to the route's quote and charge (route add-on 'charswap-anchor', services/routeAddOns.ts; quote = charge).
  */
 import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
@@ -15,6 +15,7 @@ import { runFfmpeg } from '../ffmpeg.js';
 import { handOff } from '../mediaHandoff.js';
 import { ComfyRouter, routerBase } from '../comfyRouter.js';
 import { gptImageUsd, promptBytesOf, usdToCredits, HOSTED_BY_ID } from '../shared/hostedPrices.js';
+import { builtInAddOn, type RouteAddOn } from '../services/routeAddOns.js';
 
 export const ANCHOR_MODEL = 'openai/gpt-image-2.5-sunburst';
 export const ANCHOR_PRICE_REF = 'api-gpt-image-25-sunburst';
@@ -46,6 +47,9 @@ export function charswapAnchorUsd(i: In = {}) {
 /** Credits the anchor adds to this job's quote and charge (0 when it isn't made). */
 export const charswapAnchorCredits = (i: In = {}) => (charswapAnchorOn(i) ? usdToCredits(charswapAnchorUsd(i)) : 0);
 export const charswapAnchorLine = (i: In = {}) => (charswapAnchorOn(i) ? `First frame: GPT Image 2.5 Sunburst edit, low (Comfy Router, estimated) · $${(charswapAnchorCredits(i) / 100).toFixed(2)}` : null);
+/** The first frame as a route add-on (services/routeAddOns.ts; registered by plugin place-comfy-cloud; the twin route names it). */
+export const charswapAnchorAddOn: RouteAddOn = { id: 'charswap-anchor', credits: charswapAnchorCredits, line: charswapAnchorLine };
+builtInAddOn(charswapAnchorAddOn);
 export const anchorFailNote = (why: string, credits = 0) => `The first frame couldn't be made (${why.replace(/[.\s]+$/, '')}), so the swap ran without it${credits > 0 ? `; its $${(credits / 100).toFixed(2)} is taken off this job's price` : ''}.`;
 /** A first frame that wasn't made isn't charged (Nov 3): its credits come off the job's price (job.cost, the route's price, the Spend row's estimate)
  *  and, in team mode, go back to the balance (ledger refundPartial on the job's first charge). The provider's own reported cost is never touched.

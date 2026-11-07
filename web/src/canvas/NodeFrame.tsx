@@ -24,7 +24,7 @@ import { useToast } from '../shared/Toast';
 import { linkShapes } from './graph';
 import { nodeDefOf, type NodeTint } from './nodeTypes';
 import { legalTargets, pickTypedTarget, takesLine, PORT_WORDS, type PortInfo, type PortKind } from './nodeLogic';
-import { boardPorts, portInfoOf } from './ports';
+import { boardPorts, portInfoOf, outKindOfShape } from './ports';
 import { catalogNow } from './catalog';
 import { perfOff } from './CameraMotion';
 import { CardName } from './CardName';
@@ -65,24 +65,11 @@ function DragGhost({ from }: { from: { x: number; y: number } }) {
   </div>, document.body);
 }
 
-export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status, actions, children, footer, className = '', bodyClass = '', variant = 'node', testId, rootAttrs, label, heading, renamable, farName }: NodeFrameProps) {
-  const board = useBoardApi(); const toast = useToast();
-  const def = nodeDefOf(type);
-  const selected = useValue('nf selected', () => board.selection().includes(shapeId), [board, shapeId]);
-  const hovered = useValue('nf hovered', () => board.hovered() === shapeId, [board, shapeId]);
-  /* this node's role in a drag: the source, a legal target (and the one under the pointer), or dimmed */
-  const role = useValue('nf drag role', () => { const d = portDragAtom.get(); if (!d) return ''; if (d.fromId === shapeId) return 'src'; return d.targetId === shapeId ? 'drop' : d.legal.includes(shapeId) ? 'ok' : 'dim'; }, [shapeId]);
-  const dragKind = useValue('nf drag kind', () => portDragAtom.get()?.kind ?? null, []);
-  const ports = useValue('nf ports', () => { const s = board.getNode(shapeId); return portKey(s && variant === 'node' ? portInfoOf(board, s, catalogNow()) : null); }, [board, shapeId, variant]);
-  const [outK, insK] = ports.split('|'); const out = (outK || null) as PortKind | null;
-  const ins = (insK ? insK.split(',') : []).map((x) => { const [k, r] = x.split(':'); return { kind: k as PortKind, room: Number(r) }; });
+/** Dragging a link out of a card's output port (shared by NodeFrame and the React Flow poster cards): the ghost line, legal targets lit,
+ *  a drop on a card links it, a drop on empty board opens "What next?". `ghost` is the line to draw while this card is the source. */
+export function usePortDrag(shapeId: NodeId, type: string, out: PortKind | null) {
+  const board = useBoardApi(); const toast = useToast(); const def = nodeDefOf(type);
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
-  /* far off screen (more than a screen away): an empty shell, so its media, timers and controls aren't mounted while you pan a big board.
-     It fills back in a screen before it comes into view; selected cards always stay whole. Re-renders only when this flips. */
-  const offscreen = useValue('nf offscreen', () => { if (variant !== 'node' || perfOff()) return false; const b = board.boundsOf(shapeId); if (!b) return false;
-    const v = board.viewportBounds(); const mx = v.w, my = v.h;
-    return (b.maxX < v.minX - mx || b.minX > v.maxX + mx || b.maxY < v.minY - my || b.minY > v.maxY + my) && !board.selection().includes(shapeId); }, [board, shapeId, variant]);
-  const metaName = useValue('nf name', () => { const n = (board.getNode(shapeId)?.meta as any)?.name; return renamable && typeof n === 'string' ? n.trim() : ''; }, [board, shapeId, renamable]);
   const cleanup = useRef<() => void>(() => {});
   useEffect(() => () => cleanup.current(), []);
 
@@ -112,6 +99,33 @@ export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status,
     cleanup.current = listenPortDrag(window, { move, up, cancel: endDrag });
   };
 
+  return { beginDrag, ghost: start ? <DragGhost from={start} /> : null };
+}
+
+export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status, actions, children, footer, className = '', bodyClass = '', variant = 'node', testId, rootAttrs, label, heading, renamable, farName }: NodeFrameProps) {
+  const board = useBoardApi();
+  const def = nodeDefOf(type);
+  const selected = useValue('nf selected', () => board.selection().includes(shapeId), [board, shapeId]);
+  const hovered = useValue('nf hovered', () => board.hovered() === shapeId, [board, shapeId]);
+  /* this node's role in a drag: the source, a legal target (and the one under the pointer), or dimmed */
+  const role = useValue('nf drag role', () => { const d = portDragAtom.get(); if (!d) return ''; if (d.fromId === shapeId) return 'src'; return d.targetId === shapeId ? 'drop' : d.legal.includes(shapeId) ? 'ok' : 'dim'; }, [shapeId]);
+  const dragKind = useValue('nf drag kind', () => portDragAtom.get()?.kind ?? null, []);
+  const ports = useValue('nf ports', () => { const s = board.getNode(shapeId); return portKey(s && variant === 'node' ? portInfoOf(board, s, catalogNow()) : null); }, [board, shapeId, variant]);
+  /* which ports have a link on them (the React Flow board fills those dots; tldraw's look doesn't use it) */
+  const linked = useValue('nf linked ports', () => { if (variant !== 'node') return '';
+    const ins = [...new Set(board.linksInto(shapeId).map((l) => (l.from ? outKindOfShape(board.getNode(l.from)) : null)).filter(Boolean))].sort().join(',');
+    return `${board.linksFrom(shapeId).length ? 'out' : ''}|${ins}`; }, [board, shapeId, variant]);
+  const [linkedOut, linkedInK] = linked.split('|'); const linkedIn = new Set(linkedInK ? linkedInK.split(',') : []);
+  const [outK, insK] = ports.split('|'); const out = (outK || null) as PortKind | null;
+  const ins = (insK ? insK.split(',') : []).map((x) => { const [k, r] = x.split(':'); return { kind: k as PortKind, room: Number(r) }; });
+  /* far off screen (more than a screen away): an empty shell, so its media, timers and controls aren't mounted while you pan a big board.
+     It fills back in a screen before it comes into view; selected cards always stay whole. Re-renders only when this flips. */
+  const offscreen = useValue('nf offscreen', () => { if (variant !== 'node' || perfOff()) return false; const b = board.boundsOf(shapeId); if (!b) return false;
+    const v = board.viewportBounds(); const mx = v.w, my = v.h;
+    return (b.maxX < v.minX - mx || b.minX > v.maxX + mx || b.maxY < v.minY - my || b.minY > v.maxY + my) && !board.selection().includes(shapeId); }, [board, shapeId, variant]);
+  const metaName = useValue('nf name', () => { const n = (board.getNode(shapeId)?.meta as any)?.name; return renamable && typeof n === 'string' ? n.trim() : ''; }, [board, shapeId, renamable]);
+  const { beginDrag, ghost } = usePortDrag(shapeId, type, out);
+
   if (offscreen) return <div className={`nf nf-${variant} nf-shell`} data-shape-id={shapeId} data-node-kind={def?.kind ?? 'node'} data-offscreen="1" aria-hidden />;
   /* keyboard: a card is a focus stop (Tab moves between cards); Enter selects it, the same as a click */
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' && !board.selection().includes(shapeId)) { e.preventDefault(); e.stopPropagation(); board.select([shapeId]); } };
@@ -129,10 +143,10 @@ export function NodeFrame({ shapeId, type, tint, icon, title, titleHint, status,
     {(children != null || heading != null) && <div className={`nf-body ${bodyClass}`.trim()}>{farName && heading == null && <h3 className="nf-heading nf-far-only" aria-hidden>{farName}</h3>}{heading != null && (renamable && typeof heading === 'string' ? <CardName id={shapeId} name={metaName} shown={metaName || heading} className="nf-heading" testId="nf-name" />
       : <h3 className="nf-heading" title={typeof heading === 'string' ? heading : undefined}>{heading}</h3>)}{children}</div>}
     {footer != null && <footer className="nf-foot">{footer}</footer>}
-    {ins.map((p, i) => <span key={p.kind} className={`nf-port nf-in nf-k-${p.kind}${p.room <= 0 ? ' full' : ''}${dragKind === p.kind && role !== 'dim' ? ' want' : ''}`} style={{ top: top(i) }} data-card-control data-kind={p.kind} data-testid={`port-in-${p.kind}`}
+    {ins.map((p, i) => <span key={p.kind} className={`nf-port nf-in nf-k-${p.kind}${p.room <= 0 ? ' full' : ''}${linkedIn.has(p.kind) ? ' linked' : ''}${dragKind === p.kind && role !== 'dim' ? ' want' : ''}`} style={{ top: top(i) }} data-card-control data-kind={p.kind} data-testid={`port-in-${p.kind}`}
       {...tip(p.room > 0 ? `Takes ${PORT_WORDS[p.kind]}` : `${KIND_NAME[p.kind]} input is full`)}><i /></span>)}
-    {def?.output && out && <span className={`nf-port nf-out nf-k-${out}`} role="button" tabIndex={-1} data-card-control data-kind={out} data-testid={`port-out-${out}`} aria-label={`${KIND_NAME[out]} out: drag onto another card`}
+    {def?.output && out && <span className={`nf-port nf-out nf-k-${out}${linkedOut ? ' linked' : ''}`} role="button" tabIndex={-1} data-card-control data-kind={out} data-testid={`port-out-${out}`} aria-label={`${KIND_NAME[out]} out: drag onto another card`}
       {...tip(`Drag to connect this ${KIND_NAME[out].toLowerCase()}, or let go on the board for what's next`)} onPointerDown={beginDrag}><i /></span>}
-    {role === 'src' && start && <DragGhost from={start} />}
+    {role === 'src' && ghost}
   </div>;
 }

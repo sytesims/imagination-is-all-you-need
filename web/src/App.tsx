@@ -11,6 +11,8 @@ import { matchPage, isKnownPath, isAssetsPath, WF_PATH, FILM_ID_PATH } from './p
 import { PageComps } from './platform/routeChunks';
 import { featureForPath } from './shared/imageFeatures';
 import NotFound from './platform/NotFound';
+import { PluginOff } from './ui/plugins/PluginOff';
+import { useOffStudio } from './shared/plugins';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { AddWorkflowHost } from './shared/AddWorkflow';
 import { listRoadmap, listTools, ToolInfo } from './api';
@@ -74,6 +76,8 @@ export default function App() {
   const AwfComp = awfTool ? (toolScreens[awfTool.id] ?? toolScreens[awfTool.ui]) : undefined;
   const isAssets = isAssetsPath(path); /* PB-22: /assets and /assets/<section|media> */
   const jobMatch = path.match(/^\/jobs\/([^/]+)/);
+  /* a studio turned off in Plugins (Video, Image, Audio, 3D, Edit…): its pages say so, never a 404 (shared/studioLinks.ts) */
+  const offStudio = useOffStudio(path + search);
 
   let body: React.ReactNode; let title = 'Explore';
   if (err && !matchPage(path)) body = <div className="server-down-inline"><InlineError what={toolId ? 'this tool' : 'this page'} error={isRestartError(err) ? new Error('restarting') : failure ?? new Error(err)} onRetry={retryTools} /></div>;
@@ -88,6 +92,7 @@ export default function App() {
   /* One Video page (2026-10-25, steps 2 and 3): every video workflow runs in the Video page's own bar (ui/video/VideoWorkflowBar.tsx, recipes in shared/videoBar.ts); no workflow has a screen of its own */
   /* One Video feed (2026-10-26): the Video page (ui/video/VideoPage) owns the feed and stays mounted; only the bar inside it is keyed by the workflow */
   /* Stitch (2026-10-27): the timeline is its own panel on POST /api/compose (ffmpeg here), no registry tool, so it never waits on the tool list */
+  else if (offStudio) { title = offStudio.name; body = <PluginOff id={offStudio.id} name={offStudio.name} />; }
   else if (path === VIDEO_PAGE && new URLSearchParams(search).get('workflow') === 'two-person-swap') {
     title = 'Swap Two People'; body = <section className="page" data-testid="retired-two-person-swap"><h1>Swap Two People is no longer in the workflow picker</h1>
       <p>This saved run used two replacement photos and a two-pass workflow. Object / Person Swap replaces one selected subject; it cannot recreate this run without losing inputs.</p>

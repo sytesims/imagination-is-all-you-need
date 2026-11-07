@@ -5,6 +5,9 @@
  *  - variant "tile": mascot + title only (it sits inside the tile's own button); put <FailActions max={1}/> next to it for the one fix.
  *  - variant "full": mascot, title, line, actions and a Details toggle with the server's full message.
  */
+import { useLinkOn } from './plugins';
+/** The actions that open the job's page again (Recreate with a change). */
+const GO_RECREATE = new Set<string>(['recreate', 'changePhoto', 'otherModel', 'download', 'useCloud']);
 import { useEffect, useState } from 'react';
 import type { JobState } from '../api';
 import { retryJob, newIdemKey, collectJob, retryQuote } from '../api';
@@ -22,7 +25,7 @@ import { TRANSLATE_DOC } from './brand';
 
 const COMFY_CREDITS = 'https://platform.comfy.org/';
 const routeOf = (j: any) => String(j?.route ?? (Array.isArray(j?.routeAttempts) ? j.routeAttempts.at(-1)?.routeId : '') ?? '');
-const billingIdOf = (route: string) => /^local:/.test(route) ? 'local' : /^fal:/.test(route) ? 'fal' : /^replicate:/.test(route) ? 'replicate' : /bfl/.test(route) ? 'bfl' : /minimax/.test(route) ? 'minimax' : /dashscope|qwen-api/.test(route) ? 'dashscope' : 'comfy';
+const billingIdOf = (route: string) => /^local:/.test(route) ? 'local' : /^sunra:/.test(route) ? 'sunra' : /^kie:/.test(route) ? 'kie' : /^runpod:/.test(route) ? 'runpod' : /^fal:/.test(route) ? 'fal' : /^replicate:/.test(route) ? 'replicate' : /bfl/.test(route) ? 'bfl' : /minimax/.test(route) ? 'minimax' : /dashscope|qwen-api/.test(route) ? 'dashscope' : 'comfy';
 /** #11: list items carry runOn but no route; map it to the same billing id so the list item and the full job agree. */
 const billingIdOfJob = (j: any) => { const r = routeOf(j); if (r) return billingIdOf(r); const o = String(j?.runOn ?? ''); return !o || o === 'comfy-cloud' ? 'comfy' : o; };
 
@@ -38,7 +41,8 @@ export interface FailActionsProps { job: JobState; view?: FailView; /** at most 
 /** The fix buttons, wired to existing actions. */
 export function FailActions({ job, view, max = 3, skip = [], onRetry, onLeave, onDetails, compact, className = '', prefer }: FailActionsProps) {
   const toast = useToast(); const own = useFailView(job); const v = view ?? own; const [busy, setBusy] = useState(''); const j: any = job;
-  const ok = v.actions.filter(a => !skip.includes(a) && (a !== 'details' || !!onDetails));
+  const linkOn = useLinkOn(); const recreateOn = linkOn(recreateHref(job)); /* its studio is off in Plugins: no way back to its page */
+  const ok = v.actions.filter(a => !skip.includes(a) && (a !== 'details' || !!onDetails) && (recreateOn || !GO_RECREATE.has(a)));
   const acts = (prefer && ok.includes(prefer) ? [prefer, ...ok.filter(a => a !== prefer)] : ok).slice(0, max);
   // Run again shows its price on the button (asked once, nothing starts) and asks again in the confirm dialog before it runs
   const wantsPrice = acts.includes('runAgain'); const [price, setPrice] = useState<number | null>(null);

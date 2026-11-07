@@ -1,13 +1,9 @@
 /**
- * The board's graph rules, as plain functions (no React, no tldraw): which port drags may land where, who belongs to a
- * group, and the two-press Run all state machine. NodeFrame and the group node read them; server/test/canvas-nodes.test.ts
- * checks them without a browser.
- *
- * Run all never spends on the first press: runAllConfirm only prices the members (the caller's GET /price quotes). A run
- * list comes back only from runAllCommit on a fresh confirm state, which the group node only reaches on the second press.
+ * The board's graph rules, as plain functions (no React, no tldraw): which port drags may land where, who belongs to an old
+ * group card, run order and proposals. NodeFrame and the group node read them; server/test/canvas-nodes.test.ts checks them
+ * without a browser. (Release 2: the two-press Run all is gone; a Group's "Run the flow" goes through the dock's proposal card.)
  */
 import { NODE_DEFS, nodeDefOf } from './nodeTypes';
-import { ledgerUsd, usdToken } from '../shared/billing';
 
 export interface PortCandidate { id: string; type: string; /** arrows already bound into it */ inputs?: number }
 export interface PortTarget { id: string; type: string }
@@ -31,33 +27,6 @@ export function pickPortTarget(candidates: PortCandidate[], fromId: string, from
   return null;
 }
 
-export interface RunAllQuote { credits?: number | null; demo?: boolean; cost?: { estUsd?: number | null } | null }
-export interface RunAllTotal { usd: number | null; credits: number | null; demo: boolean; priced: number }
-/** Sum the existing quotes: USD when every quote has a cost, else credits, else nothing made up. */
-export function runAllTotal(quotes: (RunAllQuote | null | undefined)[]): RunAllTotal {
-  const list = quotes.filter((q): q is RunAllQuote => !!q);
-  const allUsd = list.length > 0 && list.every(q => typeof q.cost?.estUsd === 'number' && Number.isFinite(q.cost.estUsd));
-  const allCredits = list.length > 0 && list.every(q => typeof q.credits === 'number' && Number.isFinite(q.credits));
-  return {
-    usd: allUsd ? Math.round(list.reduce((s, q) => s + Number(q.cost!.estUsd), 0) * 1e4) / 1e4 : null,
-    credits: !allUsd && allCredits ? list.reduce((s, q) => s + Number(q.credits), 0) : null,
-    demo: list.length > 0 && list.every(q => q.demo === true),
-    priced: list.length,
-  };
-}
-
-export interface RunAllConfirm { phase: 'confirm'; ids: string[]; at: number; count: number; total: RunAllTotal }
-/** First press: one total, no run. */
-export function runAllConfirm(ids: string[], quotes: (RunAllQuote | null | undefined)[], now = Date.now()): RunAllConfirm {
-  return { phase: 'confirm', ids: [...ids], at: now, count: ids.length, total: runAllTotal(quotes) };
-}
-/** Second press: the ids to submit, only while the confirm is fresh (10 s by default). Null means nothing runs. */
-export function runAllCommit(state: RunAllConfirm | null | undefined, now = Date.now(), ttlMs = 10000): string[] | null {
-  if (!state || state.phase !== 'confirm' || !state.ids.length) return null;
-  if (now - state.at > ttlMs) return null;
-  return [...state.ids];
-}
-
 export interface MemberShape { id: string; type: string; bounds?: { minX: number; minY: number; maxX: number; maxY: number } | null }
 /** Generate cards whose centre sits inside the group frame (what Run all prices and runs). */
 export function groupGenIds(group: { minX: number; minY: number; maxX: number; maxY: number } | null | undefined, shapes: MemberShape[]): string[] {
@@ -66,14 +35,6 @@ export function groupGenIds(group: { minX: number; minY: number; maxX: number; m
     const x = (s.bounds!.minX + s.bounds!.maxX) / 2, y = (s.bounds!.minY + s.bounds!.maxY) / 2;
     return x >= group.minX && x <= group.maxX && y >= group.minY && y <= group.maxY;
   })()).map(s => s.id);
-}
-
-/** The total's short label for the Run all pill. */
-export function runAllPriceLabel(t: RunAllTotal): string {
-  if (t.demo) return 'Sample';
-  if (t.usd != null) return usdToken(t.usd, { approx: true });
-  if (t.credits != null) return ledgerUsd(t.credits);
-  return 'Price per node';
 }
 
 // ---------------------------------------------------------------- typed ports (2026-10-27)
@@ -139,11 +100,14 @@ export function runOrder(ids: string[], waitsOf: (id: string) => Upstream[]): { 
   return { now, later, blocked };
 }
 
-export interface OrderedRun { jobIds: string[]; failed: { cardId: string; error: string }[]; /** start by themselves once the cards before them are done */ later: string[] }
+/** A card that didn't start; a price stop (priceLock.ts) carries its code, why and both prices. */
+export interface RunFailure { cardId: string; error: string; code?: string; reason?: string; wasUsd?: number | null; nowUsd?: number | null }
+const stopInfo = (e: any) => (e?.code === 'price_changed' ? { code: 'price_changed', reason: e.reason, wasUsd: e.wasUsd ?? null, nowUsd: e.nowUsd ?? null } : {});
+export interface OrderedRun { jobIds: string[]; failed: RunFailure[]; /** start by themselves once the cards before them are done */ later: string[] }
 export interface RunDeps {
   waits: (id: string) => Upstream[]; submit: (id: string) => Promise<string>; exists: (id: string) => boolean;
   /** a card that didn't start: shown on the card itself (2026-11-02: it used to go silently back to a draft) */ notStarted: (id: string, error: string) => void;
-  stop?: (e: Error) => boolean; onLater?: (id: string, r: { jobId?: string; error?: string }) => void; timeoutMs?: number; pollMs?: number;
+  stop?: (e: Error) => boolean; onLater?: (id: string, r: { jobId?: string; error?: string; failure?: RunFailure }) => void; timeoutMs?: number; pollMs?: number;
 }
 /** Run several cards (Go on a proposal, a group's Run all) in graph order (2026-10-28): cards with nothing to wait for start now; a card fed
  *  by another card in the same run starts when that card has its result, so a clip gets its first frame instead of running without it.
@@ -151,16 +115,16 @@ export interface RunDeps {
  *  that doesn't start (the server refused it, or a card before it didn't finish) gets notStarted with the reason. */
 export async function runInOrder(ids: string[], d: RunDeps): Promise<OrderedRun> {
   const plan = runOrder(ids, d.waits); const out: OrderedRun = { jobIds: [], failed: [], later: [] };
-  const fail = (cardId: string, error: string) => { out.failed.push({ cardId, error }); d.notStarted(cardId, error); };
+  const fail = (cardId: string, error: string, e?: unknown) => { out.failed.push({ cardId, error, ...stopInfo(e) }); d.notStarted(cardId, error); };
   for (const b of plan.blocked) fail(b.id, `Waits for ${b.name}, which isn’t running. Generate it first.`);
-  for (const id of plan.now) { try { out.jobIds.push(await d.submit(id)); } catch (e) { fail(id, (e as Error).message); if (d.stop?.(e as Error)) return out; } }
+  for (const id of plan.now) { try { out.jobIds.push(await d.submit(id)); } catch (e) { fail(id, (e as Error).message, e); if (d.stop?.(e as Error)) return out; } }
   out.later = plan.later;
   /* chains of any length (A → B → C): C waits on B while B waits on A; a card in this run that didn't start (or gave up) ends the wait after it */
   const gaveUp = new Set(out.failed.map(f => f.cardId));
-  const later = (id: string, r: { jobId?: string; error?: string }) => { if (r.error) { gaveUp.add(id); d.notStarted(id, r.error); } d.onLater?.(id, r); };
+  const later = (id: string, r: { jobId?: string; error?: string; failure?: RunFailure }) => { if (r.error) { gaveUp.add(id); d.notStarted(id, r.error); } d.onLater?.(id, r); };
   for (const id of plan.later) void (async () => { const end = Date.now() + (d.timeoutMs ?? 3_600_000);
     while (Date.now() < end) { const up = d.waits(id); if (!d.exists(id)) return;
-      if (!up.length) { try { later(id, { jobId: await d.submit(id) }); } catch (e) { later(id, { error: (e as Error).message }); } return; }
+      if (!up.length) { try { later(id, { jobId: await d.submit(id) }); } catch (e) { later(id, { error: (e as Error).message, failure: { cardId: id, error: (e as Error).message, ...stopInfo(e) } }); } return; }
       const dead = up.find(u => (u.status !== 'running' && u.status !== 'draft') || gaveUp.has(u.id)); /* failed (a done card is an input, so it's no longer listed) */
       if (dead || up.every(u => u.status === 'draft' && !ids.includes(u.id))) { later(id, { error: `${dead?.name ?? up[0].name} didn’t finish, so this card didn’t run.` }); return; }
       await new Promise(r => setTimeout(r, d.pollMs ?? 1500)); }

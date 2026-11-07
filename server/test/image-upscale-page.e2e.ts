@@ -133,7 +133,7 @@ try {
   for (const [pv, k, wfile] of [['comfy-seedvr2-image', 4, 'image-upscale-seedvr2-3b-api.json'], ['comfy-nomos2', 2, 'image-upscale-nomos2-x2-api.json'], ['comfy-zimage-upscale', 2, 'image-upscale-zimage-2k-api.json'], ['fal-topaz-wonder', 4, null]] as const) {
     const q = await get(`/api/tools/image-upscale/price?scale=${k}&provider=${pv}`); assert.equal(q.status, 200, `${pv}: ${JSON.stringify(q.body)}`); assert.equal(q.body.workflow, wfile, pv); }
   const qt = await get('/api/tools/image-upscale/price?scale=4&provider=fal-topaz-wonder&width=1024&height=1024'); assert.match(JSON.stringify(qt.body.breakdown), /List price ≈ \$0\.24\./, `Topaz 4096² = 3 started 8 MP blocks: ${JSON.stringify(qt.body).slice(0, 400)}`);
-  const qf = await get('/api/tools/image-upscale/price?scale=2&provider=fal-seedvr2-upscale&width=1024&height=1024'); assert.match(JSON.stringify(qf.body.breakdown), /List price ≈ \$0\.01\./);
+  const qf = await get('/api/tools/image-upscale/price?scale=2&provider=fal-seedvr2-upscale&width=1024&height=1024'); assert.match(JSON.stringify(qf.body.breakdown), /List price ≈ \$0\.010\./);
   const qz = await get('/api/tools/image-upscale/price?scale=4&provider=comfy-zimage-upscale&width=1024&height=1024'); assert.equal(qz.status, 400); assert.equal(qz.body.code, 'output_too_large');
   const qs = await get('/api/tools/image-upscale/price?scale=4&provider=comfy-ultrasharp'); assert.equal(qs.status, 200); assert.equal(qs.body.workflow, 'image-upscale-ultrasharp-x4-api.json');
   const qw = await get('/api/tools/image-upscale/price?scale=4&provider=comfy-realesrgan&width=1280&height=720'); assert.deepEqual(qw.body.outputSize, { width: 5120, height: 2880 }); assert.deepEqual(qw.body.sourceSize, { width: 1280, height: 720 });

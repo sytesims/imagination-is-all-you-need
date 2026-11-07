@@ -15,10 +15,20 @@ import { createPortal } from 'react-dom';
 import { useValue, type BoardApi } from './boardApi';
 import { useCanvasBoard } from './agentApi';
 import { useCatalog, catalogNow } from './catalog';
+import { pickFromSelection, livePickChoices, pickOffscreen } from './pickAsk';
+import { priceChangedText } from './priceLock';
+import { noPriceLine, NO_PRICE_UNDER_BUDGET } from '../../../server/src/shared/flowPrice';
+import { askBudget, BUDGET_EVT } from './SpendChip';
+import { proposeCards } from './flowRun';
 import { startAgentBridge, nameOf as cardNameOf, type FeedEntry, type Proposal, type PickAsk } from './agentBridge';
 import { handAtom, handOf, fx, setAgentName, reducedMotion } from './agentHand';
 import { flowById, flowInfo } from '../shared/genFlows';
 import { LOCAL_FREE } from '../../../server/src/shared/modelIds';
+import { usePluginOn } from '../shared/plugins';
+import { repricePairs, hiddenByReprice, repriceRows, isPriceStop } from './proposalMerge';
+import { usdPrice, fmtUsd } from '../shared/billing';
+import { FlowIcon } from './GenCardShape';
+import type { GenMedium } from '../shared/genFlows';
 import { STARTERS, mergeFeed, mergeProposals, planOf, confirmOf, focusAdded, focusCards, setFollow, agentStarterPrompt, dockRoute, dockState, dockStatusLine, dockPill, workingLine, messageStatus, messageStatusText, listenCommand, LISTEN_PHRASE, type StarterId, type MsgStatus } from './agentDockModel';
 import { AgentMediaCard } from './AgentMediaCard';
 import { useCopied, Copied, useToast } from '../shared/Toast';
@@ -41,6 +51,7 @@ import './agentPanel.css';
 const AGENT_FRESH_MS = 90_000; /* the server's window: an agent that stopped waiting or polling for 90 s isn't listening any more */
 const time = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const STARTER_ICON: Record<StarterId, (p: { size?: number }) => JSX.Element> = { short: SparkleIcon, film: DirectorIcon, product: ProductIcon, animate: ExtendIcon, takes: VideoIcon, material: MaterialIcon, free: ExploreIcon };
+const CHIPS_SHOWN = 3;
 type Demo = { running: boolean; runId: string | null; title: string | null };
 
 /** Board.tsx puts the board in agentApi's context; the dock lives outside it, so wait for a live one (after a board switch the
@@ -143,15 +154,26 @@ function ListenHint({ boardId, name, onSetup }: { boardId: string; name: string;
   </div>;
 }
 
+/** "Claude asks ↗": while a pick waits and none of its cards is on screen, a calm chip on the board's edge. Nothing moves until you click
+ *  it; then the board glides to the cards. */
+function PickEdgeChip({ board, ids, who }: { board: BoardApi; ids: string[]; who: string }) {
+  const off = useValue('pick offscreen', () => { const bs = ids.map((id) => board.boundsOf(id as any)).filter(Boolean) as any[]; return pickOffscreen(bs, board.viewportBounds()); }, [board, ids.join(',')]);
+  const box = useValue('pick board box', () => { board.camera(); const r = board.container().getBoundingClientRect(); return { left: r.left + r.width / 2, top: r.top + 72 }; }, [board]); /* under the board's top bar */
+  if (!off) return null;
+  const go = () => { const bs = ids.map((id) => board.boundsOf(id as any)).filter(Boolean) as any[]; if (!bs.length) return;
+    const x = Math.min(...bs.map((b) => b.minX)), y = Math.min(...bs.map((b) => b.minY)); board.fitBounds({ x, y, w: Math.max(...bs.map((b) => b.maxX)) - x, h: Math.max(...bs.map((b) => b.maxY)) - y }, { duration: 420, zoom: Math.max(0.5, board.zoom()) }); };
+  return createPortal(<button type="button" className="ap-pick-edge" style={{ left: box.left, top: box.top }} onClick={go} data-testid="pick-edge-chip">{who} asks you to pick<span aria-hidden> ↗</span></button>, document.body);
+}
+
 /** "Pick the one you like": the cards as small thumbnails with a Pick button each; clicking a card on the board does the same. */
-function PickCard({ e, pick, board, onPick, onFocus }: { e: FeedEntry; pick: PickAsk | null; board: BoardApi | null; onPick: (cardId: string) => void; onFocus: (id: string) => void }) {
+function PickCard({ e, pick, board, onPick, onFocus, onGlow }: { e: FeedEntry; pick: PickAsk | null; board: BoardApi | null; onPick: (cardId: string) => void; onFocus: (id: string) => void; onGlow: (id: string) => void }) {
   const ids: string[] = e.meta?.pick?.cardIds ?? []; const live = !!pick && pick.id === e.meta?.pick?.id; const waiting = live && pick!.status === 'waiting'; const chosen = live ? pick!.chosen : null;
   const cards = useValue('pick cards', () => ids.map((id) => { const s = board?.getNode(id as any); const p: any = s?.props; const t = p?.takes?.[p?.take ?? 0];
     return { id, here: !!s, name: (board && cardNameOf(board, id as any)) || String(p?.prompt ?? 'Card').slice(0, 40), poster: t?.poster || (t?.kind === 'image' ? t.url : '') || '' }; }), [board, ids.join(',')]);
   return <section className={`ap-pick${waiting ? ' waiting' : ''}`} data-testid="agent-pick" data-state={waiting ? 'waiting' : chosen ? 'picked' : 'closed'}>
     <div className="ap-pick-h"><span className="ap-kicker">{waiting ? 'Your pick' : chosen ? 'You picked' : 'Pick one'}</span>{waiting && <small>Click one here or on the board</small>}</div>
     <div className="ap-pick-row" role="list">{cards.map((c) => <button key={c.id} type="button" role="listitem" className={`ap-pick-it${chosen === c.id ? ' on' : ''}${chosen && chosen !== c.id ? ' off' : ''}`} data-testid="agent-pick-item"
-      disabled={!c.here || (!waiting && !chosen)} aria-pressed={chosen === c.id} onClick={() => (waiting ? onPick(c.id) : onFocus(c.id))} onMouseEnter={() => waiting && onFocus(c.id)}
+      disabled={!c.here || (!waiting && !chosen)} aria-pressed={chosen === c.id} onClick={() => (waiting ? onPick(c.id) : onFocus(c.id))} onMouseEnter={() => waiting && onGlow(c.id)} /* a look only: hovering never selects, picks or moves the board */
       aria-label={waiting ? `Pick ${c.name}` : c.name}>
       <span className="ap-pick-img">{c.poster ? <img src={c.poster} alt="" draggable={false} /> : <SparkleIcon size={16} />}{chosen === c.id && <i className="ap-pick-ok"><CheckIcon size={11} /></i>}</span>
       <b>{c.name}</b></button>)}</div>
@@ -184,48 +206,106 @@ function EventRow({ e, onFocus }: { e: FeedEntry; onFocus: (id?: string | null) 
   </button>;
 }
 
-function ProposalCard({ p, busy, onDecide, onFocus }: { p: Proposal; busy?: 'go' | 'cancel'; onDecide: (d: 'go' | 'cancel') => void; onFocus: (ids: string[]) => void }) {
+function ProposalCard({ p, busy, onDecide, onFocus, hideNote }: { p: Proposal; busy?: 'go' | 'cancel'; onDecide: (d: 'go' | 'cancel') => void; onFocus: (ids: string[]) => void; /** a price stop's ask-again: its card already said why */ hideNote?: boolean }) {
   const pending = p.status === 'pending';
   /* rows that can't run here are skipped, not a blocker: Go starts the rest (server: proposal.runCardIds). Older proposals without it: every problem-free row. */
   const runIds = new Set(p.runCardIds ?? p.items.filter((i) => !i.problem).map((i) => i.cardId)); const nRun = runIds.size; const nSkip = p.items.length - nRun;
   const disabled = p.overBudget || !!p.reason || nRun === 0;
   const runItems = p.items.filter((i) => runIds.has(i.cardId)); const nRuns = runItems.reduce((a, i) => a + (Number(i.quote?.runs) > 1 ? Number(i.quote.runs) : 1), 0); /* a Material Swap card runs once per swatch */ const allDemo = runItems.length > 0 && runItems.every((i) => i.quote?.demo === true);
   const budget = p.budget;
+  /* decision 9: rows Go starts that had no price beforehand (no board budget set): left out of the total, said on their own line */
+  const unpricedIds = new Set(p.unpricedIds ?? []); const nNoPrice = runItems.filter((i) => unpricedIds.has(i.cardId)).length;
+  const skippedNoPrice = p.items.filter((i) => !runIds.has(i.cardId) && i.problem === NO_PRICE_UNDER_BUDGET).length;
+  const boardOver = p.overBudget && !!p.boardBudget && !(budget?.remainingUsd != null && p.totalUsd > budget.remainingUsd);
+  /* a price stop is calm (amber), said once: the rows say what moved, a fresh proposal below asks again */
+  const priceStop = p.items.some((i) => i.priceChanged) && !p.items.some((i) => !i.priceChanged && (p.failedIds ?? []).includes(i.cardId));
   return <article className={`ap-prop ${p.status}`} data-testid="agent-proposal" data-status={p.status}>
-    <div className="ap-prop-h"><span className="ap-kicker">{pending ? 'Needs your OK' : p.status === 'running' ? 'Starting' : p.status === 'approved' ? 'Approved' : p.status === 'cancelled' ? 'Cancelled' : p.status === 'drafts' ? 'Drafts · nothing to run yet' : 'Could not start'}</span>
+    <div className="ap-prop-h"><span className="ap-kicker">{pending ? 'Needs your OK' : p.status === 'running' ? 'Starting' : p.status === 'approved' ? 'Approved' : p.status === 'cancelled' ? 'Cancelled' : p.status === 'drafts' ? 'Drafts · nothing to run yet' : priceStop ? 'Price changed · asked again' : 'Could not start'}</span>
       <button type="button" className="ap-prop-n" onClick={() => onFocus(p.cardIds)} {...tip('Show these cards on the board')}>{nRuns} run{nRuns === 1 ? '' : 's'}{nSkip ? ` · ${nSkip} skipped` : ''}</button></div>
-    {p.note && <p className="ap-prop-note">{p.note}</p>}
+    {p.note && !hideNote && <p className="ap-prop-note">{p.note}</p>}
     <ul className="ap-items">{p.items.map((it, i) => {
       const q = it.quote; const free = q?.localRun === true || q?.cost?.billedTo === 'local'; const demo = q?.demo === true;
-      const skip = !runIds.has(it.cardId);
-      return <li key={it.cardId} className={skip ? 'has-problem' : ''} data-testid="agent-proposal-item" data-skipped={skip ? '1' : undefined}>
+      const skip = !runIds.has(it.cardId); const moved = it.priceChanged; const noPrice = !skip && unpricedIds.has(it.cardId);
+      return <li key={it.cardId} className={skip ? 'has-problem' : moved ? 'price-changed' : ''} data-testid="agent-proposal-item" data-skipped={skip ? '1' : undefined} data-price-changed={moved ? '1' : undefined}>
         <span className="ap-item-n">{i + 1}</span>
-        <div className="ap-item-t"><b>{it.title}</b><small>{(() => { const f = flowById(it.workflow); return f ? flowInfo(f, catalogNow()).name : 'Card'; })() /* a workflow card's own name (Material Swap), not its id */}{it.model ? ` · ${it.model}` : ''}{Number(it.quote?.runs) > 1 ? ` · ${it.quote.runs} swatches` : ''}</small>{skip && <small className="ap-item-why" title={it.problem ?? undefined}>{it.problem ?? "Can't run here"}</small>}</div>
-        <span className="ap-item-p">{skip ? <em className="ap-item-skip">Skipped</em> : q ? <GenPrice q={q} credits={it.credits} demo={demo} free={free} compact /> : <em>—</em>}</span>
+        <div className="ap-item-t"><b>{it.title}</b><small>{(() => { const f = flowById(it.workflow); return f ? flowInfo(f, catalogNow()).name : 'Card'; })() /* a workflow card's own name (Material Swap), not its id */}{it.model ? ` · ${it.model}` : ''}{Number(it.quote?.runs) > 1 ? ` · ${it.quote.runs} swatches` : ''}</small>{skip && <small className="ap-item-why" title={it.problem ?? undefined}>{it.problem ?? "Can't run here"}</small>}
+          {moved && <small className="ap-item-moved" data-testid="agent-proposal-price-changed">{priceChangedText(moved.reason, moved.wasUsd, moved.nowUsd)} · asked again below</small>}</div>
+        <span className="ap-item-p">{skip ? <em className="ap-item-skip">Skipped</em> : noPrice ? <em className="ap-item-skip" data-testid="agent-proposal-no-price">No price yet</em> : q ? <GenPrice q={q} credits={it.credits} demo={demo} free={free} compact /> : <em>—</em>}</span>
       </li>;
     })}</ul>
-    <div className="ap-total"><span>Total</span><b data-testid="agent-proposal-total">{nRun === 0 ? '—' : totalWords(runItems, p.totalUsd)}</b></div>
-    {budget?.remainingUsd != null && <div className="ap-budget"><span>Agent budget left</span><b>${budget.remainingUsd.toFixed(2)} of ${(budget.budgetUsd ?? 0).toFixed(2)}</b></div>}
+    <div className="ap-total"><span>Total</span><b data-testid="agent-proposal-total">{nRun === 0 ? '—' : nNoPrice === nRun ? 'No price yet' : `${totalWords(runItems.filter((i) => !unpricedIds.has(i.cardId)), p.totalUsd)}${nNoPrice ? ` + ${nNoPrice} without a price` : ''}`}</b></div>
+    {nNoPrice > 0 && pending && <p className="ap-skipnote" data-testid="agent-proposal-unpriced">{noPriceLine(nNoPrice)}: {nNoPrice === 1 ? 'it runs' : 'they run'} at what the place charges, outside this total.</p>}
+    {budget?.remainingUsd != null && <div className="ap-budget"><span>Agent budget left</span><b>{fmtUsd(budget.remainingUsd)} of {fmtUsd(budget.budgetUsd ?? 0)}</b></div>}
+    {p.boardBudget && <div className="ap-budget" data-testid="agent-proposal-board-budget"><span>Board budget left</span><b>{fmtUsd(p.boardBudget.leftUsd)} of {fmtUsd(p.boardBudget.usd)}</b></div>}
     {p.reason && <p className={`ap-warn${p.overBudget ? ' over' : ''}`} data-testid="agent-proposal-reason">{p.reason}</p>}
-    {!p.reason && nSkip > 0 && pending && <p className="ap-skipnote" data-testid="agent-proposal-skipped">{nSkip === 1 ? '1 card can’t run here, so Go skips it.' : `${nSkip} cards can’t run here, so Go skips them.`} Nothing is charged for {nSkip === 1 ? 'it' : 'them'}.</p>}
-    {p.error && <p className="ap-warn over">{p.error}</p>}
+    {!p.reason && skippedNoPrice > 0 && pending && <p className="ap-skipnote" data-testid="agent-proposal-unpriced">{noPriceLine(skippedNoPrice)}, so Go leaves {skippedNoPrice === 1 ? 'it' : 'them'} out: {skippedNoPrice === 1 ? 'it' : 'they'} can’t count against the board budget. Run {skippedNoPrice === 1 ? 'it' : 'them'} on {skippedNoPrice === 1 ? 'its' : 'their'} own first.</p>}
+    {!p.reason && nSkip - skippedNoPrice > 0 && pending && (() => { const n = nSkip - skippedNoPrice; return <p className="ap-skipnote" data-testid="agent-proposal-skipped">{n === 1 ? '1 card can’t run here, so Go skips it.' : `${n} cards can’t run here, so Go skips them.`} Nothing is charged for {n === 1 ? 'it' : 'them'}.</p>; })()}
+    {p.error && <p className={`ap-warn${priceStop ? '' : ' over'}`} data-testid={priceStop ? 'agent-proposal-price-stop' : undefined}>{p.error}</p>}
+    {pending && boardOver && <div className="ap-prop-fix"><button type="button" className="ap-cancel" data-testid="agent-change-budget" onClick={askBudget}>Change the budget</button><small>Only you can change it. This is priced again after.</small></div>}
     {pending && <div className="ap-prop-actions">
-      <button type="button" className="ap-go" data-testid="agent-go" disabled={disabled || !!busy} onClick={() => onDecide('go')}>{busy === 'go' ? 'Starting…' : `Go${allDemo || p.totalUsd <= 0 ? '' : ` · ≈ $${p.totalUsd.toFixed(2)}`}`}</button>
+      <button type="button" className="ap-go" data-testid="agent-go" disabled={disabled || !!busy} onClick={() => onDecide('go')}>{busy === 'go' ? 'Starting…' : `Go${allDemo || p.totalUsd <= 0 ? '' : ` · ${fmtUsd(p.totalUsd)}`}`}</button>
       <button type="button" className="ap-cancel" data-testid="agent-cancel" disabled={!!busy} onClick={() => onDecide('cancel')}>{busy === 'cancel' ? 'Cancelling…' : 'Cancel'}</button>
     </div>}
     {p.status === 'running' && <p className="ap-prop-state">Starting the runs…</p>}
     {p.status === 'approved' && <p className="ap-prop-state ok">Approved · {p.jobIds.length} run{p.jobIds.length === 1 ? '' : 's'} started</p>}
     {p.status === 'cancelled' && <p className="ap-prop-state">Cancelled. Nothing ran.</p>}
     {p.status === 'drafts' && <p className="ap-prop-state" data-testid="agent-proposal-drafts">These stay on the board as drafts. Nothing ran.</p>}
-    {p.status === 'failed' && <p className="ap-prop-state bad">Nothing ran. {p.error}</p>}
+    {p.status === 'failed' && (priceStop ? <p className="ap-prop-state">Nothing ran · price changed</p> : <p className="ap-prop-state bad">Nothing ran. {p.error}</p>)}
   </article>;
 }
 
 /** The proposal total in the same tokens as every Generate button (GenPrice / billing.priceToken): Sample, Free · this computer, ≈ $0.42. */
 export function totalWords(items: { quote: any }[], totalUsd: number): string {
   if (items.length && items.every((i) => i.quote?.demo === true)) return 'Sample';
-  if (totalUsd > 0) return `≈ $${totalUsd.toFixed(2)}`;
+  if (totalUsd > 0) return usdPrice(totalUsd, { approx: items.some((i) => isEstimate(i.quote)) });
   return items.length && items.every((i) => i.quote?.localRun === true || i.quote?.cost?.billedTo === 'local') ? LOCAL_FREE : 'Free';
+}
+/** ≈ only on a price that is an estimate (the quote says so, or says nothing): the same rule as GenPrice's token (billing.costToken). */
+const isEstimate = (q: any) => !(q?.cost && typeof q.cost === 'object' && q.cost.estimated === false);
+const rowUsd = (usd: number | null, q: any, approx: boolean) => (q?.demo === true ? 'Sample' : q?.localRun === true || q?.cost?.billedTo === 'local' ? LOCAL_FREE : usd == null ? '—' : `${approx && isEstimate(q) ? '≈ ' : ''}${fmtUsd(usd)}`);
+/** Old price small and struck (no ≈: it is only the reference), the new one under it; just the new one when they read the same. */
+function PriceMove({ was, now, testId }: { was: string | null; now: string; testId?: string }) {
+  return <span className="ap-move">{was && <s data-testid={testId ? `${testId}-was` : undefined}>{was}</s>}<b data-testid={testId}>{now}</b></span>;
+}
+
+/** A price stop (owner-approved design, 2026-11-06): the approval Go stopped and its ask-again are ONE card that changes in place.
+ *  "New price · Nothing ran", each moved row old → new, the total old → new, Cancel / Run for $x, and one quiet history line under it.
+ *  Cancel turns it into a quiet line; Run turns it into the normal running card. Rows that did start at Go say Started. */
+function RepriceCard({ origin, child, board, busy, onDecide, onFocus }: { origin: Proposal; child: Proposal | null; board: BoardApi | null; busy?: 'go' | 'cancel'; onDecide: (p: Proposal, d: 'go' | 'cancel') => void; onFocus: (ids: string[]) => void }) {
+  const history = <p className="ap-history" data-testid="agent-proposal-history">You approved at {fmtUsd(origin.totalUsd)} · {time(origin.decidedAt ?? origin.createdAt)}</p>;
+  if (child?.status === 'cancelled') return <EventRow e={{ seq: 0, id: child.id, at: child.decidedAt ?? Date.now(), type: 'decision', decision: 'cancel', text: 'Cancelled. Nothing ran.' }} onFocus={() => undefined} />;
+  if (child && child.status !== 'pending') return <div className="ap-reprice-done"><ProposalCard p={child} hideNote onDecide={(d) => onDecide(child, d)} onFocus={onFocus} />{history}</div>;
+  const rows = repriceRows(origin, child); const moved = rows.filter((r) => r.state === 'moved'); const started = rows.filter((r) => r.state === 'started').length;
+  const was = moved.reduce((a, r) => a + (r.wasUsd ?? 0), 0); const now = child ? child.totalUsd : moved.reduce((a, r) => a + (r.nowUsd ?? 0), 0);
+  const est = moved.some((r) => isEstimate(r.quote));
+  const sample = !!child && child.items.length > 0 && child.items.every((i) => i.quote?.demo === true);
+  const totalNow = sample ? 'Sample' : `${est ? '≈ ' : ''}${fmtUsd(now)}`; const totalWas = !sample && fmtUsd(was) !== fmtUsd(now) ? fmtUsd(was) : null;
+  const checking = !child && Date.now() - (origin.decidedAt ?? origin.createdAt) < 20_000;
+  return <div className="ap-reprice-wrap">
+    <article className="ap-prop pending ap-reprice" data-testid="agent-proposal" data-status="repriced">
+      <div className="ap-prop-h"><span className="ap-kicker ap-kicker-warn">New price</span>
+        <button type="button" className="ap-prop-n" onClick={() => onFocus(origin.cardIds)} {...tip('Show these cards on the board')} data-testid="agent-proposal-ran">{started ? `${started} started` : 'Nothing ran'}</button></div>
+      <ul className="ap-items">{rows.map((r) => <RepriceItem key={r.cardId} r={r} board={board} />)}</ul>
+      {moved.length > 0 && rows.length > 1 && <div className="ap-total"><span>Total</span><PriceMove was={totalWas} now={totalNow} testId="agent-proposal-total" /></div>}
+      {child?.reason && <p className={`ap-warn${child.overBudget ? ' over' : ''}`} data-testid="agent-proposal-reason">{child.reason}</p>}
+      {child ? <div className="ap-prop-actions">
+        <button type="button" className="ap-go" data-testid="agent-go" disabled={!!busy || !!child.reason || child.overBudget || !(child.runCardIds ?? []).length} onClick={() => onDecide(child, 'go')}>{busy === 'go' ? 'Starting…' : child.totalUsd > 0 && !sample ? `Run for ${fmtUsd(child.totalUsd)}` : 'Run'}</button>
+        <button type="button" className="ap-cancel" data-testid="agent-cancel" disabled={!!busy} onClick={() => onDecide(child, 'cancel')}>{busy === 'cancel' ? 'Cancelling…' : 'Cancel'}</button>
+      </div> : checking ? <p className="ap-prop-state">Checking the new price…</p> : null}
+    </article>
+    {history}
+  </div>;
+}
+function RepriceItem({ r, board }: { r: ReturnType<typeof repriceRows>[number]; board: BoardApi | null }) {
+  const look = useValue('reprice row', () => { const p: any = board?.getNode(r.cardId as any)?.props; const t = p?.takes?.[p?.take ?? 0];
+    return { poster: t?.poster || (t?.kind === 'image' ? t.url : '') || '', medium: (p?.medium ?? 'image') as GenMedium }; }, [board, r.cardId]);
+  const f = flowById(r.workflow); const name = f ? flowInfo(f, catalogNow()).name : 'Card';
+  return <li className={r.state === 'moved' ? 'price-moved' : r.state === 'skipped' ? 'has-problem' : 'is-done'} data-testid="agent-proposal-item" data-state={r.state} data-price-changed={r.state === 'moved' ? '1' : undefined}>
+    <span className="ap-tc-thumb ap-item-thumb" aria-hidden>{look.poster ? <img src={look.poster} alt="" draggable={false} /> : <span className="ap-tc-ic"><FlowIcon flow={r.workflow} medium={look.medium} size={14} /></span>}</span>
+    <div className="ap-item-t"><b title={r.title}>{r.title}</b><small>{name}{r.model ? ` · ${r.model}` : ''}</small></div>
+    <span className="ap-item-p">{r.state === 'moved' ? <PriceMove was={r.wasUsd != null && r.nowUsd != null && fmtUsd(r.wasUsd) !== fmtUsd(r.nowUsd) ? rowUsd(r.wasUsd, r.quote, false) : null} now={rowUsd(r.nowUsd, r.quote, true)} testId="agent-proposal-row-price" />
+      : <em className={r.state === 'skipped' ? 'ap-item-skip' : undefined}>{r.state === 'started' ? 'Started' : r.state === 'skipped' ? 'Skipped' : 'Didn’t start'}</em>}</span>
+  </li>;
 }
 
 function Starters({ onPick, disabled }: { onPick: (id: StarterId) => void; disabled: boolean }) {
@@ -243,6 +323,7 @@ type AgentPresence = { connected: boolean; listening?: boolean; /** a canvas_* c
 export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoard, ask = '' }: { /** words to send once (Explore's Ask an agent, /canvas?ask=) */ ask?: string; boardId: string; open: boolean; onClose: () => void; onBusy?: (busy: boolean) => void;
   /** the board list changed (made, renamed, deleted) */ onBoards?: () => void; /** your agent wants this board shown */ onOpenBoard?: (boardId: string, name: string, by: string) => void }) {
   const board = useBoardReady(); useCatalog(); const toast = useToast();
+  const demoOn = usePluginOn('canvas-demo'); /* the built-in demo agent is a plugin (Plugins page): off = no starters, typed words need your own agent */
   const [config, setConfig] = useState<any>(null);
   const [agent, setAgent] = useState<AgentPresence>({ connected: false, listening: false, lastAgentAt: null, agentName: null, sessions: [] });
   const [connection, setConnection] = useState(true);
@@ -259,6 +340,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   const [busy, setBusy] = useState<Record<string, 'go' | 'cancel'>>({});
   const [rerolling, setRerolling] = useState<Record<string, boolean>>({});
   const [sheet, setSheet] = useState(false);
+  const [chipsOpen, setChipsOpen] = useState(false); /* the demo chips: the first CHIPS_SHOWN, then "4 more" opens the rest inline; a pick folds them again */
   const [glow, setGlow] = useState<{ left: number; top: number; width: number; height: number; key: number } | null>(null);
   const [tick, setTick] = useState(0);
   /* pictures added to the next message (2026-11-03): paperclip, paste or a drop on the dock; each becomes an Upload card when you send */
@@ -286,7 +368,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
   const agentWorking = !agentListening && !!agent.working; /* building over MCP with no wait loop: "working on this board", not "isn't reading it" */
   const state = dockState({ connected: agentConnected || agentWorking, listening: agentListening, working: agentWorking });
   const agentLabel = agent.agentName || 'Your AI';
-  const connectedLine = dockStatusLine(state, agentLabel, { sessions: sessions.length, via: agent.listenVia ?? null });
+  const connectedLine = state === 'off' && !demoOn ? 'No agent connected' : dockStatusLine(state, agentLabel, { sessions: sessions.length, via: agent.listenVia ?? null });
   const sessionNames = sessions.map((x) => x.name).join(', ');
   const onBoardsRef = useRef(onBoards); onBoardsRef.current = onBoards; const onOpenRef = useRef(onOpenBoard); onOpenRef.current = onOpenBoard;
   void tick;
@@ -389,6 +471,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
       const ids = [...selected, ...pictures.map((p) => p.card_id).filter((id) => !selected.includes(id as any))].slice(0, 50);
       const selection = agentConnected && board ? ids.map((id) => { const s: any = board.getNode(id as any); return { id, name: cardNameOf(board, id as any) ?? null, type: s?.type ?? (board.getLink(id) ? 'arrow' : null), workflow: s?.props?.flow ?? null, status: s?.props?.status ?? null }; }) : [];
       /* no agent reads the dock: the pictures are on the board, and only typed words go on to the demo */
+      if (route !== 'messages' && !demoOn && body) throw new Error('The Canvas demo is off. Connect your AI assistant, or turn the demo on in Plugins.');
       if (!body && (!agentConnected || route !== 'messages')) { toast(pictures.length === 1 ? 'Added the picture to the board.' : `Added ${pictures.length} pictures to the board.`); return; }
       const r = route === 'messages'
         ? await fetch(`${base}/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: body, ...(confirmId ? { confirm_id: confirmId } : {}), ...(selection.length ? { selection } : {}), ...(agentConnected && pictures.length ? { pictures } : {}) }) })
@@ -426,13 +509,21 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
     } catch (e) { toast((e as Error).message, 'error'); } finally { choosing.current = false; }
   }, [boardId, board, toast]);
   const pickRef = useRef(pick); pickRef.current = pick; const choosing = useRef(false); const pickSaid = useRef(false);
+  /* the pulse and the "Waiting for your pick" label follow the server's PickAsk.status only: they clear on a pick, a cancel, the server's
+     timeout, or when this board closes. Only a click on one of the cards AFTER the ask counts (pickFromSelection); a card that was already
+     selected, a camera move or hovering the dock picks nothing, and nothing moves the camera or opens a panel (the edge chip does, on click). */
   useEffect(() => {
     if (!board) return;
-    if (pick?.status === 'waiting') { fx.pick(pick.cardIds); handOf(board).say('Waiting for your pick', true); pickSaid.current = true; }
+    const waitingNow = pick?.status === 'waiting';
+    if (waitingNow) { fx.pick(livePickChoices(pick!.cardIds, (id) => !!board.getNode(id as any))); handOf(board).say('Waiting for your pick', true); pickSaid.current = true; }
     else { fx.pick([]); if (pick?.status === 'picked' && pick.chosen) fx.chosen(pick.chosen); if (pickSaid.current) { pickSaid.current = false; handOf(board).hush(); } } /* the pick resolved: the label goes with it */
-    if (pick?.status !== 'waiting') return;
-    const off = board.onChange(() => { const sel = board.selection(); if (sel.length === 1 && pick.cardIds.includes(sel[0])) void choose(sel[0]); }, 'view');
-    return () => { off(); };
+    if (!waitingNow) return;
+    let before = [...board.selection()]; let pressed = false;
+    const offIn = board.onInput((e) => { if (e.kind === 'pointer_down') pressed = true; });
+    const offView = board.onChange(() => { const now = board.selection(); const id = pickFromSelection({ before, now, choices: pick!.cardIds, pressedSinceAsk: pressed }); before = [...now]; if (id) void choose(id); }, 'view');
+    /* a choice you delete drops out of the pulse */
+    const offDoc = board.onChange(() => fx.pick(livePickChoices(pick!.cardIds, (id) => !!board.getNode(id as any))), 'board');
+    return () => { offIn(); offView(); offDoc(); fx.pick([]); if (pickSaid.current) { pickSaid.current = false; handOf(board).hush(); } };
   }, [board, pick, choose]);
   useEffect(() => () => fx.pick([]), []);
 
@@ -460,12 +551,23 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
     } catch (e) { toast((e as Error).message, 'error'); }
     finally { setRerolling((m) => { const n = { ...m }; delete n[cardId]; return n; }); }
   };
-  const pickStarter = (id: StarterId) => { const s = STARTERS.find((x) => x.id === id); if (s) void send(s.prompt, id); };
+  /* the board budget changed (Change the budget on an over-budget proposal): that proposal is priced again against the new budget, and the
+     old one closes, so Go is never left on a stale verdict */
+  const propsRef = useRef(proposals); propsRef.current = proposals;
+  useEffect(() => { const again = async (p: Proposal) => {
+      const r = await proposeCards(p.cardIds, p.note ?? '', boardId); if (!r.ok) { toast(r.error, 'warn'); return; }
+      setProposals((prev) => mergeProposals(prev, [r.proposal]));
+      const c = await fetch(`/api/canvas/boards/${encodeURIComponent(boardId)}/agent/proposals/${encodeURIComponent(p.id)}/decision`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ decision: 'cancel' }) }).catch(() => null);
+      const b = c ? await c.json().catch(() => null) : null; if (b?.proposal) setProposals((prev) => mergeProposals(prev, [b.proposal])); };
+    const f = () => { for (const p of propsRef.current) if (p.status === 'pending' && p.overBudget && p.boardBudget) void again(p); };
+    addEventListener(BUDGET_EVT, f); return () => removeEventListener(BUDGET_EVT, f); }, [boardId, toast]);
+  const pickStarter = (id: StarterId) => { setChipsOpen(false); const s = STARTERS.find((x) => x.id === id); if (s) void send(s.prompt, id); };
 
   const byId = useMemo(() => new Map(proposals.map((p) => [p.id, p])), [proposals]);
   const plan = useMemo(() => planOf(feed), [feed]);
   const confirm = useMemo(() => (demo.running ? confirmOf(feed) : null), [feed, demo.running]); confirmRef.current = confirm;
-  const shown = feed.filter((e) => e.type !== 'proposal');
+  const pairs = useMemo(() => repricePairs(proposals), [proposals]);
+  const shown = feed.filter((e) => e.type !== 'proposal' && !hiddenByReprice(e, byId, pairs)); /* a price stop is said once, by its card */
   const who = agentConnected ? agent.agentName || 'Your AI' : 'Agent';
   const last = shown.at(-1);
   const waiting = proposals.some((p) => p.status === 'pending');
@@ -503,14 +605,14 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
             <h2>What would you like to make?</h2>
             {agentConnected ? <p data-testid="agent-hello-connected">{agentListening ? `${agentLabel} is listening.` : `${agentLabel} is connected.`} Tell it what to make; select cards first to point at them. Every paid step waits for your OK.</p>
               : SAMPLE_SITE ? <SampleSiteNote testId="agent-sample-note">{AGENT_NOTE}</SampleSiteNote>
-              : <><p>Pick a demo to watch the board build, or connect Claude to talk about your board. Every paid step waits for your OK.</p>
-                <Starters onPick={pickStarter} disabled={sending || demo.running} />
+              : <><p>{demoOn ? 'Pick a demo to watch the board build, or connect Claude to talk about your board.' : 'Connect Claude to talk about your board.'} Every paid step waits for your OK.</p>
+                {demoOn && <Starters onPick={pickStarter} disabled={sending || demo.running} />}
                 <button type="button" className="ap-connect" data-testid="agent-connect-offer" onClick={() => setSheet(true)}><ApiPlugIcon size={15} /><span><b>Connect your agent</b><small>Claude Code, Claude Desktop or any MCP client becomes the brain here</small></span></button></>}
           </div> : shown.map((e) => {
             if (e.type === 'message') {
               if (Array.isArray(e.meta?.plan)) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} />
                 <PlanCard title={String(e.meta.title ?? 'Plan')} steps={e.meta.plan} done={plan?.seq === e.seq ? plan.done : e.meta.plan.length} finished={plan?.seq === e.seq ? plan.finished : true} live={plan?.seq === e.seq && demo.running} /></div>;
-              if (e.meta?.pick?.cardIds) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><PickCard e={e} pick={pick} board={board} onPick={(id) => void choose(id)} onFocus={focus} /></div>;
+              if (e.meta?.pick?.cardIds) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><PickCard e={e} pick={pick} board={board} onPick={(id) => void choose(id)} onFocus={focus} onGlow={(id) => { if (!board) return; const b = board.boundsOf(id as any); if (b && !pickOffscreen([b], board.viewportBounds())) glowAt(id); }} /></div>;
               if (e.meta?.confirm?.id && confirm?.id === e.meta.confirm.id) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} /><ConfirmCard label={confirm!.label} busy={sending} onOk={() => void send(confirm!.label, undefined, confirm!.id)} /></div>;
               if (suggest && e === last) return <div key={e.id} className="ap-group"><Message e={e} who={who} live={fresh.current.has(e.seq)} />
                 <button type="button" className="ap-chip ap-chip-main" disabled={sending} onClick={() => pickStarter(suggest.id)} data-testid="agent-suggest">Want to see “{suggest.label}”?</button></div>;
@@ -518,6 +620,7 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
             }
             if (e.type === 'activity' && e.meta?.tool === 'add_card' && e.cardId) return <AgentMediaCard key={e.id} board={board} cardId={e.cardId} meta={{ ...e.meta, title: e.text.replace(/^Added “|”$/g, '') }} onFocus={focus} onReroll={(id, t) => void reroll(id, t)} rerolling={!!rerolling[e.cardId]} />;
             if (e.type === 'activity' && e.proposalId && /^Proposed/.test(e.text)) { const p = byId.get(e.proposalId);
+              if (p && isPriceStop(p)) return <RepriceCard key={e.id} origin={p} child={pairs.childOf.get(p.id) ?? null} board={board} busy={busy[pairs.childOf.get(p.id)?.id ?? '']} onDecide={(x, d) => void decide(x, d)} onFocus={focusMany} />;
               return p ? <ProposalCard key={e.id} p={p} busy={busy[p.id]} onDecide={(d) => void decide(p, d)} onFocus={focusMany} /> : <EventRow key={e.id} e={e} onFocus={focus} />; }
             return <EventRow key={e.id} e={e} onFocus={focus} />;
           })}
@@ -529,7 +632,8 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
         <form className="ap-compose" onSubmit={(ev) => { ev.preventDefault(); void send(text); }}>
           {state === 'connected' && <ListenHint boardId={boardId} name={agentLabel} onSetup={() => setSheet(true)} />}
           {state === 'working' && <p className="ap-working" data-testid="agent-working-note" aria-live="polite"><i aria-hidden /><span><b>{workingLine(agentLabel)}.</b> What you type waits until it listens.</span></p>}
-          {!SAMPLE_SITE && !empty && !demo.running && !agentConnected && <div className="ap-chips" aria-label="Starters">{STARTERS.map((s) => <button key={s.id} type="button" className="ap-chip" disabled={sending} onClick={() => pickStarter(s.id)} data-testid={`agent-chip-${s.id}`}>{s.label}</button>)}</div>}
+          {!SAMPLE_SITE && demoOn && !empty && !demo.running && !agentConnected && <div className="ap-chips" aria-label="Starters">{(chipsOpen ? STARTERS : STARTERS.slice(0, CHIPS_SHOWN)).map((s) => <button key={s.id} type="button" className="ap-chip" disabled={sending} onClick={() => pickStarter(s.id)} data-testid={`agent-chip-${s.id}`}>{s.label}</button>)}
+            {!chipsOpen && STARTERS.length > CHIPS_SHOWN && <button type="button" className="ap-chip ap-chip-more" onClick={() => setChipsOpen(true)} aria-expanded={false} data-testid="agent-chips-more">{STARTERS.length - CHIPS_SHOWN} more</button>}</div>}
           {pics.length > 0 && <div className="ap-atts" role="list" aria-label="Pictures to send" data-testid="agent-attachments">{pics.map((x) => <span key={x.key} role="listitem" className="ap-att" title={x.file.name}>
             <img src={x.preview} alt={pictureName(x.file.name)} draggable={false} /><button type="button" className="ap-att-x" onClick={() => dropPic(x.key)} aria-label={`Remove ${pictureName(x.file.name)}`} data-testid="agent-attachment-remove"><CloseIcon size={11} /></button></span>)}</div>}
           <div className="ap-box">
@@ -537,18 +641,19 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
             {!SAMPLE_SITE && <button type="button" className="ap-attach" onClick={() => fileIn.current?.click()} disabled={sending || pics.length >= MAX_DOCK_PICTURES} aria-label="Add pictures" {...tip(pics.length >= MAX_DOCK_PICTURES ? `Up to ${MAX_DOCK_PICTURES} pictures per message` : 'Add pictures')} data-testid="agent-attach"><PaperclipIcon size={16} /></button>}
             <textarea ref={ta} value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={4000} disabled={SAMPLE_SITE}
               onPaste={(e) => { const files = [...e.clipboardData.files]; if (!files.length) return; e.preventDefault(); e.stopPropagation(); /* the board never also gets it */ addPics(files); }}
-              placeholder={confirm ? 'What should change? Or press Looks good.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : SAMPLE_SITE ? 'The agent runs in the app on your computer' : 'Pick a demo, or connect Claude to chat'} aria-label="Message the agent" data-testid="agent-reply"
+              placeholder={confirm ? 'What should change? Or press Looks good.' : agentConnected ? `Message ${agent.agentName || 'your AI'}…` : SAMPLE_SITE ? 'The agent runs in the app on your computer' : (demoOn ? 'Pick a demo, or connect Claude to chat' : 'Connect Claude to chat')} aria-label="Message the agent" data-testid="agent-reply"
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(text); } }} />
             {demo.running && !agentConnected && !text.trim() && !pics.length
               ? <button type="button" className="ap-send stop" onClick={() => void stop()} aria-label="Stop the agent" {...tip('Stop. Cards already on the board stay')} data-testid="agent-stop"><StopIcon size={15} /></button>
               : <button type="submit" className="ap-send" disabled={(!text.trim() && !pics.length) || sending} aria-label="Send" data-testid="agent-send"><SendIcon size={16} /></button>}
           </div>
-          <p className="ap-hint">{agentListening ? `Goes straight to ${agentLabel}. Canvas proposals wait for your Go.` : agentConnected ? `Waits here until ${agentLabel} reads it. Canvas proposals wait for your Go.` : SAMPLE_SITE ? 'Add cards by hand and press Go for a sample.' : 'Demos build drafts on this board. Every run waits for your Go.'}</p>
+          <p className="ap-hint">{agentListening ? `Goes straight to ${agentLabel}. Canvas proposals wait for your Go.` : agentConnected ? `Waits here until ${agentLabel} reads it. Canvas proposals wait for your Go.` : SAMPLE_SITE ? 'Add cards by hand and press Go for a sample.' : (demoOn ? 'Demos build drafts on this board. Every run waits for your Go.' : 'Every run waits for your Go.')}</p>
         </form>
       </div>
       {dropOver && <div className="ap-dropzone" data-testid="agent-dropzone" aria-hidden><span><PaperclipIcon size={18} />Drop pictures to add them</span></div>}
       {sheet && <ConnectSheet config={config} mcpUrl={mcpUrl} onClose={() => setSheet(false)} boardId={boardId} />}
     </aside>
+    {board && pick?.status === 'waiting' && <PickEdgeChip board={board} ids={pick.cardIds} who={agentConnected ? agentLabel : 'Agent'} />}
     {glow && createPortal(<div className="ap-glow" key={glow.key} style={{ left: glow.left, top: glow.top, width: glow.width, height: glow.height }} aria-hidden />, document.body)}
   </>;
 }

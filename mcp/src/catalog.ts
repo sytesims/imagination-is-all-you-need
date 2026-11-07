@@ -28,10 +28,17 @@ export const catalogSource = () => (cache ? 'live' : 'snapshot');
 export async function findTool(id: string): Promise<ServerTool> {
   const ts = await loadTools(false, true); const t = ts.find((x) => x.id === id);
   if (t) return t;
-  const near = ts.filter((x) => x.id.includes(id) || id.includes(x.id) || x.name.toLowerCase().includes(id.toLowerCase())).map((x) => x.id).slice(0, 6);
-  throw new Error(`Unknown tool "${id}".${near.length ? ` Did you mean: ${near.join(', ')}?` : ''} list_tools shows every tool id.`);
+  throw new Error(`Unknown tool "${id}".${(() => { const n = nearIds(id, ts); return n.length ? ` Did you mean: ${n.join(', ')}?` : ''; })()} search_capabilities finds tool ids (this list is read live, so a tool added since the connector started works without a restart).`);
 }
 
+/** Close tool ids for a typo or a name: same letters ignoring - _ and spaces, contains / contained, the tool's name, or at most 2 edits away. */
+export function nearIds(id: string, ts: { id: string; name: string }[], max = 6): string[] {
+  const k = (x: string) => x.toLowerCase().replace(/[\s_-]+/g, ''); const q = k(id);
+  const dist = (a: string, b: string) => { const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]); for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; };
+  const scored = ts.map((x) => { const c = k(x.id); const n = k(x.name); const s = c === q || n === q ? 0 : c.includes(q) || q.includes(c) || n.includes(q) ? 1 : Math.min(dist(q, c), dist(q, n)) <= 2 ? 2 : 9; return { id: x.id, s }; });
+  return scored.filter((x) => x.s < 9).sort((a, b) => a.s - b.s).map((x) => x.id).slice(0, max);
+}
 const FILE_KINDS = new Set(['file', 'files']);
 export const isFileInput = (i?: Input) => !!i && FILE_KINDS.has(i.kind);
 const MEDIA_HINT = 'local file path, http(s) URL, or a server path (/files/… from upload_media or a past output, /samples/…)';
@@ -45,7 +52,7 @@ export function fieldSchema(t: ServerTool) {
       case 'file': s = { type: 'string', description: `Media (${i.accept ?? 'any'}): ${MEDIA_HINT}` }; break;
       case 'files': s = { type: 'array', items: { type: 'string' }, ...(i.max ? { maxItems: i.max } : {}), description: `Media list (${i.accept ?? 'any'}): ${MEDIA_HINT}` }; break;
       case 'select': s = { type: 'string', ...(i.options?.length ? { enum: i.options.map(String) } : {}) }; break;
-      case 'list': s = { type: 'array', items: i.options?.length ? { type: 'string', enum: i.options.map(String) } : { type: 'string' }, description: 'One or more values (sent as a JSON array)' }; break;
+      case 'list': s = { type: 'array', items: i.options?.length ? { type: 'string', enum: i.options.map(String) } : { type: 'string' }, description: 'One or more values: a list (["i2v"]); one id as a string ("i2v") is taken too. REST takes i2v, ["i2v"] or i2v,t2v' }; break;
       case 'number': s = { type: 'number', ...(i.min != null ? { minimum: i.min } : {}), ...(i.max != null ? { maximum: i.max } : {}) }; break;
       case 'boolean': s = { type: 'boolean' }; break;
       default: s = { type: 'string' };
@@ -88,7 +95,7 @@ export function limitsOf(c: any) {
 /** Places a job can run (registry runOn), with their labels. Falls back to the documented list when the API is down. */
 export async function runOnPlaces(): Promise<{ id: string; label: string; billedTo: string }[]> {
   try { const r: any = await get('/api/models/registry'); if (Array.isArray(r?.runOn) && r.runOn.length) return r.runOn; } catch { /* below */ }
-  return ['local', 'comfy-cloud', 'fal', 'replicate', 'bfl', 'minimax', 'ltx', 'openai', 'google', 'byteplus', 'dashscope', 'luma', 'direct'].map((id) => ({ id, label: id, billedTo: id }));
+  return ['local', 'comfy-cloud', 'fal', 'replicate', 'sunra', 'kie', 'runpod', 'bfl', 'minimax', 'ltx', 'openai', 'google', 'byteplus', 'dashscope', 'luma', 'direct'].map((id) => ({ id, label: id, billedTo: id }));
 }
 
 /** API paths the MCP server calls. test/catalog.ts checks each one is in the server's /api/openapi.json, so a renamed route fails a test. */
