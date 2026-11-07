@@ -155,7 +155,7 @@ export default function CanvasPage() {
           : <Board key={board.id} onBoard={setBoardApi} board={board} onSaveState={setSave} onSaved={onSaved} drawerOpen={drawer} setDrawerOpen={setDrawer} onProject={onProject} />}
         <div className="cv-topl">
           {!agentOpen && <button type="button" className={`cv-agent-btn${agentBusy ? ' busy' : ''}`} aria-pressed={false} aria-label="Show the AI panel" data-testid="cv-agent-toggle" onClick={toggleAgent}><SparkleIcon size={16} /><span>AI</span>{agentBusy && <i className="cv-agent-dot" aria-hidden />}</button>}
-          <BoardSwitcher boards={boards ?? []} current={current} save={save} onPick={id => id !== board.id && go(id)} onNew={onNew} onRename={onRename} onDelete={onDelete} onBudget={onBudget} /><SpendChip boardId={board.id} /><FollowToggle busy={agentBusy} />
+          <BoardSwitcher boards={boards ?? []} current={current} save={save} onPick={id => id !== board.id && go(id)} onNew={onNew} onRename={onRename} onDelete={onDelete} onBudget={onBudget} /><SpendChip boardId={board.id} onBudget={onBudget} /><FollowToggle busy={agentBusy} />
         </div>
         <div className="cv-agent-slot" data-slot="agent-panel" data-testid="cv-agent-slot" aria-hidden={!agentOpen}>
           <AgentPanel key={board.id} boardId={board.id} ask={ask} open={agentOpen} onClose={toggleAgent} onBusy={setAgentBusy} onBoards={onBoardsChanged} onOpenBoard={onAgentOpen} />

@@ -2,12 +2,14 @@
  * The board's spend chip (top bar, next to the board switcher): "This board" in dollars + runs, with a thin cap bar when the
  * server has one. Clicking opens an Orbit-style popover with the board's latest runs (thumbnail, model, price) and a link to
  * /spend. Summed by the server from the jobs started on this board (GET /api/canvas/boards/:id/spend, the Spend page's log).
- * Sample runs say so and show what real runs would have cost, marked as an estimate. Refreshes when a run starts or ends,
+ * Sample runs get the shared Sample tag next to the total. With a board budget the popover says what is left in one line, and that
+ * line opens the budget setting (the board menu's dialog). Refreshes when a run starts or ends,
  * and every 8 s while one runs.
  */
 import { useEffect, useRef, useState } from 'react';
 import { BarPopover, PopNote, PopRow, PopSection } from '../shared/BarPop';
 import { fmtUsd } from '../shared/billing';
+import { GenPrice } from '../shared/GenPrice';
 import { Link } from '../platform/router';
 import { ImageIcon, VideoIcon, AudioIcon } from '../ui/Icons';
 import { SPEND_EVT } from './genRun';
@@ -24,7 +26,7 @@ const ended = (r: SpendRun) => r.status === 'failed' || r.status === 'blocked' |
 const runPrice = (r: SpendRun) => r.demo ? 'Sample' : r.local ? 'Free' : ended(r) ? fmtUsd(r.countedUsd) : r.countedUsd ? fmtUsd(r.countedUsd) : `≈ ${fmtUsd(r.estUsd)}`;
 const runHint = (r: SpendRun) => r.status === 'running' ? 'Running' : r.status === 'queued' ? 'Queued' : r.status === 'failed' ? 'Failed' : r.status === 'canceled' ? 'Canceled' : r.demo ? 'Sample run' : r.local ? 'Local run' : 'Done';
 
-export function SpendChip({ boardId }: { boardId: string }) {
+export function SpendChip({ boardId, onBudget }: { boardId: string; /** opens the board budget setting (the board menu's dialog) */ onBudget?: () => void }) {
   const [s, setS] = useState<Spend | null>(null); const [open, setOpen] = useState(false); const btn = useRef<HTMLButtonElement>(null);
   useEffect(() => { let on = true; let t = 0;
     const load = () => fetch(`/api/canvas/boards/${encodeURIComponent(boardId)}/spend`).then(r => (r.ok ? r.json() : null)).then(d => { if (!on || !d) return; setS(d); clearTimeout(t); if (d.running) t = window.setTimeout(load, 8000); }).catch(() => undefined);
@@ -48,13 +50,14 @@ export function SpendChip({ boardId }: { boardId: string }) {
       {s.running > 0 && <span className="cv-spend2-live" aria-hidden />}
     </button>
     <BarPopover open={open} anchor={btn} onClose={() => setOpen(false)} label="This board's spend" placement="bottom" width={360} testId="cv-spend-pop" className="cv-spend2-pop">
-      <PopSection label="This board" aside={money}>
+      <PopSection label="This board" aside={samples && money !== 'Sample' ? <>{money}<GenPrice demo testId="cv-spend-sample" /></> : money}>
         <div className="cv-spend2-stats">
           <div className="cv-spend2-stat"><b>{s.runs}</b><small>Run{s.runs === 1 ? '' : 's'}</small></div>
           <div className="cv-spend2-stat"><b>{s.running}</b><small>Running now</small></div>
         </div>
-        {bud && <PopNote>{budOver ? `The ${fmtUsd(bud.usd)} budget is used up: new runs on this board wait until you raise it.` : `${fmtUsd(bud.leftUsd)} left of the ${fmtUsd(bud.usd)} you set for this board. Runs that would go over it don’t start. Only you can change it, from the board menu.`}</PopNote>}
-        {samples && <PopNote>Sample runs on this server: nothing was billed.{s.estUsd > 0 ? ` Real runs would cost about ${fmtUsd(s.estUsd)}.` : ''}</PopNote>}
+        {bud && <PopRow role="menuitem" className={`cv-spend2-bud${budOver ? ' over' : ''}`} testId="cv-spend-budget-edit" title="Change the board budget" disabled={!onBudget}
+          label={budOver ? `${fmtUsd(bud.usd)} budget used up` : `${fmtUsd(bud.leftUsd)} left of ${fmtUsd(bud.usd)}`} hint={budOver ? 'New runs wait until you raise it.' : 'Runs that would go over don’t start.'}
+          aside={<ChevronRightIcon size={14} />} onClick={() => { setOpen(false); onBudget?.(); }} />}
         {free && <PopNote>Every run here ran locally: nothing was billed.</PopNote>}
       </PopSection>
       <PopSection label="Recent runs" aside={s.recent?.length ? `${s.recent.length}` : undefined}>
