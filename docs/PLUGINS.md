@@ -129,6 +129,13 @@ export default handler;
 - **Mock clips:** `mock-cutout.mp4` and `mock-matte.mp4` are procedural (ffmpeg edge detection on the app's sample clip), not real segmentation.
 - **Installing for real use:** clone `lldacing/ComfyUI_BiRefNet_ll` into `ComfyUI/custom_nodes`, `pip install timm`, and put the BiRefNet weights from https://huggingface.co/ZhengPeng7/BiRefNet into `ComfyUI/models/BiRefNet/`.
 
+## Keys and plugins made by others
+
+- **Keys (`ctx.keys`):** a code plugin reads only the keys it lists in its `keys`. Asking for any other key gives nothing (`KeyNotDeclared`), and only the server core may list every key. This is least privilege, not a sandbox: code plugins run inside the server, where the keys are, so it keeps honest plugins to what they asked for and makes a new key request visible; it can't stop code that sets out to misbehave.
+- **Where keys go:** every request that carries a key goes only to that provider's own https addresses (or this computer), and no redirect carries it anywhere else. Doctor and Settings → Connections warn when an address you set sends a key somewhere else.
+- **Plugins made by others:** for now only plugins made by us run code in the app. A code plugin made by someone else is refused (the Plugins page says so, and turning it on answers 403); safe mode keeps it off as well. Workflows you add in the app are data and never run code. A folder you copy into `plugins/` by hand may carry a `handler` that runs code in the server, so only add one you trust.
+- **Tools the app starts** (ffmpeg, the voice runner, tar, git) get no keys in their environment.
+
 ## Community hub (`/api/hub/*`)
 
 Browse community LoRAs and ComfyUI workflows, curated by business use case, and install them in one click. Code: `server/src/hub/` (catalog + install) and `server/src/routesHub.ts`.
