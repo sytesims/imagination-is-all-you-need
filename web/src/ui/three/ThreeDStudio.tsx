@@ -40,7 +40,8 @@ import GenTile from '../../shared/GenTile';
 import { SceneGrid, type SceneItem } from '../../shared/SceneGrid';
 import { useSceneThumbs } from '../../shared/previz/thumbs';
 import { MIR_PROMPT_KEY } from '../../shared/MakeItReal';
-import FailureState from '../../shared/FailureState';
+import FailureState, { FailActions } from '../../shared/FailureState';
+import { MADE } from '../../shared/failureReasons';
 import { useToolModels, modelOfEngine, useRunOn, shownName } from '../../shared/models';
 import { isOpenWeights, displayNameOf } from '../../shared/OpenWeights';
 import { clipLengthText, durationText, jobTiming } from '../../shared/jobTiming';
@@ -506,7 +507,9 @@ function Card({ j, own, onOpen, onVideo, onRetry, onMakeReal }: { j: JobState; o
   const t = jobTiming(j as any); const cap = jobCaption(j, own); const price = cap.price /* never a made-up 'Free': empty when the run's price is unknown */; /* the shared caption words (shared/FeedCaption.tsx), Image's too */
   if (j.status === 'queued' || j.status === 'running') return <div className="vs-htile t3-card" data-testid={`t3-card-${j.id}`}><GenTile job={j} testId={`t3-run-${j.id}`} /></div>;
   if (j.status !== 'done') return <div className="vs-htile t3-card fs-host" data-testid={`t3-card-${j.id}`}><span className="vs-hwait fs-host"><FailureState job={j} variant="tile" testId={`t3-fail-${j.id}`} />
-    {j.status === 'failed' && <span className="fs-tile-act"><button type="button" className="fs-btn fs-btn-main fs-btn-sm" data-testid={`t3-retry-${j.id}`} onClick={onRetry}>Retry</button></span>}</span></div>;
+    {j.status === 'failed' && <span className="fs-tile-act">{MADE.has(String((j as any).reasonCode ?? '')) /* made but not saved: Retry download (free) or Run again · $X (asks first), never a one-click paid run */
+      ? <FailActions job={j} max={1} compact />
+      : <button type="button" className="fs-btn fs-btn-main fs-btn-sm" data-testid={`t3-retry-${j.id}`} onClick={onRetry}>Retry</button>}</span>}</span></div>;
   if (j.toolId === PREVIZ_TOOL) { const pv = (j.input as any)?.previz ?? {}; const outs = j.outputs ?? []; const ar = pv.width && pv.height ? `${pv.width} / ${pv.height}` : '16 / 9';
     return <div className="vs-htile t3-card ps-card" data-testid={`ps-card-${j.id}`}><button type="button" className="t3-hit" onClick={() => navigate(`/jobs/${j.id}`)} aria-label={`Open mockup: ${pv.presetName ?? 'Direct a Shot'}`}>
       <video src={j.resultUrl ?? undefined} poster={videoCardPoster(j)} muted loop playsInline preload="metadata" onLoadedMetadata={vidReady} onError={retryVideo} data-tall={pv.height > pv.width || undefined} style={{ aspectRatio: ar }} onMouseEnter={(e) => e.currentTarget.play().catch(() => 0)} onMouseLeave={(e) => { e.currentTarget.pause(); }} /></button>
