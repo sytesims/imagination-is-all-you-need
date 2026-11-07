@@ -17,6 +17,9 @@ import { useCanvasBoard } from './agentApi';
 import { useCatalog, catalogNow } from './catalog';
 import { pickFromSelection, livePickChoices, pickOffscreen } from './pickAsk';
 import { priceChangedText } from './priceLock';
+import { noPriceLine, NO_PRICE_UNDER_BUDGET } from '../../../server/src/shared/flowPrice';
+import { askBudget, BUDGET_EVT } from './SpendChip';
+import { proposeCards } from './flowRun';
 import { startAgentBridge, nameOf as cardNameOf, type FeedEntry, type Proposal, type PickAsk } from './agentBridge';
 import { handAtom, handOf, fx, setAgentName, reducedMotion } from './agentHand';
 import { flowById, flowInfo } from '../shared/genFlows';
@@ -209,6 +212,10 @@ function ProposalCard({ p, busy, onDecide, onFocus, hideNote }: { p: Proposal; b
   const disabled = p.overBudget || !!p.reason || nRun === 0;
   const runItems = p.items.filter((i) => runIds.has(i.cardId)); const nRuns = runItems.reduce((a, i) => a + (Number(i.quote?.runs) > 1 ? Number(i.quote.runs) : 1), 0); /* a Material Swap card runs once per swatch */ const allDemo = runItems.length > 0 && runItems.every((i) => i.quote?.demo === true);
   const budget = p.budget;
+  /* decision 9: rows Go starts that had no price beforehand (no board budget set): left out of the total, said on their own line */
+  const unpricedIds = new Set(p.unpricedIds ?? []); const nNoPrice = runItems.filter((i) => unpricedIds.has(i.cardId)).length;
+  const skippedNoPrice = p.items.filter((i) => !runIds.has(i.cardId) && i.problem === NO_PRICE_UNDER_BUDGET).length;
+  const boardOver = p.overBudget && !!p.boardBudget && !(budget?.remainingUsd != null && p.totalUsd > budget.remainingUsd);
   /* a price stop is calm (amber), said once: the rows say what moved, a fresh proposal below asks again */
   const priceStop = p.items.some((i) => i.priceChanged) && !p.items.some((i) => !i.priceChanged && (p.failedIds ?? []).includes(i.cardId));
   return <article className={`ap-prop ${p.status}`} data-testid="agent-proposal" data-status={p.status}>
@@ -217,22 +224,25 @@ function ProposalCard({ p, busy, onDecide, onFocus, hideNote }: { p: Proposal; b
     {p.note && !hideNote && <p className="ap-prop-note">{p.note}</p>}
     <ul className="ap-items">{p.items.map((it, i) => {
       const q = it.quote; const free = q?.localRun === true || q?.cost?.billedTo === 'local'; const demo = q?.demo === true;
-      const skip = !runIds.has(it.cardId); const moved = it.priceChanged;
+      const skip = !runIds.has(it.cardId); const moved = it.priceChanged; const noPrice = !skip && unpricedIds.has(it.cardId);
       return <li key={it.cardId} className={skip ? 'has-problem' : moved ? 'price-changed' : ''} data-testid="agent-proposal-item" data-skipped={skip ? '1' : undefined} data-price-changed={moved ? '1' : undefined}>
         <span className="ap-item-n">{i + 1}</span>
         <div className="ap-item-t"><b>{it.title}</b><small>{(() => { const f = flowById(it.workflow); return f ? flowInfo(f, catalogNow()).name : 'Card'; })() /* a workflow card's own name (Material Swap), not its id */}{it.model ? ` · ${it.model}` : ''}{Number(it.quote?.runs) > 1 ? ` · ${it.quote.runs} swatches` : ''}</small>{skip && <small className="ap-item-why" title={it.problem ?? undefined}>{it.problem ?? "Can't run here"}</small>}
           {moved && <small className="ap-item-moved" data-testid="agent-proposal-price-changed">{priceChangedText(moved.reason, moved.wasUsd, moved.nowUsd)} · asked again below</small>}</div>
-        <span className="ap-item-p">{skip ? <em className="ap-item-skip">Skipped</em> : q ? <GenPrice q={q} credits={it.credits} demo={demo} free={free} compact /> : <em>—</em>}</span>
+        <span className="ap-item-p">{skip ? <em className="ap-item-skip">Skipped</em> : noPrice ? <em className="ap-item-skip" data-testid="agent-proposal-no-price">No price yet</em> : q ? <GenPrice q={q} credits={it.credits} demo={demo} free={free} compact /> : <em>—</em>}</span>
       </li>;
     })}</ul>
-    <div className="ap-total"><span>Total</span><b data-testid="agent-proposal-total">{nRun === 0 ? '—' : totalWords(runItems, p.totalUsd)}</b></div>
+    <div className="ap-total"><span>Total</span><b data-testid="agent-proposal-total">{nRun === 0 ? '—' : nNoPrice === nRun ? 'No price yet' : `${totalWords(runItems.filter((i) => !unpricedIds.has(i.cardId)), p.totalUsd)}${nNoPrice ? ` + ${nNoPrice} without a price` : ''}`}</b></div>
+    {nNoPrice > 0 && pending && <p className="ap-skipnote" data-testid="agent-proposal-unpriced">{noPriceLine(nNoPrice)}: {nNoPrice === 1 ? 'it runs' : 'they run'} at what the place charges, outside this total.</p>}
     {budget?.remainingUsd != null && <div className="ap-budget"><span>Agent budget left</span><b>{fmtUsd(budget.remainingUsd)} of {fmtUsd(budget.budgetUsd ?? 0)}</b></div>}
     {p.boardBudget && <div className="ap-budget" data-testid="agent-proposal-board-budget"><span>Board budget left</span><b>{fmtUsd(p.boardBudget.leftUsd)} of {fmtUsd(p.boardBudget.usd)}</b></div>}
     {p.reason && <p className={`ap-warn${p.overBudget ? ' over' : ''}`} data-testid="agent-proposal-reason">{p.reason}</p>}
-    {!p.reason && nSkip > 0 && pending && <p className="ap-skipnote" data-testid="agent-proposal-skipped">{nSkip === 1 ? '1 card can’t run here, so Go skips it.' : `${nSkip} cards can’t run here, so Go skips them.`} Nothing is charged for {nSkip === 1 ? 'it' : 'them'}.</p>}
+    {!p.reason && skippedNoPrice > 0 && pending && <p className="ap-skipnote" data-testid="agent-proposal-unpriced">{noPriceLine(skippedNoPrice)}, so Go leaves {skippedNoPrice === 1 ? 'it' : 'them'} out: {skippedNoPrice === 1 ? 'it' : 'they'} can’t count against the board budget. Run {skippedNoPrice === 1 ? 'it' : 'them'} on {skippedNoPrice === 1 ? 'its' : 'their'} own first.</p>}
+    {!p.reason && nSkip - skippedNoPrice > 0 && pending && (() => { const n = nSkip - skippedNoPrice; return <p className="ap-skipnote" data-testid="agent-proposal-skipped">{n === 1 ? '1 card can’t run here, so Go skips it.' : `${n} cards can’t run here, so Go skips them.`} Nothing is charged for {n === 1 ? 'it' : 'them'}.</p>; })()}
     {p.error && <p className={`ap-warn${priceStop ? '' : ' over'}`} data-testid={priceStop ? 'agent-proposal-price-stop' : undefined}>{p.error}</p>}
     {pending && <div className="ap-prop-actions">
       <button type="button" className="ap-go" data-testid="agent-go" disabled={disabled || !!busy} onClick={() => onDecide('go')}>{busy === 'go' ? 'Starting…' : `Go${allDemo || p.totalUsd <= 0 ? '' : ` · ${fmtUsd(p.totalUsd)}`}`}</button>
+      {boardOver && <button type="button" className="ap-cancel" data-testid="agent-change-budget" onClick={askBudget}>Change the budget</button>}
       <button type="button" className="ap-cancel" data-testid="agent-cancel" disabled={!!busy} onClick={() => onDecide('cancel')}>{busy === 'cancel' ? 'Cancelling…' : 'Cancel'}</button>
     </div>}
     {p.status === 'running' && <p className="ap-prop-state">Starting the runs…</p>}
@@ -538,6 +548,16 @@ export function AgentPanel({ boardId, open, onClose, onBusy, onBoards, onOpenBoa
     } catch (e) { toast((e as Error).message, 'error'); }
     finally { setRerolling((m) => { const n = { ...m }; delete n[cardId]; return n; }); }
   };
+  /* the board budget changed (Change the budget on an over-budget proposal): that proposal is priced again against the new budget, and the
+     old one closes, so Go is never left on a stale verdict */
+  const propsRef = useRef(proposals); propsRef.current = proposals;
+  useEffect(() => { const again = async (p: Proposal) => {
+      const r = await proposeCards(p.cardIds, p.note ?? '', boardId); if (!r.ok) { toast(r.error, 'warn'); return; }
+      setProposals((prev) => mergeProposals(prev, [r.proposal]));
+      const c = await fetch(`/api/canvas/boards/${encodeURIComponent(boardId)}/agent/proposals/${encodeURIComponent(p.id)}/decision`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ decision: 'cancel' }) }).catch(() => null);
+      const b = c ? await c.json().catch(() => null) : null; if (b?.proposal) setProposals((prev) => mergeProposals(prev, [b.proposal])); };
+    const f = () => { for (const p of propsRef.current) if (p.status === 'pending' && p.overBudget && p.boardBudget) void again(p); };
+    addEventListener(BUDGET_EVT, f); return () => removeEventListener(BUDGET_EVT, f); }, [boardId, toast]);
   const pickStarter = (id: StarterId) => { setChipsOpen(false); const s = STARTERS.find((x) => x.id === id); if (s) void send(s.prompt, id); };
 
   const byId = useMemo(() => new Map(proposals.map((p) => [p.id, p])), [proposals]);

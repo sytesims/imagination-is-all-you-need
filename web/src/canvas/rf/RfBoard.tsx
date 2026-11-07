@@ -23,7 +23,7 @@ import { askConfirm } from '../../shared/Dialog';
 import { wheelZoomFactor, zoomAround } from './zoom';
 import { posterOf3d } from '../../shared/model3d';
 import { OPEN_3D_EVENT, open3d, runCard } from '../canvasEvents';
-import { BoardProvider, ToolHookContext, ViewTuneContext, useValue, type BoardApi, type ToolButtonState } from '../boardApi';
+import { BoardProvider, ToolHookContext, ViewTuneContext, useValue, type BoardApi, type NodeId, type ToolButtonState } from '../boardApi';
 import { LeftToolbar, EmptyHint } from '../CanvasUi';
 import { AssetsDrawer } from '../AssetsDrawer';
 import { FollowAgent } from '../FollowAgent';
@@ -44,6 +44,7 @@ import { BoardStore, type BoardState } from './store';
 import { makeRfBoard, clampSize, MIN_ZOOM, MAX_ZOOM, type RfPort } from './boardApiRf';
 import { NODE_TYPES, EDGE_TYPES, NO_DRAG, RouteCtx, StoreCtx, OptCtx, AgentPresence, useRoutes, rfTypeOf, isBack, adHeight } from './views';
 import { rfOptions } from './engine';
+import { settleIntoGroups } from '../groupModel';
 import { drawSize, ratioAtom } from './poster';
 import { boardActions, useClipboardEvents, useFileDrops, ContextMenu, ShortcutsSheet, MagnetLayer, DropUiLayer, ctxAtom, sheetAtom, assetPortDrop } from './BoardTools';
 import './rf.css';
@@ -193,7 +194,9 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
     if (sel) store.setView({ selection: [...sel] });
   }, [store]);
   const dragStart = () => { board.mark('move'); store.setView({ gesture: 'drag' }); };
-  const dragStop = () => store.setView({ gesture: null });
+  /* release 2: a card dropped with its centre in a Group goes into it; dragged out, it leaves (same undo step as the move) */
+  const dragStop = (moved: Node[]) => { store.setView({ gesture: null }); const ids = moved.map((n) => n.id as NodeId);
+    if (ids.length) settleIntoGroups(board, ids); };
 
   const hand = tool === 'hand';
   return <OptCtx.Provider value={opt}><ToolHookContext.Provider value={toolHook}><RouteCtx.Provider value={routeVal}>
@@ -206,7 +209,7 @@ function Flow({ saved, store, board, port, drawerOpen, setDrawerOpen, onProject 
       noDragClassName={NO_DRAG} noWheelClassName="nowheel" nodeDragThreshold={0} autoPanOnNodeDrag elevateNodesOnSelect={false} disableKeyboardA11y
       onlyRenderVisibleElements={opt.visible === '1'} attributionPosition="bottom-left" proOptions={{ hideAttribution: false }}
       onInit={onInit} onMove={onMove} onMoveStart={onMoveStart} onMoveEnd={onMoveEnd}
-      onNodeDragStart={dragStart} onNodeDragStop={dragStop} onSelectionDragStart={dragStart} onSelectionDragStop={dragStop}
+      onNodeDragStart={dragStart} onNodeDragStop={(_, __, moved) => dragStop(moved)} onSelectionDragStart={dragStart} onSelectionDragStop={(_, moved) => dragStop(moved)}
       onNodeMouseEnter={(_, n) => store.setView({ hovered: n.id })} onNodeMouseLeave={() => store.setView({ hovered: null })}
       onNodeContextMenu={(e, n) => openCtx(e, 'node', n.id)} onSelectionContextMenu={(e) => openCtx(e, 'node')} onPaneContextMenu={(e) => openCtx(e as any, 'pane')}
       onNodeDoubleClick={(_, n) => { const s = store.s.nodes[n.id]; if (s?.type === RESULT_TYPE && s.props.kind === '3d' && s.props.jobId) open3d(String(s.props.jobId)); }}>

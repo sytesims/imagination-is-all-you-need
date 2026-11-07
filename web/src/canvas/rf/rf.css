@@ -42,10 +42,23 @@
 .cv-sticky.as-card.c-orange{--sticky:#F2913F}.cv-sticky.as-card.c-blue{--sticky:#9CC6FF}.cv-sticky.as-card.c-green{--sticky:#A9E8B4}.cv-sticky.as-card.c-red{--sticky:#FF9D9D}.cv-sticky.as-card.c-violet{--sticky:#D0B6FF}
 .cv-sticky.as-minimal{background:transparent!important;box-shadow:none;color:var(--text-1,#F7F7F8);border-left:2px solid rgba(255,255,255,.25);border-radius:0;padding:4px 14px}
 
-/* frames: a quiet outline, the name above (today's tldraw frame look) */
-.cv-frame{box-sizing:border-box;position:absolute;inset:0;border:calc(1px * max(1, var(--tl-scale,1))) solid rgba(255,255,255,.14);background:rgba(255,255,255,.018);border-radius:4px;pointer-events:none}
+/* Groups (release 2, look A1): a quiet box with its header strip always on top; the strip is what you grab to move it */
+.cv-frame{box-sizing:border-box;position:absolute;inset:0;border:calc(1px * max(1, var(--tl-scale,1))) solid rgba(255,255,255,.12);background:rgba(255,255,255,.018);border-radius:14px;pointer-events:none}
 .cv-frame.sel{border-color:rgba(255,122,26,.7)}
-.cv-frame-name{position:absolute;left:calc(-7px * min(var(--tl-scale,1),4));bottom:100%;margin-bottom:calc(9px * min(var(--tl-scale,1),4));transform:scale(min(var(--tl-scale,1),4));transform-origin:0 100%;font:600 15px/15px var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.005em;color:var(--text-1,#F7F7F8);background:rgba(15,17,19,.55);padding:3px 9px;border-radius:7px;white-space:nowrap;pointer-events:all;cursor:default}
+.cv-gstrip{position:absolute;left:0;right:0;top:0;height:52px;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:0 10px 0 16px;border-bottom:1px solid rgba(255,255,255,.07);
+  background:rgba(19,21,23,.86);border-radius:13px 13px 0 0;pointer-events:all;cursor:grab;overflow:hidden;color:var(--text-1,#F7F7F8)}
+.cv-gs-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cv-gs-name{font:600 15px/19px var(--font-display,'Space Grotesk',Inter,sans-serif);letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text}
+.cv-gs-t small{font:400 12px/15px var(--font-sans,Inter,sans-serif);color:var(--text-3,rgba(255,255,255,.55));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cv-gs-input{all:unset;box-sizing:border-box;width:100%;height:21px;font:600 15px/19px var(--font-display,'Space Grotesk',Inter,sans-serif);color:var(--text-1,#F7F7F8);border-bottom:1px solid rgba(255,122,26,.7);cursor:text}
+.cv-gs-chip{flex:none;font:500 12px/16px var(--font-sans,Inter,sans-serif);padding:4px 10px;border-radius:999px;color:#7FD6A0;background:rgba(127,214,160,.1);border:1px solid rgba(127,214,160,.22);white-space:nowrap}
+.cv-gs-run{all:unset;box-sizing:border-box;flex:none;display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:10px;cursor:pointer;white-space:nowrap;
+  font:600 13px/1 var(--font-ui,Inter,sans-serif);color:var(--text-1,#F7F7F8);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);transition:background var(--t-state,150ms) ease,border-color var(--t-state,150ms) ease}
+.cv-gs-run:hover:not(:disabled){background:rgba(255,122,26,.14);border-color:rgba(255,122,26,.45)}
+.cv-gs-run:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}
+.cv-gs-run:disabled{cursor:default;opacity:.6}
+.cv-gs-run svg{color:var(--accent,#FF7A1A)}
+.cv-gs-price{font:500 12.5px/1 var(--font-mono,'JetBrains Mono',monospace);color:var(--text-2,#B4B5BA);min-width:3.2em;text-align:right}
 .cv-rf .react-flow__node-frame .react-flow__resize-control{pointer-events:all}
 
 /* a link card (an old board's bookmark) */

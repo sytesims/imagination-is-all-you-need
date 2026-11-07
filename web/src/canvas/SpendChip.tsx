@@ -20,6 +20,9 @@ type Spend = { runs: number; running: number; estUsd: number; countedUsd: number
   /** the board budget the person set (release 1): what counts against it is the estimate at start */ budget?: { usd: number; spentUsd: number; leftUsd: number } | null };
 /** The board budget changed (the board menu): the chip reloads. */
 export const BUDGET_EVT = 'ohf-canvas-budget';
+/** "Change the budget" from anywhere on the page (an over-budget proposal in the dock): CanvasPage opens the board budget dialog. */
+export const BUDGET_ASK_EVT = 'ohf-canvas-budget-ask';
+export const askBudget = () => dispatchEvent(new Event(BUDGET_ASK_EVT));
 
 const kindOf = (r: SpendRun): 'image' | 'video' | 'audio' => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(r.url) ? 'video' : /\.(mp3|wav|m4a|ogg|aac)(\?|$)/i.test(r.url) ? 'audio' : 'image';
 const ended = (r: SpendRun) => r.status === 'failed' || r.status === 'blocked' || r.status === 'canceled'; // ended without a result: only what was charged

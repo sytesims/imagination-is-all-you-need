@@ -50,6 +50,7 @@ import { canvasDefaultModel } from './shared/cloudDefaults.js';
 import { validateBatch, batchLine, BATCH_MAX, type BatchItem } from './shared/canvasBatch.js';
 import { recommend } from './shared/takeReview.js';
 import { uploadNodeSummary, pictureLines, MAX_DOCK_PICTURES } from './shared/canvasPictures.js';
+import { unpricedPaid, NO_PRICE_UNDER_BUDGET } from './shared/flowPrice.js';
 import { boardDocOf, FRAME_TYPE, STICKY_TYPE, UPLOAD_NODE_TYPE } from './shared/boardDoc.js';
 import { reviewVersions, reviewMode } from './canvasReview.js';
 
@@ -81,7 +82,7 @@ export type Op =
   | { kind: 'update_card'; card_id: string; workflow?: string; prompt?: string; model?: string; settings?: Record<string, string>; inputs_from?: string[]; version?: number }
   | { kind: 'connect'; from_id: string; to_id: string }
   | { kind: 'remove_card'; card_id: string }
-  | { kind: 'propose_run'; card_ids: string[]; note?: string }
+  | { kind: 'propose_run'; card_ids: string[]; note?: string; /** a board budget is set: a paid step with no price is left out (decision 9) */ skip_unpriced?: boolean }
   | { kind: 'summary' }
   /* the board as a plan (2026-10-27): sticky notes, named frames, cards dropped into frames, a pointer, and "pick one" */
   | { kind: 'add_note'; text: string; at?: { x: number; y: number }; color?: string; frame_id?: string }
@@ -123,7 +124,7 @@ export interface Proposal {
   /** the board budget the person set (release 1), as it stood when this was priced; null = none */ boardBudget?: { usd: number; spentUsd: number; leftUsd: number } | null;
   /** The cards Go starts: every item without a problem. A row that can't run here (a model not on this server, a missing input) is skipped, not a
    *  blocker for the rest; the total counts only these. `reason` is set (and Go is off) only when NONE can run, or the batch is over budget. */
-  runCardIds: string[]; skipped: { cardId: string; title: string; problem: string }[]; /** cards Go tried that the server refused (they stay drafts) */ failedIds?: string[];
+  runCardIds: string[]; /** rows Go starts that had no price beforehand: left out of the total, listed on their own (decision 9) */ unpricedIds?: string[]; skipped: { cardId: string; title: string; problem: string }[]; /** cards Go tried that the server refused (they stay drafts) */ failedIds?: string[];
   /** Go stopped a row of that proposal because its price changed, and this one asks again (the dock shows the pair as ONE card, 2026-11-06) */ repriceOf?: string | null;
   status: 'pending' | 'running' | 'approved' | 'cancelled' | 'failed' | /** nothing in it can run here: the cards stay drafts, nothing to approve (never shown as Cancelled) */ 'drafts'; createdAt: number; decidedAt: number | null; jobIds: string[]; error: string | null;
 }
@@ -400,7 +401,7 @@ const messageBody = z.object({ text: z.string().trim().max(4000).default(''), /*
   /** pictures attached in the dock (2026-11-03): already Upload cards on the board, in order */ pictures: z.array(zPicture).max(MAX_DOCK_PICTURES).optional() }).strict()
   .refine((b) => b.text.length > 0 || !!b.pictures?.length, { message: 'Type a message or add a picture.', path: ['text'] });
 const decisionBody = z.object({ decision: z.enum(['go', 'cancel']) }).strict();
-const userProposalBody = z.object({ card_ids: z.array(z.string().trim().min(1)).min(1).max(20), note: z.string().max(400).optional(),
+const userProposalBody = z.object({ card_ids: z.array(z.string().trim().min(1)).min(1).max(40), /* a Group's Run the flow: up to 40 steps */ note: z.string().max(400).optional(),
   /** a row of this proposal stopped at Go because its price changed: the new proposal asks again under the same agent budget */ reprice_of: z.string().max(80).optional() }).strict();
 const demoBody = z.object({ prompt: z.string().trim().min(1).max(4000), starter: z.string().max(40).optional() }).strict();
 const pickBody = z.object({ pick_id: z.string().trim().min(1), card_id: z.string().trim().min(1), title: z.string().trim().max(140).optional() }).strict();
@@ -490,7 +491,7 @@ export function summarizeSnapshot(snapshot: unknown): BoardNode[] {
     } else if (s.type === STICKY_TYPE) {
       const t = String(p.text ?? '').trim(); if (t) nodes.push({ id: s.id, type: 'note', kind: meta.from === 'text' ? 'text' : 'note', title: t.slice(0, 600), by: meta.by === 'agent' ? 'agent' : 'you', frame: s.parentId ?? null });
     } else if (s.type === FRAME_TYPE) {
-      nodes.push({ id: s.id, type: 'frame', kind: 'frame', title: String(p.name || 'Frame'), children: doc.nodes.filter((c) => c.parentId === s.id).map((c) => c.id) });
+      nodes.push({ id: s.id, type: 'frame', kind: 'frame', title: String(p.name || 'Group'), children: doc.nodes.filter((c) => c.parentId === s.id).map((c) => c.id) });
     }
   }
   return nodes;
@@ -575,7 +576,8 @@ const noneRunWords = (reason: string | null | undefined) => { const why = String
 async function proposeRun(boardId: string, op: { card_ids: string[]; note?: string; repriceOf?: string | null }, req: FastifyRequest | null, by: 'mcp' | 'demo' | 'user' = 'mcp', budgetId?: string | null): Promise<OpResult> {
   const budget = req ? budgetOfRequest(req) : budgetId ? budgetById(budgetId) : null;
   if (budget && 'error' in budget) return { ok: false, error: budget.error, code: 'agent_budget_unknown' };
-  const r = await sendOp(boardId, { kind: 'propose_run', card_ids: op.card_ids, note: op.note }, OP_TIMEOUT_MS);
+  const boardBudget = boardBudgetView(boardId);
+  const r = await sendOp(boardId, { kind: 'propose_run', card_ids: op.card_ids, note: op.note, skip_unpriced: !!boardBudget }, OP_TIMEOUT_MS);
   if (!r.ok) return r;
   const data = r.result ?? {};
   const items: ProposalItem[] = (Array.isArray(data.items) ? data.items : []).map((x: any) => ({
@@ -586,6 +588,8 @@ async function proposeRun(boardId: string, op: { card_ids: string[]; note?: stri
     routeId: typeof x.quote?.routeId === 'string' && x.quote.routeId ? x.quote.routeId : null,
   }));
   if (!items.length) return { ok: false, error: 'None of those cards could be priced. Add a card first.', code: 'no_cards' };
+  /* decision 9: under a board budget a paid step with no price can't be counted, so it is left out (the page says so too; this is the check) */
+  if (boardBudget) for (const i of items) if (unpricedPaid(i)) i.problem = NO_PRICE_UNDER_BUDGET;
   const runs = items.filter((i) => !i.problem); const skipped = items.filter((i) => !!i.problem).map((i) => ({ cardId: i.cardId, title: i.title, problem: i.problem! }));
   const totalUsd = r4(runs.reduce((s, i) => s + (i.usd ?? 0), 0)); const totalCredits = runs.reduce((s, i) => s + (i.credits ?? 0), 0); // only what Go starts
   const bv = budget && !('error' in budget) ? budgetView(budget as AgentBudget) : null;
@@ -593,14 +597,14 @@ async function proposeRun(boardId: string, op: { card_ids: string[]; note?: stri
   const overBy = budgetViewOut?.remainingUsd != null ? r4(Math.max(0, totalUsd - budgetViewOut.remainingUsd)) : null;
   const agentOver = overBy != null && overBy > 1e-9;
   /* the board budget (release 1): the person's own limit on this board, next to the agent budget */
-  const boardBudget = boardBudgetView(boardId); const boardBlock = boardBudgetBlock(boardId, totalUsd);
+  const boardBlock = boardBudgetBlock(boardId, totalUsd);
   const over = agentOver || !!boardBlock;
   const reason = agentOver
     ? `This is ${fmtUsd(overBy!)} over the ${fmtUsd(budgetViewOut!.remainingUsd ?? 0)} left in the agent budget. Nothing will run.`
     : boardBlock ? `This is ${fmtUsd(Math.max(0, boardBlock.spentUsd + totalUsd - boardBlock.budgetUsd))} over the ${fmtUsd(boardBlock.leftUsd)} left in this board's budget. Nothing will run.`
     : !runs.length ? (skipped.length === 1 ? skipped[0].problem : `None of these cards can run here. ${skipped[0].problem}`) : null;
   const proposal: Proposal = { id: uid('prop'), boardId, cardIds: op.card_ids, note: op.note?.trim() || null, items, totalUsd, totalCredits,
-    budget: budgetViewOut, overBudget: over, overByUsd: agentOver ? overBy : boardBlock ? r4(boardBlock.spentUsd + totalUsd - boardBlock.budgetUsd) : overBy, reason, boardBudget, runCardIds: runs.map((i) => i.cardId), skipped, ...(op.repriceOf ? { repriceOf: op.repriceOf } : {}), status: !runs.length && !over ? 'drafts' : 'pending', createdAt: now(), decidedAt: null, jobIds: [], error: null };
+    budget: budgetViewOut, overBudget: over, overByUsd: agentOver ? overBy : boardBlock ? r4(boardBlock.spentUsd + totalUsd - boardBlock.budgetUsd) : overBy, reason, boardBudget, runCardIds: runs.map((i) => i.cardId), unpricedIds: runs.filter(unpricedPaid).map((i) => i.cardId), skipped, ...(op.repriceOf ? { repriceOf: op.repriceOf } : {}), status: !runs.length && !over ? 'drafts' : 'pending', createdAt: now(), decidedAt: null, jobIds: [], error: null };
   rememberProposal(proposal);
   addActivity(boardId, `Proposed ${runs.length} run${runs.length === 1 ? '' : 's'} · ${fmtUsd(totalUsd)}${skipped.length ? ` · ${skipped.length} skipped` : ''}`, { proposalId: proposal.id, meta: { tool: 'propose_run', by } });
   return { ok: true, result: { proposal } };

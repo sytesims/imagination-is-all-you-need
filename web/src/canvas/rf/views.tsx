@@ -3,7 +3,7 @@
  *  - cards (generate, result, prompt, upload, note, compare, group, ad layout): today's views (GenCardView, ResultCardView, AuxView) inside a
  *    custom node, reading the board through BoardApi; a resizer inside the kind's limits; two hidden handles so links have ends;
  *  - sticky notes: paper notes in tldraw's colours, double-click to type;
- *  - frames: a parent node (what sits in it moves with it), its name above it;
+ *  - Groups (saved as frames): a parent node (what sits in it moves with it), with its header strip (GroupStrip);
  *  - link cards (an old board's bookmark);
  *  - links: one custom edge with our routes (links.ts: a notch between neighbours, a thread along free lanes), the hovered or selected
  *    card's whole chain lit;
@@ -28,6 +28,7 @@ import { richTextPlain, richTextOf } from '../../../../server/src/shared/boardDo
 import { sizeOf, NOTE_SIZE } from './docMap';
 import type { BoardStore } from './store';
 import { PosterCard, TextPoster } from './PosterCard';
+import { GroupStrip } from './GroupStrip';
 import { PROMPT_TYPE, NOTE_TYPE } from '../nodeTypes';
 import { isPoster, posterRatio, ratioAtom } from './poster';
 import { posterPorts, posterPortY } from './posterPorts';
@@ -108,15 +109,14 @@ export const StickyNode = memo(function StickyNode({ id, selected }: NodeProps) 
   </div>;
 }, sameNode);
 
-/** A frame: what sits in it moves with it; its name sits above it (double-click to rename). */
+/** A Group (release 2: the one box): what sits in it moves with it; its header strip (GroupStrip) is always on top of it. */
 export const FrameNode = memo(function FrameNode({ id, selected }: NodeProps) {
   const board = useBoardApi(); const n = useValue('rf frame', () => board.getNode(id), [board, id]);
-  if (!n) return null; const p = n.props as Record<string, any>;
-  const rename = () => { const name = prompt('Group name', String(p.name ?? '')); if (name != null) { board.mark('rename group'); board.patchNode(id, { props: { name: name.slice(0, 80) } }); } };
+  if (!n) return null;
   return <>
     <Resizer id={id} type="frame" selected={!!selected} />
     <div className={`cv-frame${selected ? ' sel' : ''}`} data-shape-id={id} data-testid="rf-frame">
-      <span className="cv-frame-name" onDoubleClick={rename}>{String(p.name || 'Group')}</span>
+      <GroupStrip id={id as NodeId} />
     </div>
   </>;
 }, sameNode);

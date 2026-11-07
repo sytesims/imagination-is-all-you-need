@@ -25,7 +25,7 @@ import { removeCardInput } from '../CardInputs';
 import { lineageOf } from '../graph';
 import { quoteNode } from '../nodeRun';
 import { usdOfQuote } from '../priceLock';
-import { boardCtx } from '../boardCtx';
+import { proposeCards, openDock } from '../flowRun';
 import { magnetAtom, tidyNow, Magnet } from '../LinkLayer';
 import { reducedMotion } from '../agentHand';
 import { LINK_CARD_TYPE } from '../../../../server/src/shared/boardDoc';
@@ -146,12 +146,10 @@ export async function applyDropChoice(board: BoardApi, ui: Extract<DropUi, { typ
   const st = cardState(board, board.getNode(port.cardId)!, catalogNow()); const old = st.bySlot[port.slot] ?? [];
   board.mark('replace input'); board.batch(() => { for (const i of old) removeCardInput(board, port.cardId as NodeId, i); addCardInputs(board, port.cardId as NodeId, [{ input: inp, slot: port.slot }]); });
   if (choice !== 'rerun') { toast(`Replaced ${port.label || 'the input'}`); return; }
-  const ids = afterIds(board, port.cardId); const boardId = boardCtx().boardId;
-  const r = await fetch(`/api/canvas/boards/${encodeURIComponent(boardId)}/agent/proposals`, { method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ card_ids: ids.slice(0, 20), note: `Replace and rerun: ${ids.length === 1 ? 'this card' : `this card + ${ids.length - 1} after it`}` }) }).catch(() => null);
-  const b = r ? await r.json().catch(() => null) : null;
-  if (!r?.ok) toast(b?.error ?? 'Replaced. The rerun couldn’t be priced; press Go on the card when you’re ready.', 'warn');
-  else toast('Replaced. The rerun is priced in the AI panel: press Go there when it looks right.');
+  const ids = afterIds(board, port.cardId);
+  const r = await proposeCards(ids, `Replace and rerun: ${ids.length === 1 ? 'this card' : `this card + ${ids.length - 1} after it`}`);
+  if (!r.ok) { toast(r.error || 'Replaced. The rerun couldn’t be priced; press Go on the card when you’re ready.', 'warn'); return; }
+  openDock(); toast('Replaced. The rerun is priced in the AI panel: press Go there when it looks right.');
 }
 
 /** The drop menu and the bubble, at the pointer (screen px). ↵ ⇧ ⌥ pick; Esc or a click away closes. */

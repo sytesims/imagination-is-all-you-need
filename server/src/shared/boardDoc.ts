@@ -10,9 +10,12 @@
  *    bookmark → `ohf-link`; such nodes say what they were in `meta.from`. Pen strokes, geo shapes, arrows with a loose end and pictures
  *    with no file are dropped and counted in `dropped` (by tldraw type), so the page can say what couldn't be kept.
  *  - boardDocOf(saved): either format → BoardDoc (the one path every server reader goes through); isBoardDoc / boardDocError check v2.
+ *    It also moves old group cards over to the one Group box (boardGroups.migrateGroups, release 2).
  *  - docToFlow / flowToDoc: BoardDoc ⇄ the nodes and edges a node-graph renderer (React Flow) draws; plain objects, no library import.
  *  - absoluteBoxes: page boxes of every node.
  */
+
+import { migrateGroups } from './boardGroups.js';
 
 export const BOARD_FORMAT = 'iiayn-board';
 export const STICKY_TYPE = 'ohf-sticky';
@@ -160,8 +163,8 @@ export const isV2 = (v: unknown): boolean => (v as any)?.format === BOARD_FORMAT
 
 /** Any saved board (version 1 tldraw snapshot or version 2 document) as a board document; null / unknown → empty board. */
 export function boardDocOf(saved: unknown): BoardDoc {
-  if (isV2(saved)) { const d = saved as BoardDoc; return { format: BOARD_FORMAT, version: 2, nodes: Array.isArray(d.nodes) ? d.nodes : [], links: Array.isArray(d.links) ? d.links : [] }; }
-  return fromTldraw(saved);
+  if (isV2(saved)) { const d = saved as BoardDoc; return migrateGroups({ format: BOARD_FORMAT, version: 2, nodes: Array.isArray(d.nodes) ? d.nodes : [], links: Array.isArray(d.links) ? d.links : [] }); }
+  return migrateGroups(fromTldraw(saved));
 }
 
 /** Items on a saved board: nodes + links, plus (on a version-1 board) what the move would drop, so the count stays the tldraw shape count. */

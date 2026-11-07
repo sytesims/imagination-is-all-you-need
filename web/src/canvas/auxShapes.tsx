@@ -4,6 +4,7 @@
  */
 import { BaseBoxShapeUtil, HTMLContainer, T, resizeBox, type TLResizeInfo, type TLShape } from 'tldraw';
 import type { BoardApi, NodeId, Point } from './boardApi';
+import { GROUP_NODE, GROUP_TOP } from './groupModel';
 import { NODE_DEFS, nodeDefOf, adCardHeight, GROUP_TYPE, PROMPT_TYPE, UPLOAD_TYPE, NOTE_TYPE, COMPARE_TYPE, AD_TYPE, type NodeKind } from './nodeTypes';
 import { AD_SHAPES, asShape } from './adPlatforms';
 import { auxProps, adProps, type AuxNodeProps, type AdNodeProps } from './auxModel';
@@ -41,17 +42,29 @@ export function createAuxNode(board: BoardApi, kind: NodeKind, o: AuxCreateOpts 
   return id;
 }
 
-/** A group frame around the selected nodes (or an empty frame in the middle of the view), sent behind them. */
+/** A Group (release 2: the one box) around the selected cards, which move into it, or an empty Group in the middle of the view. It sits
+ *  behind its cards, leaves room at the top for its header strip, and has no name of its own: it takes its first step's title. */
 export function createGroupNode(board: BoardApi, o: AuxCreateOpts = {}): NodeId {
-  const def = NODE_DEFS.group; const picked = board.selection().map(id => board.getNode(id)).filter((s): s is NonNullable<typeof s> => !!s && !!nodeDefOf(s.type) && s.type !== GROUP_TYPE);
+  const def = NODE_DEFS.group;
+  const sel = board.selection().filter((id) => board.getNode(id));
+  /* a card inside a selected Group goes with its Group */
+  const picked = sel.filter((id) => { let up = board.parentOf(id as NodeId); for (let k = 0; up && k < 64; k++) { if (sel.includes(up)) return false; up = board.parentOf(up); } return true; }) as NodeId[];
+  const bounds = picked.map((id) => board.boundsOf(id)).filter(Boolean) as { minX: number; minY: number; maxX: number; maxY: number }[];
   let box: { x: number; y: number; w: number; h: number };
-  const bounds = picked.map(s => board.boundsOf(s.id)).filter(Boolean) as { minX: number; minY: number; maxX: number; maxY: number }[];
   if (bounds.length) {
-    const minX = Math.min(...bounds.map(b => b.minX)), minY = Math.min(...bounds.map(b => b.minY)), maxX = Math.max(...bounds.map(b => b.maxX)), maxY = Math.max(...bounds.map(b => b.maxY));
-    box = { x: minX - 28, y: minY - 58, w: Math.max(def.minW, maxX - minX + 56), h: Math.max(def.minH, maxY - minY + 86) };
+    const minX = Math.min(...bounds.map((b) => b.minX)), minY = Math.min(...bounds.map((b) => b.minY)), maxX = Math.max(...bounds.map((b) => b.maxX)), maxY = Math.max(...bounds.map((b) => b.maxY));
+    box = { x: minX - 32, y: minY - GROUP_TOP, w: Math.max(def.minW, maxX - minX + 64), h: Math.max(def.minH, maxY - minY + GROUP_TOP + 32) };
   } else { const c = o.at ?? board.viewportBounds().center; box = { x: c.x - def.defaultW / 2, y: c.y - def.defaultH / 2, w: def.defaultW, h: def.defaultH }; }
+  /* cards that all sit in one Group: the new Group goes inside that one */
+  const parents = new Set(picked.map((id) => board.parentOf(id) ?? '')); const outer = parents.size === 1 ? [...parents][0] as NodeId : null;
   board.mark('new group');
-  let id = ''; board.batch(() => { id = board.addNode({ type: GROUP_TYPE, x: box.x, y: box.y, props: { ...auxProps('group'), w: box.w, h: box.h } }); board.toBack([id]); });
+  let id = '' as NodeId;
+  board.batch(() => {
+    id = board.addNode({ type: GROUP_NODE, x: box.x, y: box.y, props: { w: box.w, h: box.h, name: '', color: 'black' } });
+    if (outer) board.setParent([id], outer);
+    board.toBack([id]);
+    if (picked.length) board.setParent(picked, id);
+  });
   if (o.select !== false) board.select([id]);
   return id;
 }
