@@ -3,11 +3,13 @@
  * your own Comfy deployment (comfy-deploy:<id>, comfy/deploy.ts); a few routes run their own partner-node graph (route.cloudRun: Tripo 3D,
  * Topaz video). Keys: COMFY_API_KEY, and for your deployment COMFY_DEPLOY_URL or COMFY_RUNNER_URL (+ COMFY_RUNNER_TOKEN).
  * Off in the profile → Comfy Cloud routes are hidden and quotes say Comfy Cloud isn't set up.
+ * Its route add-on: charswap-anchor (H3 Character Swap's first frame, priced into the twin route on quote and charge; services/routeAddOns.ts).
  */
 import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner } from '../services/places.js';
 import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
 import { cloudLive, runCloudWorkflow, cloudTargetFor } from '../routing/cloudRun.js';
+import { charswapAnchorAddOn } from '../comfy/h3CharSwapAnchor.js';
 
 export const CLOUD_KEYS = ['COMFY_API_KEY', 'COMFY_DEPLOY_URL', 'COMFY_RUNNER_URL', 'COMFY_RUNNER_TOKEN'];
 export const cloudPlaceOf = (keys: KeyReader): PlaceRunner => ({
@@ -30,4 +32,4 @@ export const cloudPlaceOf = (keys: KeyReader): PlaceRunner => ({
 });
 export const cloudPlace = cloudPlaceOf(ANY_KEY);
 
-export default definePlugin({ name: 'place-comfy-cloud', inject: ['places', 'keys'], keys: CLOUD_KEYS, apply(ctx) { ctx.places.register(cloudPlaceOf(ctx.keys)); } });
+export default definePlugin({ name: 'place-comfy-cloud', inject: ['places', 'keys', 'pricing'], keys: CLOUD_KEYS, apply(ctx) { ctx.places.register(cloudPlaceOf(ctx.keys)); ctx.pricing.addOn(charswapAnchorAddOn); } });

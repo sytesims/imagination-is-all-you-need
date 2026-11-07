@@ -26,6 +26,8 @@ import { r4, comfyUnits, exactWithinCent, providerUnits } from './shared/runCost
 import { RUN_ON_LABELS, runOnOfRoute, LOCAL_LABEL } from './shared/modelIds.js';
 import { metaOf, listProjects } from './library.js';
 import { spendCapUsd, saveSpendCap, capVerdict } from './spendCap.js';
+import { pricing, isQuoteRequest } from './services/pricing.js';
+import { moneyFeature } from './services/spendFeatures.js';
 import { periodStart, isSpendPeriod, buckets, quoteAccuracy, overQuoteByTool, shareByTool, type SpendPeriod } from './shared/spendInsights.js';
 import { policyRefusalCharge } from './shared/policyBilling.js';
 
@@ -262,7 +264,8 @@ export function spendTally(now = new Date()) {
   const projects = [...by.values()].map((g) => ({ ...g, thisMonthUsd: r4(g.thisMonthUsd), lastMonthUsd: r4(g.lastMonthUsd) })).filter((g) => g.thisMonthUsd > 0 || g.lastMonthUsd > 0)
     .sort((a, b) => b.thisMonthUsd - a.thisMonthUsd || b.lastMonthUsd - a.lastMonthUsd);
   const thisMonth = month(true, thisFrom); const cap = capVerdict({ capUsd: spendCapUsd(), spentUsd: thisMonth.spentUsd, runUsd: 0, now });
-  return { thisMonth, lastMonth: month(false, lastFrom), projects, cap: { monthlyUsd: cap.capUsd, spentUsd: cap.spentUsd, leftUsd: cap.leftUsd, resetsOn: cap.resetsOn } };
+  // cap: the Spend page's monthly-limit card; left out when the spend-cap plugin is off (no card, no check)
+  return { thisMonth, lastMonth: month(false, lastFrom), projects, ...(moneyFeature('spend-cap') ? { cap: { monthlyUsd: cap.capUsd, spentUsd: cap.spentUsd, leftUsd: cap.leftUsd, resetsOn: cap.resetsOn } } : {}) };
 }
 export const spentUsd = (provider: string, period: 'day' | 'month', now = new Date(), excludeJobId?: string) => { const from = startOf(period, now); return r4(rows().filter((r) => r.billedTo === provider && r.createdAt >= from && r.jobId !== excludeJobId).map(live).reduce((s, r) => s + countedUsd(r), 0)); };
 
@@ -375,7 +378,7 @@ async function account(id: string, refresh: boolean): Promise<AccountView> {
 export const accounts = (refresh = false) => Promise.all(PROVIDER_BILLING.filter((p) => p.id !== 'local').map((p) => account(p.id, refresh)));
 
 // ---------- HTTP ----------
-const canWrite = (req: FastifyRequest) => isLoopback(process.env.HOST) || isLoopback(req.ip);
+export const canWrite = (req: FastifyRequest) => isLoopback(process.env.HOST) || isLoopback(req.ip);
 const WRITE_NOTE = 'Billing settings can be changed only from this computer (the server’s own address).';
 function summary(period: 'day' | 'month') {
   const from = startOf(period); const list = rows().filter((r) => r.createdAt >= from).map(live);
@@ -402,6 +405,7 @@ export function registerBilling(app: FastifyInstance) {
     const b = (req.body ?? {}) as { mode?: string; comfyPlan?: unknown }; const cur = billingSettings(); // an old client's `limits` is ignored (spending limits were removed)
     if (b.comfyPlan !== undefined && b.comfyPlan !== null && !isComfyPlanId(b.comfyPlan)) return reply.code(400).send({ error: "comfyPlan must be 'standard', 'creator', 'pro', 'payg' or null", errorType: 'validation', issues: [{ code: 'invalid', field: 'comfyPlan', message: "Use 'standard', 'creator', 'pro', 'payg' or null." }] });
     if (b.mode != null && b.mode !== 'own-accounts' && b.mode !== 'team') return reply.code(400).send({ error: "mode must be 'own-accounts' or 'team'", errorType: 'validation', issues: [{ code: 'invalid', field: 'mode', message: "Use 'own-accounts' or 'team'." }] });
+    if (b.mode === 'team' && !moneyFeature('billing-team-mode')) return reply.code(400).send({ error: 'Team mode isn’t set up in this app (the billing-team-mode plugin is off).', errorType: 'validation', code: 'team_mode_off', issues: [{ code: 'team_mode_off', field: 'mode', message: 'Team mode isn’t set up in this app.' }] });
     if (b.mode != null && b.mode !== cur.mode && modeLocked()) return reply.code(409).send({ error: 'The billing mode is set by OPENHIGGSFIELD_BILLING_MODE on this server, so it can’t be changed here.', errorType: 'validation', code: 'mode_locked' });
     const next = saveBillingSettings({ mode: (b.mode as BillingMode) ?? cur.mode, ...(b.comfyPlan !== undefined ? { comfyPlan: (b.comfyPlan as ComfyPlanSetting) ?? null } : {}) });
     console.log(`[billing-settings] write caller=${req.ip} mode=${next.mode}`);
@@ -429,35 +433,34 @@ export function registerBilling(app: FastifyInstance) {
     return reply.header('cache-control', 'no-store').send(spendOverview(p));
   });
   app.get('/api/spend/tally', async (req, reply) => reply.header('cache-control', 'no-store').send({ ...spendTally(), canWrite: canWrite(req) }));
-  app.put('/api/settings/spend-cap', async (req, reply) => {
+  app.get<{ Querystring: { refresh?: string } }>('/api/accounts', async (req) => ({ accounts: await accounts(/^(1|true)$/i.test(req.query.refresh ?? '')), cacheSeconds: CACHE_MS / 1000, mockBackend: config.backend === 'mock' }));
+  // Every quote (GET /api/tools/:id/price, /api/models/quote; POST /price re-enters as a GET) goes through ctx.pricing's quote/compute
+  // waterfall: `cost` + `billingMode` (the core step below), then the monthly limit (spend-cap) and the agent budget (agent-budgets).
+  // Registered after the routing hook, so it sees the final route and credits.
+  app.addHook('preSerialization', async (req, _reply, payload: any) => (isQuoteRequest(req, payload) ? pricing.compute(req, payload) : payload));
+}
+
+/** PUT /api/settings/spend-cap (the spend-cap plugin registers it): save or turn off the monthly limit, from this computer only. */
+export async function putSpendCap(req: FastifyRequest, reply: import('fastify').FastifyReply) {
     if (!canWrite(req)) return reply.code(403).send({ error: 'The monthly limit can be changed only from this computer.', errorType: 'forbidden' });
     const r = saveSpendCap((req.body as { monthlyUsd?: unknown } | null)?.monthlyUsd);
     if (!r.ok) return reply.code(400).send({ error: r.error, errorType: 'validation', issues: [{ code: 'invalid', field: 'monthlyUsd', message: r.error }] });
     console.log(`[spend-cap] write caller=${req.ip} on=${r.monthlyUsd != null}`);
     return { ...spendTally(), canWrite: true };
-  });
-  app.get<{ Querystring: { refresh?: string } }>('/api/accounts', async (req) => ({ accounts: await accounts(/^(1|true)$/i.test(req.query.refresh ?? '')), cacheSeconds: CACHE_MS / 1000, mockBackend: config.backend === 'mock' }));
-  // Every quote (GET /api/tools/:id/price, /api/models/quote; POST /price re-enters as a GET) gets `cost` + `billingMode` (no spending limits since 2026-10-28).
-  // Registered after the routing hook, so it sees the final route and credits.
-  app.addHook('preSerialization', async (req, reply, payload: any) => {
-    if (payload?.composite === true && payload.toolId === 'app-photos-to-reel') return payload; // Already summed from the child quotes, including their billing modes.
-    const url = req.url.split('?')[0];
-    if (req.method !== 'GET' || !(url === '/api/models/quote' || /^\/api\/tools\/[^/]+\/price$/.test(url)) || !payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
-    if (!('credits' in payload) && !('routeKind' in payload)) return payload;
-    try {
-      const kind = payload.routeKind ?? (payload.local === true || payload.localRun === true ? 'local' : null);
-      const routeId = payload.routeId ?? payload.route ?? null;
-      const credits = typeof payload.credits === 'number' ? payload.credits : null;
-      if (kind == null && credits == null) return { ...payload, billingMode: billingMode(), cost: null };
-      // Every pre-run price is an estimate (list price × the job's units); only the spend log's actualUsd is a provider-reported figure.
-      // exactUsd: set by the routing hook from the routed price (routing/http.ts routeExactUsd), so it always belongs to these credits
-      const exactUsd = typeof payload.exactUsd === 'number' ? payload.exactUsd : null;
-      const cost = costOf({ kind: kind ?? (credits ? 'direct' : 'local'), routeId, credits, demo: payload.demo === true, listCredits: payload.listCredits ?? null, estimated: true, exactUsd, unconfirmed: payload.unconfirmed === true });
-      // Monthly cap (spendCap.ts): the quote says first when this run would go past it, so Generate shows why before a click.
-      const cv = checkSpendCap(runCountsUsd(cost, payload.free === true));
-      const capView = cv.capUsd == null ? {} : { spendCap: { monthlyUsd: cv.capUsd, spentUsd: cv.spentUsd, leftUsd: cv.leftUsd, resetsOn: cv.resetsOn, ok: cv.ok } };
-      if (!cv.ok && payload.runnable !== false) return { ...payload, billingMode: billingMode(), cost, ...capView, runnable: false, blockedReason: cv.reason, blockedCode: 'spend_cap' };
-      return { ...payload, billingMode: billingMode(), cost, ...capView };
-    } catch { return payload; }
-  });
 }
+
+/** quote/compute, core step (order 0): `cost` + `billingMode` on every quote (no spending limits since 2026-10-28). */
+pricing.setCore({ id: 'cost', order: 0, run(q) {
+  const payload = q.payload;
+  if (payload?.composite === true && payload.toolId === 'app-photos-to-reel') return payload; // Already summed from the child quotes, including their billing modes.
+  if (!('credits' in payload) && !('routeKind' in payload)) return payload;
+  const kind = payload.routeKind ?? (payload.local === true || payload.localRun === true ? 'local' : null);
+  const routeId = payload.routeId ?? payload.route ?? null;
+  const credits = typeof payload.credits === 'number' ? payload.credits : null;
+  if (kind == null && credits == null) return { ...payload, billingMode: billingMode(), cost: null };
+  // Every pre-run price is an estimate (list price × the job's units); only the spend log's actualUsd is a provider-reported figure.
+  // exactUsd: set by the routing hook from the routed price (routing/http.ts routeExactUsd), so it always belongs to these credits
+  const exactUsd = typeof payload.exactUsd === 'number' ? payload.exactUsd : null;
+  const cost = costOf({ kind: kind ?? (credits ? 'direct' : 'local'), routeId, credits, demo: payload.demo === true, listCredits: payload.listCredits ?? null, estimated: true, exactUsd, unconfirmed: payload.unconfirmed === true });
+  q.cost = cost; return { ...payload, billingMode: billingMode(), cost };
+} });

@@ -1052,8 +1052,6 @@ export function registerCanvasAgent(app: FastifyInstance) {
     broadcastAll('boards', { at: now(), by: fromAgent(req) ? 'agent' : 'you' });
   });
 
-  app.get('/api/canvas/agent/starters', async () => ({ items: DEMO_STARTERS }));
-
   /* The user's own proposal from the dock (Re-roll on a media card): priced exactly like an agent's, and it waits for Go too. */
   app.post<{ Params: { id: string }; Body: unknown }>('/api/canvas/boards/:id/agent/proposals', async (req, reply) => {
     const b = getBoard(req.params.id); if (!b) return notFound(reply);
@@ -1065,47 +1063,6 @@ export function registerCanvasAgent(app: FastifyInstance) {
     return { ok: true, proposal: r.result.proposal };
   });
 
-  /* The built-in demo agent: plays a scripted plan on the open board. It never spends: each phase is a proposal that waits for Go. */
-  app.post<{ Params: { id: string }; Body: unknown }>('/api/canvas/boards/:id/agent/demo', async (req, reply) => {
-    const b = getBoard(req.params.id); if (!b) return notFound(reply);
-    const parsed = demoBody.safeParse(req.body); if (!parsed.success) return bad(reply, zodText(parsed.error), 'invalid_demo');
-    if (!hasCanvas(b.id)) return bad(reply, 'Open the board in the app first.', 'canvas_not_open', 409);
-    /* typed words (no chip): the demo can't chat, so it says so. It never builds, prices, approves or moves a running demo on (2026-10-31:
-       a typed question used to start a demo and a priced proposal). The words stay in the box (kept), so they can go to Claude once connected. */
-    if (!isStarterId(parsed.data.starter)) {
-      const s = stateOf(b.id); const running = demos.has(b.id);
-      const waiting = !running ? null : [...s.proposals.values()].some((p) => p.status === 'pending') ? 'go' : s.pick?.status === 'waiting' ? 'pick' : null;
-      const r = demoReply(parsed.data.prompt, { running, waiting });
-      const last = s.feed.at(-1);
-      const said = last?.type === 'message' && last.from === 'agent' && last.meta?.demoReply && last.text === r.text && (last.meta?.suggest ?? null) === r.suggest
-        ? last : addMessage(b.id, 'agent', r.text, { meta: { by: 'demo', demoReply: true, suggest: r.suggest } });
-      return { ok: true, kept: true, reply: said };
-    }
-    if (demos.has(b.id)) return bad(reply, 'The agent is already working on this board. Stop it first.', 'demo_running', 409);
-    const message = addMessage(b.id, 'user', parsed.data.prompt);
-    if (detectStarter(parsed.data.prompt, parsed.data.starter ?? null) === 'short') { /* the flagship: Short film from idea */
-      const sp = shortFilmPlan(parsed.data.prompt, isChip(parsed.data.starter, parsed.data.prompt)); const run: DemoRun = { id: uid('demo'), boardId: b.id, stop: false, title: sp.title };
-      demos.set(b.id, run); broadcast(b.id, 'demo', demoState(b.id));
-      void runShortFilm(run, sp);
-      return { ok: true, runId: run.id, plan: { id: sp.id, title: sp.title, steps: [...SHORT_STEPS] }, message };
-    }
-    const plan = demoPlan(parsed.data.prompt, parsed.data.starter ?? null);
-    const run: DemoRun = { id: uid('demo'), boardId: b.id, stop: false, title: plan.title };
-    demos.set(b.id, run); broadcast(b.id, 'demo', demoState(b.id));
-    void runDemo(run, plan);
-    return { ok: true, runId: run.id, plan: { id: plan.id, title: plan.title, steps: plan.steps }, message };
-  });
-  app.post<{ Params: { id: string } }>('/api/canvas/boards/:id/agent/demo/stop', async (req, reply) => {
-    const b = getBoard(req.params.id); if (!b) return notFound(reply);
-    const run = demos.get(b.id); if (!run) return { ok: true, running: false };
-    run.stop = true; demos.delete(b.id);
-    /* a proposal still waiting for Go is cancelled: nothing it priced runs */
-    for (const p of stateOf(b.id).proposals.values()) if (p.status === 'pending') { p.status = 'cancelled'; p.decidedAt = now(); updateProposal(p); }
-    endPick(b.id);
-    addMessage(b.id, 'agent', 'Stopped. Everything already on the board stays.', { meta: { by: 'demo', runId: run.id, stopped: true } });
-    broadcast(b.id, 'demo', demoState(b.id));
-    return { ok: true, running: false };
-  });
   app.get('/api/canvas/agent/workflows', async () => ({ items: canvasWorkflows() }));
 
   /* "Pick the one you like": the user's click on one of the cards an ask_pick named. The agent (demo or MCP inbox) goes on with that card only. */
@@ -1285,6 +1242,55 @@ export function registerCanvasAgent(app: FastifyInstance) {
     const locks: Record<string, PriceLock> = {}; for (const it of p.items) locks[it.cardId] = { credits: it.quotedCredits ?? null, routeId: it.routeId ?? null, usd: it.usd };
     void sendOp(b.id, { kind: 'run_proposal', proposal_id: p.id, card_ids: p.runCardIds ?? p.cardIds, budget_id: p.budget?.id ?? null, locks }, PROPOSAL_TIMEOUT_MS, (r) => finishRunProposal(p, r));
     return { ok: true, proposal: p };
+  });
+}
+
+
+/** canvas-demo (plugin): the built-in demo agent's routes (canvasDemo.ts plans): the starter chips, play a plan on the open board, stop it.
+ *  It never spends: each phase is a proposal that waits for Go. The rest of the agent bridge is registerCanvasAgent (plugin canvas-agent). */
+export function registerCanvasDemo(app: FastifyInstance) {
+  app.get('/api/canvas/agent/starters', async () => ({ items: DEMO_STARTERS }));
+
+  /* The built-in demo agent: plays a scripted plan on the open board. It never spends: each phase is a proposal that waits for Go. */
+  app.post<{ Params: { id: string }; Body: unknown }>('/api/canvas/boards/:id/agent/demo', async (req, reply) => {
+    const b = getBoard(req.params.id); if (!b) return notFound(reply);
+    const parsed = demoBody.safeParse(req.body); if (!parsed.success) return bad(reply, zodText(parsed.error), 'invalid_demo');
+    if (!hasCanvas(b.id)) return bad(reply, 'Open the board in the app first.', 'canvas_not_open', 409);
+    /* typed words (no chip): the demo can't chat, so it says so. It never builds, prices, approves or moves a running demo on (2026-10-31:
+       a typed question used to start a demo and a priced proposal). The words stay in the box (kept), so they can go to Claude once connected. */
+    if (!isStarterId(parsed.data.starter)) {
+      const s = stateOf(b.id); const running = demos.has(b.id);
+      const waiting = !running ? null : [...s.proposals.values()].some((p) => p.status === 'pending') ? 'go' : s.pick?.status === 'waiting' ? 'pick' : null;
+      const r = demoReply(parsed.data.prompt, { running, waiting });
+      const last = s.feed.at(-1);
+      const said = last?.type === 'message' && last.from === 'agent' && last.meta?.demoReply && last.text === r.text && (last.meta?.suggest ?? null) === r.suggest
+        ? last : addMessage(b.id, 'agent', r.text, { meta: { by: 'demo', demoReply: true, suggest: r.suggest } });
+      return { ok: true, kept: true, reply: said };
+    }
+    if (demos.has(b.id)) return bad(reply, 'The agent is already working on this board. Stop it first.', 'demo_running', 409);
+    const message = addMessage(b.id, 'user', parsed.data.prompt);
+    if (detectStarter(parsed.data.prompt, parsed.data.starter ?? null) === 'short') { /* the flagship: Short film from idea */
+      const sp = shortFilmPlan(parsed.data.prompt, isChip(parsed.data.starter, parsed.data.prompt)); const run: DemoRun = { id: uid('demo'), boardId: b.id, stop: false, title: sp.title };
+      demos.set(b.id, run); broadcast(b.id, 'demo', demoState(b.id));
+      void runShortFilm(run, sp);
+      return { ok: true, runId: run.id, plan: { id: sp.id, title: sp.title, steps: [...SHORT_STEPS] }, message };
+    }
+    const plan = demoPlan(parsed.data.prompt, parsed.data.starter ?? null);
+    const run: DemoRun = { id: uid('demo'), boardId: b.id, stop: false, title: plan.title };
+    demos.set(b.id, run); broadcast(b.id, 'demo', demoState(b.id));
+    void runDemo(run, plan);
+    return { ok: true, runId: run.id, plan: { id: plan.id, title: plan.title, steps: plan.steps }, message };
+  });
+  app.post<{ Params: { id: string } }>('/api/canvas/boards/:id/agent/demo/stop', async (req, reply) => {
+    const b = getBoard(req.params.id); if (!b) return notFound(reply);
+    const run = demos.get(b.id); if (!run) return { ok: true, running: false };
+    run.stop = true; demos.delete(b.id);
+    /* a proposal still waiting for Go is cancelled: nothing it priced runs */
+    for (const p of stateOf(b.id).proposals.values()) if (p.status === 'pending') { p.status = 'cancelled'; p.decidedAt = now(); updateProposal(p); }
+    endPick(b.id);
+    addMessage(b.id, 'agent', 'Stopped. Everything already on the board stays.', { meta: { by: 'demo', runId: run.id, stopped: true } });
+    broadcast(b.id, 'demo', demoState(b.id));
+    return { ok: true, running: false };
   });
 }
 

@@ -8,6 +8,9 @@
  *  - route(opts): Fastify can't add routes after listen nor remove them. A plugin registers its routes at boot; when the plugin is turned off
  *    (disposed) its routes stay but answer exactly like an unknown route (404 not_found, the server's not-found handler) until it is on again.
  *    Every route, also those legacy code adds with app.get(…), is recorded with the plugin that added it (routesBy(), --dump-config).
+ *  - group(register): a route group written as registerX(app) (the feature plugins): every route it adds, also inside app.register sub-scopes, is
+ *    recorded with the plugin and goes off with it; a hook it adds with app.addHook keeps its place in Fastify's order but does nothing while
+ *    the plugin is off.
  *  - static(opts): @fastify/static under a prefix.
  *  - listen() / close(): the legacy plugin listens at the end of its apply and closes the server when it is disposed.
  */
@@ -24,7 +27,7 @@ export const HOOK_NAMES = ['onRequest', 'preParsing', 'preValidation', 'preHandl
 export type HookName = (typeof HOOK_NAMES)[number];
 export type HookFn = (req: FastifyRequest, reply: FastifyReply, extra?: any) => unknown;
 
-export interface RouteEntry { method: string; url: string; owner: string; active: boolean }
+export interface RouteEntry { method: string; url: string; owner: string; active: boolean; /** stays on when its plugin is off (it answers "off" itself) */ keepOn?: boolean }
 interface HookEntry { fn: HookFn; owner: string }
 
 /** Run one hook (async, or callback style with done as the last argument) and resolve with what it returned. */
@@ -101,6 +104,23 @@ export class Http {
     return this.routes.slice(before);
   }
 
+  /** Run a registerX(app) route group as `owner`: its routes (sub-scopes included) are recorded as the owner's; its hooks run only while
+   *  isOn() says so. Returns the routes it added. */
+  async group(register: (app: FastifyInstance) => unknown, owner: string, isOn: () => boolean): Promise<RouteEntry[]> {
+    if (this.listening || this.sealed) throw new Error(`ctx.http.group (${owner}): routes are added at boot, before the server listens (plan R2)`);
+    const real = this.app; const before = this.routes.length;
+    const gated = (name: string, fn: HookFn) => (PAYLOAD.has(name) || name === 'onError'
+      ? (req: FastifyRequest, reply: FastifyReply, arg: unknown) => (isOn() ? call(fn, req, reply, arg, true) : Promise.resolve(PAYLOAD.has(name) ? arg : undefined))
+      : (req: FastifyRequest, reply: FastifyReply) => (isOn() ? call(fn, req, reply, undefined, false) : Promise.resolve(undefined)));
+    const app: FastifyInstance = new Proxy(real, { get: (t, k) => {
+      if (k === 'addHook') return (name: string, fn: HookFn) => { if (name === 'onRoute' || name === 'onRegister' || name === 'onReady' || name === 'onClose' || name === 'onListen') t.addHook(name as any, fn as any); else t.addHook(name as any, gated(name, fn) as any); return app; };
+      const v = Reflect.get(t, k, t); return typeof v === 'function' ? v.bind(t) : v;
+    } });
+    const prev = this.owner; this.owner = owner;
+    try { await register(app); await real.after(); } finally { this.owner = prev; }
+    return this.routes.slice(before);
+  }
+
   /** Serve a folder under a prefix (@fastify/static). Only the first static mount may decorate reply.sendFile. */
   private statics = 0;
   async static(opts: { root: string; prefix: string; [k: string]: unknown }, owner = this.owner): Promise<void> {
@@ -114,8 +134,8 @@ export class Http {
     for (const r of this.routes) (out[r.owner] ??= []).push(`${r.method} ${r.url}${r.active ? '' : ' (off)'}`);
     return out;
   }
-  /** Turn one plugin's routes on or off (off = 404 not_found, like an unknown route). */
-  setActive(owner: string, on: boolean) { for (const r of this.routes) if (r.owner === owner) r.active = on; }
+  /** Turn one plugin's routes on or off (off = 404 not_found, like an unknown route; a keepOn route stays). */
+  setActive(owner: string, on: boolean) { for (const r of this.routes) if (r.owner === owner && !(r.keepOn && !on)) r.active = on; }
 
   /** Add the final-stage dispatchers (last of all hooks). listen() and ready() do it; no hooks or routes can be added after. */
   seal() {
@@ -146,6 +166,15 @@ export class HttpService extends Service {
   }
   hook(name: HookName, fn: HookFn, o: { stage?: HookStage } = {}) {
     const owner = this.caller; return this.ctx.effect(() => this.server.hook(name, fn, { ...o, owner }), `hook ${name} (${o.stage ?? 'normal'})`);
+  }
+  /** A feature's route group (registerX(app)): see Http.group. Its routes and hooks go off when the plugin is disposed; with keepOn its routes
+   *  stay on (they answer that the feature is off themselves: workflow-folders, as promised in #191). */
+  async group(register: (app: FastifyInstance) => unknown, o: { keepOn?: boolean } = {}) {
+    const owner = this.caller; let on = true;
+    const entries = await this.server.group(register, owner, () => on);
+    if (o.keepOn) for (const e of entries) e.keepOn = true;
+    this.ctx.effect(() => { on = true; for (const e of entries) e.active = true; return () => { on = false; if (!o.keepOn) for (const e of entries) e.active = false; }; }, `routes of ${owner} (${entries.length})`);
+    return entries;
   }
   static(opts: { root: string; prefix: string; [k: string]: unknown }) { return this.server.static(opts, this.caller); }
   routesBy() { return this.server.routesBy(); }

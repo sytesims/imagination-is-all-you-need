@@ -38,6 +38,7 @@ import type { DirectOutput } from '../providers/direct.js';
 import type { RouteAttempt, RouteDef, RouteOption } from './types.js';
 import { ledgerUsd } from '../shared/priceText.js';
 import { PRE_DISPATCH, failureRuleOf, billedToOf } from '../billing.js';
+import { emitJob, attemptCostOf, reportedCostOf } from '../services/jobEvents.js';
 
 const TIMEOUT_MS = Number(env('ROUTING_TIMEOUT_MS')) || 15 * 60_000;
 let testFail: Set<string> | null = null;
@@ -120,8 +121,8 @@ async function execute(job: Job, tool: ToolDef, r: RouteDef, attempt: RouteAttem
     const place = runner as PlaceRunner & Required<Pick<PlaceRunner, 'run'>>; // a queue place (fal, Replicate) sends one request at a time
     /** The runner's hooks: the request id is noted at once, and remembered as job.remote (k of n) so a restart can poll it again. */
     const hooks = (k: number, n: number, queuePos: boolean) => ({ timeoutMs: TIMEOUT_MS, isCanceled: canceled, onBusy: (ms: number) => { job.queueReason = busyReason(place.label, ms); },
-      onSubmit: (ref: RemoteRef) => { attempt.requestId = ref.id; (job.requestIds ??= []).push(ref.id); job.queueReason = null; remember(ref, k, n); },
-      onStatus: (stage: 'submitted' | 'rendering', pos?: number | null) => { job.stage = stage; if (queuePos && pos != null) job.queuePos = pos; } });
+      onSubmit: (ref: RemoteRef) => { attempt.requestId = ref.id; (job.requestIds ??= []).push(ref.id); job.queueReason = null; remember(ref, k, n); emitJob('job/progress', job, { stage: 'submitted', attempt: attempt.n, routeId: r.routeId }); },
+      onStatus: (stage: 'submitted' | 'rendering', pos?: number | null) => { job.stage = stage; if (queuePos && pos != null) job.queuePos = pos; emitJob('job/progress', job, { stage, attempt: attempt.n, routeId: r.routeId, queuePos: pos ?? null }); } });
     /** A cost the place reported (information only: the charge stays the quote). */
     const noteCost = (c?: PlaceCost) => { if (c) attempt.reportedCost = { usd: Math.round(((attempt.reportedCost?.usd ?? 0) + c.usd) * 1e4) / 1e4, source: c.source }; };
     if (r.request) { // video routes (MiniMax H3): one request per job; output video.url (fal) or the prediction's output URL (Replicate)
@@ -198,6 +199,7 @@ export async function runRouted(job: Job, tool: ToolDef, opts: { only?: string; 
     const a: RouteAttempt = pickUp ? Object.assign(pickUp, { status: 'running' as const, endedAt: undefined, error: undefined }) : { n, routeId: r.routeId, status: 'running', startedAt: Date.now(), charged: price, refunded: 0 };
     if (!pickUp) job.routeAttempts.push(a); job.route = r.routeId; job.cost = price; delete job.renderStartedAt; // render time counts the route that made the result only
     try { job.modelName = (await import('../engineName.js')).engineNameOf(job); } catch { /* name only */ } // BH10 P1-4: stored with the route that runs
+    emitJob('job/progress', job, { stage: 'attempt', attempt: n, routeId: r.routeId });
     let err: string | null = null; let timeout = false; delete (job as any).chargeNote; const mark0 = sentMark(job, a);
     { const Q = await import('../queue.js'); await Q.moveLane(job); } // 2026-10-25: a move to a route on another place (local ↔ cloud) changes the job's queue lane
     let keepRemote: 'download' | 'lost_contact' | null = null;
@@ -228,6 +230,7 @@ export async function runRouted(job: Job, tool: ToolDef, opts: { only?: string; 
     const more = nextOk > k; const decide = !more && pricier.length > 0 && fallbackOffers(); // filming mode (fallbackOffers off): a plain failure, credits back, as before
     const lastAutoOnFirst = !more && !decide && n === 1 && !(R.mode === 'pinned' && !R.allowFallback);
     if (!lastAutoOnFirst) { a.refunded = refundAttempt(job.id, n, price, creditsBackNote(`${plainRoute(r)} failed${more ? ', trying the next route' : ''}`)); }
+    emitJob('job/attempt-failed', job, a, { cost: attemptCostOf(a), notCharged: !!a.notCharged }); // watch only: the move-on decision and the refund above are made
     if (more) { // where it ran is said once, on the result (routeAttempts → web RouteAttempts, and the job's fallback notice)
       if ((job.reasonCode as any) === 'queue_full') job.busyNote = { code: 'queue_busy', route: r.routeId, nextRoute: order[nextOk], nextCredits: R.prices[order[nextOk]] ?? 0, willSwitch: true, message: `${plainRoute(r)} was busy, so this moved to ${plainRoute(findRoute(order[nextOk]) ?? { routeId: order[nextOk] })} at the same or a lower price.` };
       k = nextOk - 1; continue; }
@@ -280,7 +283,7 @@ export function continueCheck(job: Job, tool: ToolDef, routeId: string): { ok: t
 export function continueOn(job: Job, tool: ToolDef, routeId: string): { ok: true; credits: number } | { error: string; status: number } {
   const c = continueCheck(job, tool, routeId); if ('error' in c) return c; const credits = c.credits;
   job.alternatives = []; job.status = 'running'; job.stage = 'queued'; job.finishedAt = undefined; job.error = null; job.refund = undefined;
-  const settleRow = () => import('../billing.js').then((B) => B.settleSpend(job)).catch(() => {}); // the Spend row (moved here by guardNextRoute) gets this run's status and actual cost
+  const settleRow = () => import('../billing.js').then((B) => B.settleSpend(job)).catch(() => {}).then(() => emitJob('job/settled', job, { status: job.status, cost: reportedCostOf(job), via: 'fallback' })); // the Spend row (moved here by guardNextRoute) gets this run's status and actual cost; then job/settled (outside the queue)
   runRouted(job, tool, { only: routeId, guarded: true }).then(() => { job.finishedAt = Date.now(); void settleRow(); }, (e) => { job.status = 'failed'; job.error = String(e); job.finishedAt = Date.now(); void settleRow(); });
   return { ok: true, credits };
 }

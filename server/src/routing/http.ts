@@ -19,7 +19,7 @@ import { getTool, listTools } from '../tools/registry.js';
 /** The reel tool whose GET price is quoteReel (routesBatch1.ts): Camera Moves' quote per clip. */
 const REEL_QUOTED_ON_CAMERA = 'app-photos-to-reel';
 import { jobs } from '../jobs.js';
-import { getBalance, canAfford } from '../ledger.js';
+import { getBalance } from '../ledger.js';
 import { routesFor, findRoute, isTwinAlias, toolKeys, mapTwinAlias } from './routes.js';
 import { requestMode, toolDefaults, setStatusInput, toolModes, lyricsFreeDefault, draftOn, draftCapableDefault } from './defaults.js';
 import { localRunnerName } from './routes.js';
@@ -56,13 +56,14 @@ import { recipeUploadsOf } from '../shared/workflows.js';
 import type { ToolDef } from '../tools/types.js';
 import { ledgerUsd } from '../shared/priceText.js';
 import { aKey } from '../shared/modelIds.js';
+import { addOnLine } from '../services/routeAddOns.js';
 /** Quote flags follow the route that would actually run: an open-weights model quoted on a cloud route (useLocal off → cloud first) is not "free · runs locally".
  *  No route at all (nothing ready, no place picked: a cloud-only model with no key) is no place either, never "local" (the billing hook would read it as
  *  "Free · on your computer"; the Canvas card said so for GPT Image 2.5 Flare on a fresh install). */
 const routeFlags = (kind: string | null | undefined, credits: number | null, label?: string, extra?: string | null) => (!kind ? { local: false, localRun: false } : kind === 'local' ? { local: true } : { local: false, free: false, basis: 'hosted',
   breakdown: [{ label: `${label ?? kind} · ${credits != null ? usd(credits) : '?'}`, factor: 1 }, ...(extra ? [{ label: `Includes ${extra}`, factor: 0 }] : [])] });
-/** A route add-on's own breakdown line (RouteDef.extraLine: H3 Character Swap's first frame), from the same input its credits are priced on. */
-const extraLineOf = (tool: ToolDef, model: string, routeId: string | null | undefined, input: Record<string, any>) => (routeId ? routesFor(model, tool).find((r) => r.routeId === routeId)?.extraLine?.(input) ?? null : null); // the model's own route (a twin carries its add-on), as the price
+/** A route add-on's own breakdown line (services/routeAddOns.ts: H3 Character Swap's first frame), from the same input its credits are priced on. */
+const extraLineOf = (tool: ToolDef, model: string, routeId: string | null | undefined, input: Record<string, any>) => (routeId ? addOnLine(routesFor(model, tool).find((r) => r.routeId === routeId), input) : null); // the model's own route (a twin carries its add-on), as the price
 /** Item 4: a demo preview on a cloud route (e.g. fal) is never "No credits · runs locally": the line is the demo copy plus the real list price
  *  (1 credit = $0.01). priceLine is the one display string for the quote / route; localRun says whether it runs on your ComfyUI. */
 const usd = (cr: number) => ledgerUsd(cr); // shared/priceText.ts: one $ formatter (prices in dollars, 2026-10-26)
@@ -501,7 +502,7 @@ export function registerRouting(app: FastifyInstance) {
     const b = (req.body ?? {}) as { route?: string; decline?: boolean };
     if (b.decline) return decline(j) ? { id: j.id, status: j.status } : reply.code(409).send({ error: 'job is not waiting for a decision', errorType: 'validation' });
     const tool = getTool(j.toolId)!;
-    const price = j.routing?.prices[String(b.route)] ?? 0; if (price > 0 && !canAfford(price)) return reply.code(402).send({ error: `Not enough credits: needs ${price}, balance ${getBalance()}.`, errorType: 'credits' });
+    const price = j.routing?.prices[String(b.route)] ?? 0; { const bal = (await import('../spendGuard.js')).admitStage('balance', { credits: price, free: !(price > 0) }); if ('refused' in bal) return reply.code(402).send({ error: bal.refused.message, errorType: 'credits' }); } // team mode: the balance covers it
     const route = String(b.route ?? ''); const ck = continueCheck(j, tool, route);
     if ('error' in ck) return reply.code(ck.status).send({ error: ck.error, errorType: 'validation', alternatives: j.alternatives ?? [] });
     // S-01: the move to another (possibly differently billed) route goes through the submit's spend guard: quote it → agent budget (when one is set;

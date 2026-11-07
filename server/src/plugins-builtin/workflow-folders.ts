@@ -16,7 +16,7 @@ import { setFolderHost, loadPlugins, type FolderHost } from '../plugins.js';
 export const folderFibers = new Map<string, { state: number; dispose(): Promise<void> }>();
 
 export default definePlugin({
-  name: 'workflow-folders', inject: ['tools', 'workflows'],
+  name: 'workflow-folders', inject: ['tools', 'workflows', 'http'],
   async apply(ctx) {
     const host: FolderHost = {
       async mount({ st, tool, spec }) {
@@ -31,5 +31,9 @@ export default definePlugin({
     setFolderHost(host);
     ctx.effect(() => () => { setFolderHost(null); folderFibers.clear(); }, 'workflow folders host'); // the folder fibers are this plugin's children: disposed with it
     await loadPlugins();
+    // GET /api/plugins and the workflow import routes (Add a workflow). They stay on when this plugin is off and answer that folders are off
+    // (GET /api/plugins lists none, an import says so: #191); left out of the profile, legacy.ts registers them for the same answers.
+    const W = await import('../routesWorkflowImport.js');
+    await ctx.http.group((app) => { W.registerWorkflowImport(app); W.registerPluginList(app); }, { keepOn: true });
   },
 });

@@ -9,15 +9,15 @@ import { parseProfile, readProfile } from '../src/kernel/profile.js';
 const ok = (m: string) => console.log('ok ' + m);
 const ROOT = path.resolve(import.meta.dirname, '..');
 const ALL_PLACES = ['place-comfy-local', 'place-comfy-cloud', 'place-comfy-router', 'place-fal', 'place-replicate', 'place-sunra', 'place-direct', 'place-sample'];
-const TOOLS = ['studio-video', 'studio-image', 'studio-audio', 'studio-3d', 'studio-edit', 'apps-gallery', 'workflow-folders']; // the studios and workflow folders (Phase 3): a boot that runs tools needs them
-const without = (id: string) => [...ALL_PLACES.filter((x) => x !== id), ...TOOLS];
+const TOOLS = ['studio-video', 'studio-image', 'studio-audio', 'studio-3d', 'studio-edit', 'apps-gallery', 'workflow-folders', 'spend-cap', 'agent-budgets', 'billing-team-mode', 'hosted-grant', 'eta-learning', 'webhooks']; // the studios and workflow folders (Phase 3): a boot that runs tools needs them + the money plugins (Phase 4)
+const without = (id: string) => ['comfy-featured', ...ALL_PLACES.filter((x) => x !== id), ...TOOLS];
 const QWEN = 'comfy-qwen-image', FAL_QWEN = 'fal:fal-ai/qwen-image', REP_QWEN = 'replicate:qwen/qwen-image';
 
 // ---- profiles ----
 { const p = parseProfile('# c\nname: x\nplugins:\n  - place-fal   # fal\n  # - place-replicate\n  - legacy\n', 'x.yml');
   assert.deepEqual(p, { name: 'x', plugins: ['place-fal', 'legacy'], file: 'x.yml' });
   assert.throws(() => parseProfile('plugins:\n  - Bad_Id\n'), /bad plugin id/); assert.throws(() => parseProfile('colour: red\n'), /unknown key/);
-  assert.deepEqual(readProfile('desktop').plugins, [...ALL_PLACES, ...TOOLS, 'legacy']); ok('profiles: desktop lists every place plugin, the studios and workflow folders, then legacy; a commented line is off; bad lines refused'); }
+  assert.deepEqual(readProfile('desktop').plugins, ['comfy-featured', ...ALL_PLACES, ...TOOLS, 'legacy', ...(await import('../src/plugins-builtin/features.js')).FEATURE_IDS]); ok('profiles: desktop lists every place plugin, the studios and workflow folders, then legacy; a commented line is off; bad lines refused'); }
 
 // ---- in process: ctx.places through Cordis (no server: boot without the legacy plugin) ----
 { process.env.OPENHIGGSFIELD_FAL_KEY = 'fake-not-a-real-key';
