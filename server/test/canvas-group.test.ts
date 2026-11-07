@@ -113,13 +113,25 @@ const paid = (usd: number) => ({ usd, quote: { credits: usd * 100, cost: { estUs
 const local = { usd: 0, quote: { localRun: true, cost: { billedTo: 'local', estUsd: 0 } } };
 const none = { usd: null, quote: { runnable: true, credits: null } };
 const demo = { usd: 0, quote: { demo: true } };
-assert.equal(P.flowTotalWords(P.flowTotal([paid(0.12), paid(0.42)])), '$0.54');
-assert.equal(P.flowTotalWords(P.flowTotal([paid(0.12), paid(0.42), none])), '$0.54 + 1 without a price', 'a step with no price is apart');
-assert.equal(P.flowTotalWords(P.flowTotal([paid(0.42), local, local])), '$0.42', 'free steps count $0');
+assert.equal(P.flowTotalWords(P.flowTotal([paid(0.12), paid(0.42)])), '≈ $0.54', 'estimates read ≈ (the dock’s rule)');
+const exact = (usd: number) => ({ usd, quote: { credits: usd * 100, cost: { estUsd: usd, estimated: false } } });
+assert.equal(P.flowTotalWords(P.flowTotal([exact(0.12), exact(0.42)])), '$0.54', 'exact prices: no ≈');
+assert.equal(P.flowTotalWords(P.flowTotal([paid(0.12), paid(0.42), none])), '≈ $0.54 + 1 without a price', 'a step with no price is apart');
+assert.deepEqual(P.flowTotalParts(P.flowTotal([paid(0.54), none])), { main: '≈ $0.54', tail: ' + 1 without a price', short: ' + 1' }, 'a narrow Group shows the short tail');
+assert.equal(P.flowTotalWords(P.flowTotal([paid(0.42), local, local])), '≈ $0.42', 'free steps count $0');
 assert.equal(P.flowTotalWords(P.flowTotal([local])), 'Free'); assert.equal(P.flowTotalWords(P.flowTotal([none])), 'No price yet');
 assert.equal(P.flowTotalWords(P.flowTotal([demo, demo])), 'Sample');
 assert.equal(P.unpricedPaid(none), true); assert.equal(P.unpricedPaid(local), false); assert.equal(P.unpricedPaid(demo), false); assert.equal(P.unpricedPaid({ ...none, problem: 'x' }), false);
 assert.equal(P.noPriceLine(1), '1 step has no price yet'); assert.equal(P.noPriceLine(2), '2 steps have no price yet');
 assert.equal(P.quoteUsd({ runnable: false, credits: 5 }), null, 'a step that can’t run here has no price');
 ok('totals: priced add up, free $0, no price apart ("+ 1 without a price"), samples say Sample');
+
+// ---- the classic (tldraw) board: an unnamed Group shows as "Group", never "Frame", and reads back as auto ----
+const tl = D.docToTldraw(doc); assert.equal(tl.store['shape:big'].props.name, 'Group'); assert.equal(tl.store['shape:big'].meta.autoName, true);
+assert.equal(tl.store['shape:frm'].props.name, 'Ideas', 'a typed name stays');
+const back = D.fromTldraw(tl); const bb = back.nodes.find((x) => x.id === 'shape:big')!;
+assert.equal(bb.props.name, '', 'back to auto'); assert.equal('autoName' in bb.meta, false);
+const renamed = structuredClone(tl); renamed.store['shape:big'].props.name = 'Chairs';
+assert.equal(D.fromTldraw(renamed).nodes.find((x) => x.id === 'shape:big')!.props.name, 'Chairs', 'renamed on the classic board: kept');
+ok('classic board: an unnamed Group reads "Group" (never "Frame") and comes back auto; a rename there is kept');
 process.exit(0);

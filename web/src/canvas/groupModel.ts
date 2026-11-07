@@ -74,12 +74,10 @@ export function flowRunIds(board: BoardApi, id: NodeId): NodeId[] {
 }
 
 /** What a Group's header shows, in one read: the step count, whether "Run the flow" is offered, and which cards it runs. */
-export interface GroupFacts { name: string; steps: number; linked: boolean; runIds: NodeId[]; allDone: boolean }
+export interface GroupFacts { name: string; steps: number; linked: boolean; runIds: NodeId[] }
 export function groupFacts(board: BoardApi, id: NodeId, title: TitleOf): GroupFacts {
   const steps = groupSteps(board, id);
-  const status = (k: NodeId) => (board.getNode(k)?.props as any)?.status;
-  return { name: groupName(board, id, title), steps: steps.length, linked: groupLinked(board, id), runIds: flowRunIds(board, id),
-    allDone: steps.length > 0 && steps.every((k) => status(k) === 'done') };
+  return { name: groupName(board, id, title), steps: steps.length, linked: groupLinked(board, id), runIds: flowRunIds(board, id) };
 }
 /** "Run the flow" shows only on a Group whose cards are linked and that holds a step (while every step runs, it stays, off). */
 export const showsRun = (f: Pick<GroupFacts, 'linked' | 'steps'>) => f.linked && f.steps > 0;

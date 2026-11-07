@@ -28,23 +28,28 @@ export const NO_PRICE_UNDER_BUDGET = 'No price yet, so it can’t count against 
 /** The line for steps with no price: "1 step has no price yet". */
 export const noPriceLine = (n: number) => `${n} step${n === 1 ? ' has' : 's have'} no price yet`;
 
-export interface FlowTotal { usd: number; priced: number; unpriced: number; free: number; demo: boolean }
+export interface FlowTotal { usd: number; priced: number; unpriced: number; free: number; demo: boolean; /** some priced row is an estimate: the total reads "≈ $…" (the dock's rule) */ approx: boolean }
+/** A quote's price is an estimate unless it says it isn't (billing.costToken's rule). */
+export const isEstimateQuote = (q: any) => !(q?.cost && typeof q.cost === 'object' && q.cost.estimated === false);
 /** The total of the rows that run: priced ones added up, free ones $0, unpriced ones counted apart. */
 export function flowTotal(rows: PriceRow[]): FlowTotal {
   const run = rows.filter((r) => !r.problem);
-  let usd = 0; let priced = 0; let unpriced = 0; let free = 0;
+  let usd = 0; let priced = 0; let unpriced = 0; let free = 0; let approx = false;
   for (const r of run) {
     if (unpricedPaid(r)) { unpriced++; continue; }
     if (isLocalQuote(r.quote)) { free++; continue; }
-    usd += r.usd ?? 0; priced++;
+    usd += r.usd ?? 0; priced++; if (isEstimateQuote(r.quote)) approx = true;
   }
-  return { usd: Math.round(usd * 1e4) / 1e4, priced, unpriced, free, demo: run.length > 0 && run.every((r) => isDemoQuote(r.quote)) };
+  return { usd: Math.round(usd * 1e4) / 1e4, priced, unpriced, free, demo: run.length > 0 && run.every((r) => isDemoQuote(r.quote)), approx };
 }
-/** The total in words: "$0.57", "$0.54 + 1 without a price", "Free", "Sample", "No price yet". */
-export function flowTotalWords(t: FlowTotal): string {
-  if (t.demo) return 'Sample';
-  const extra = t.unpriced ? ` + ${t.unpriced} without a price` : '';
-  if (t.usd > 0) return `${fmtUsd(t.usd)}${extra}`;
-  if (t.unpriced) return t.priced || t.free ? `Free${extra}` : 'No price yet';
-  return 'Free';
+/** The total in parts: the main token ("≈ $0.54", "Free", "Sample", "No price yet") and, for steps with no price, a long and a short tail
+ *  (" + 1 without a price" / " + 1", the short one on a narrow Group with the long one in its tooltip). */
+export function flowTotalParts(t: FlowTotal): { main: string; tail: string; short: string } {
+  if (t.demo) return { main: 'Sample', tail: '', short: '' };
+  const tail = t.unpriced ? ` + ${t.unpriced} without a price` : ''; const short = t.unpriced ? ` + ${t.unpriced}` : '';
+  if (t.usd > 0) return { main: `${t.approx ? '≈ ' : ''}${fmtUsd(t.usd)}`, tail, short };
+  if (t.unpriced) return t.priced || t.free ? { main: 'Free', tail, short } : { main: 'No price yet', tail: '', short: '' };
+  return { main: 'Free', tail: '', short: '' };
 }
+/** The total in words: "≈ $0.57", "$0.54 + 1 without a price", "Free", "Sample", "No price yet". */
+export function flowTotalWords(t: FlowTotal): string { const p = flowTotalParts(t); return `${p.main}${p.tail}`; }

@@ -22,6 +22,13 @@ export const STICKY_TYPE = 'ohf-sticky';
 export const FRAME_TYPE = 'ohf-frame';
 export const LINK_CARD_TYPE = 'ohf-link';
 export const UPLOAD_NODE_TYPE = 'ohf-upload';
+/** A Group with no name of its own (it follows its first step) is drawn by the classic tldraw board as "Group", never tldraw's "Frame";
+ *  `meta.autoName` marks it, so the name comes back empty (auto) when the board is read again. */
+export const AUTO_GROUP_NAME = 'Group';
+/** tldraw frame props for a Group's name: an empty name shows as "Group", marked so it reads back as auto. */
+export function tldrawGroupName(name: unknown, meta: Record<string, unknown>): { name: string; meta: Record<string, unknown> } {
+  const n = String(name ?? '').trim(); return n ? { name: String(name), meta } : { name: AUTO_GROUP_NAME, meta: { ...meta, autoName: true } };
+}
 
 export interface BoardDocNode {
   id: string; type: string;
@@ -82,8 +89,8 @@ export function fromTldraw(snapshot: unknown): BoardDoc {
       case 'text': { const sc = num(p.scale, 1);
         made.set(s.id, { id: s.id, type: STICKY_TYPE, w: num(p.w, 200) * sc, h: 60 * sc, meta: from,
           props: { text: richTextPlain(p.richText), color: String(p.color ?? 'black'), size: String(p.size ?? 'm'), scale: sc } }); break; }
-      case 'frame':
-        made.set(s.id, { id: s.id, type: FRAME_TYPE, w: num(p.w, 720), h: num(p.h, 520), meta: from, props: { name: String(p.name ?? ''), color: String(p.color ?? 'black') } }); break;
+      case 'frame': { const { autoName, ...rest } = from as Record<string, unknown>; const auto = autoName === true && p.name === AUTO_GROUP_NAME;
+        made.set(s.id, { id: s.id, type: FRAME_TYPE, w: num(p.w, 720), h: num(p.h, 520), meta: rest, props: { name: auto ? '' : String(p.name ?? ''), color: String(p.color ?? 'black') } }); break; }
       case 'image': case 'video': {
         const a: any = assets.get(p.assetId); const src = typeof a?.props?.src === 'string' ? a.props.src : '';
         if (!src) { drop(s.type); break; } /* no file behind it: nothing to show (the old summary skipped it too) */
@@ -267,7 +274,8 @@ export function docToTldraw(doc: BoardDoc, schema: unknown = {}): { store: Recor
       store[n.id] = { ...base, meta, type: 'note', props: { color: TL_COLORS.has(p.color) ? p.color : 'yellow', richText: richTextOf(String(p.text ?? '')), size: TL_SIZES.has(p.size) ? p.size : 'm',
         font: 'sans', align: 'start', verticalAlign: 'start', labelColor: 'black', growY: Math.max(0, Math.round(n.h / scale - NOTE)), fontSizeAdjustment: 1, url: '', scale, textLastEditedBy: null } };
     } else if (n.type === FRAME_TYPE) {
-      store[n.id] = { ...base, meta, type: 'frame', props: { w: n.w, h: n.h, name: String(p.name ?? ''), color: TL_COLORS.has(p.color) ? p.color : 'black' } };
+      const g = tldrawGroupName(p.name, meta);
+      store[n.id] = { ...base, meta: g.meta, type: 'frame', props: { w: n.w, h: n.h, name: g.name, color: TL_COLORS.has(p.color) ? p.color : 'black' } };
     } else if (n.type === LINK_CARD_TYPE) {
       const url = String(p.url ?? ''); const assetId = `asset:${hashOf(url || n.id)}`;
       store[assetId] = { id: assetId, typeName: 'asset', type: 'bookmark', meta: {}, props: { src: url, title: String(p.title ?? ''), description: String(p.description ?? ''), image: String(p.image ?? ''), favicon: String(p.favicon ?? '') } };

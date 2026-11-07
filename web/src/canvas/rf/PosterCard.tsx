@@ -15,6 +15,7 @@ import type { JobState } from '../../api';
 import { gridSrc } from '../../shared/thumbs';
 import { GenPrice } from '../../shared/GenPrice';
 import { shownCredits } from '../../shared/quote';
+import { isDemoQuote } from '../../../../server/src/shared/flowPrice';
 import { useToolQuote } from '../../shared/useToolQuote';
 import { useFailView, FailActions } from '../../shared/FailureState';
 import { useExclusivePlayback } from '../../shared/audioPlayer';
@@ -68,8 +69,10 @@ export function StatusRing({ state, pct, place }: { state: 'draft' | 'queued' | 
 
 /** The price chip ("$0.03", "$0.03 × 4", "Free" in green on this computer); `null` quote shows nothing. */
 export function PriceChip({ q, calls = 1, text }: { q: any; calls?: number; text?: string | null }) {
-  if (!q && !text) return null; const key = !!q && q.needsKey === true && q.runnable === false; const cr = q ? shownCredits(q) : null; const free = !key && (cr === 0 || placeWord(q) === 'Your computer');
-  return <span className={`pc-chip pc-price${free ? ' free' : ''}`} data-testid="pc-price">{text && !q ? text : <GenPrice q={q} demo={!key && q?.demo === true} free={free} credits={key || free ? null : cr} calls={calls} text={key ? 'Needs a key' : free ? 'Free' : null} />}</span>;
+  if (!q && !text) return null; const key = !!q && q.needsKey === true && q.runnable === false; const cr = q ? shownCredits(q) : null;
+  /* a sample (free sample mode, the try site) says "Sample", like the Group's header and the dock (flowPrice.isDemoQuote): never "Free" */
+  const demo = !key && isDemoQuote(q); const free = !key && !demo && (cr === 0 || placeWord(q) === 'Your computer');
+  return <span className={`pc-chip pc-price${free ? ' free' : ''}`} data-testid="pc-price">{text && !q ? text : <GenPrice q={q} demo={demo} free={free} credits={key || free ? null : cr} calls={calls} text={key ? 'Needs a key' : free ? 'Free' : null} />}</span>;
 }
 
 /** Take dots: the active one a wide orange pill; Claude's review a tiny green / amber dot above its take. */

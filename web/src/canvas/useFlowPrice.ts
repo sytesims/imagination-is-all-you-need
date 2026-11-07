@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import { useValue, type BoardApi, type NodeId } from './boardApi';
 import { quoteNode } from './nodeRun';
-import { flowTotal, flowTotalWords, quoteUsd, type FlowTotal } from '../../../server/src/shared/flowPrice';
+import { flowTotal, flowTotalParts, flowTotalWords, quoteUsd, type FlowTotal } from '../../../server/src/shared/flowPrice';
 
 /** What can change a card's price: its settings and what feeds it, not its takes or its run state. */
 const VOLATILE = new Set(['takes', 'take', 'status', 'jobId', 'error', 'quote', 'progress', 'w', 'h']);
@@ -29,21 +29,21 @@ const quoteOnce = (board: BoardApi, id: NodeId, key: string) => {
   return p;
 };
 
-export interface FlowPrice { words: string | null; total: FlowTotal | null }
+export interface FlowPrice { words: string | null; parts: ReturnType<typeof flowTotalParts> | null; total: FlowTotal | null }
 export function useFlowPrice(board: BoardApi, ids: NodeId[]): FlowPrice {
   const key = useValue('flow price key', () => ids.map((id) => priceKeyOf(board, id)).join('\n'), [board, ids.join(',')]);
-  const [out, setOut] = useState<FlowPrice>({ words: null, total: null });
+  const [out, setOut] = useState<FlowPrice>({ words: null, parts: null, total: null });
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = window.setInterval(() => setTick((n) => n + 1), FRESH_MS); return () => window.clearInterval(t); }, []);
   useEffect(() => {
-    if (!ids.length) { setOut({ words: null, total: null }); return; }
+    if (!ids.length) { setOut({ words: null, parts: null, total: null }); return; }
     let on = true;
     const t = window.setTimeout(() => {
       const keys = key.split('\n');
       void Promise.all(ids.map((id, i) => quoteOnce(board, id, keys[i] ?? id))).then((qs) => {
         if (!on) return;
         const total = flowTotal(qs.map((q) => ({ usd: quoteUsd(q), quote: q })));
-        setOut({ words: flowTotalWords(total), total });
+        setOut({ words: flowTotalWords(total), parts: flowTotalParts(total), total });
       });
     }, 450);
     return () => { on = false; window.clearTimeout(t); };

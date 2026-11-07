@@ -1,7 +1,7 @@
 /**
  * A Group's header strip (Canvas release 2, step 1; look A1, user decision 2026-11-07): always visible at the top of the box.
  *  - the name: the first step's title until you rename it (double-click it, or select it and press Enter); an empty name goes back to auto;
- *  - how many steps it holds, and "Up to date" once every step has a result;
+ *  - how many steps it holds (no "Up to date" / "out of date" state until step 2 can keep it true);
  *  - "Run the flow · $0.57" when its cards are linked: it prices every step through the shared proposal card in the dock (price lock,
  *    board budget, steps with no price listed apart). Nothing runs until Go there. An unlinked Group is just a box: no run button.
  * "Run what changed" and "Save as template" come in later steps; nothing is shown for them yet.
@@ -33,7 +33,8 @@ export function RunFlow({ id, runIds, steps, name }: { id: NodeId; runIds: NodeI
   const hint = allRunning ? 'Every step is running' : `Prices ${runIds.length === steps ? 'every step' : `${runIds.length} of ${steps} steps (${left} running)`} first. Nothing runs until you press Go in the AI panel`;
   return <button type="button" className="cv-gs-run nodrag" data-testid="group-run-flow" data-group={id} disabled={busy || allRunning} onClick={() => void press()} {...tip(hint)}>
     <PlayIcon size={12} /><span>{busy ? 'Pricing…' : allRunning ? 'Running' : 'Run the flow'}</span>
-    <b className="cv-gs-price" data-testid="group-run-price">{allRunning ? '' : price.words ?? '…'}</b>
+    <b className="cv-gs-price" data-testid="group-run-price" title={price.words ?? undefined}>{allRunning ? '' : !price.parts ? '…' : <>{price.parts.main}
+      {price.parts.tail && <><span className="cv-gs-tail">{price.parts.tail}</span><span className="cv-gs-short" aria-hidden>{price.parts.short}</span></>}</>}</b>
   </button>;
 }
 
@@ -64,7 +65,6 @@ export const GroupStrip = memo(function GroupStrip({ id }: { id: NodeId }) {
       <NameField id={id} name={f.name} typed={typed} />
       <small data-testid="group-steps">{stepsWords(f.steps)}{running > 0 ? ` · ${running} running` : ''}</small>
     </div>
-    {f.allDone && <span className="cv-gs-chip" data-testid="group-state">Up to date</span>}
     {showsRun(f) && <RunFlow id={id} runIds={f.runIds} steps={f.steps} name={f.name} />}
   </div>;
 });
