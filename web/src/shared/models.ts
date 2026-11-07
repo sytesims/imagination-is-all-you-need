@@ -58,9 +58,9 @@ type ToolLike = { id: string; name?: string; providers?: { id: string }[]; model
 /** User-facing labels (spec §2.1), for ids that arrive without a label (old jobs, spend rows): the server's one table (shared/modelIds.ts), never a copy. */
 export const RUN_ON_LABEL: Record<string, string> = RUN_ON_LABELS;
 /** Short chip text in the model menu. */
-export const RUN_ON_CHIP: Record<string, string> = { local: LOCAL_LABEL, 'comfy-cloud': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', bfl: 'BFL', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google', byteplus: 'BytePlus', dashscope: 'Alibaba', luma: 'Luma', direct: 'API' };
+export const RUN_ON_CHIP: Record<string, string> = { local: LOCAL_LABEL, 'comfy-cloud': 'Comfy Cloud', fal: 'fal', replicate: 'Replicate', sunra: 'Sunra', kie: 'kie.ai · reseller', bfl: 'BFL', minimax: 'MiniMax', ltx: 'LTX', openai: 'OpenAI', google: 'Google', byteplus: 'BytePlus', dashscope: 'Alibaba', luma: 'Luma', direct: 'API' };
 /** Settings → Connections card for a run-on (billing ids, as /api/settings/billing and /api/accounts use). */
-export const RUN_ON_BILLING: Record<string, string> = { local: 'local', 'comfy-cloud': 'comfy', fal: 'fal', replicate: 'replicate', bfl: 'bfl', minimax: 'minimax', ltx: 'ltx', openai: 'openai', google: 'google', byteplus: 'byteplus', dashscope: 'dashscope', luma: 'luma' };
+export const RUN_ON_BILLING: Record<string, string> = { local: 'local', 'comfy-cloud': 'comfy', fal: 'fal', replicate: 'replicate', sunra: 'sunra', kie: 'kie', bfl: 'bfl', minimax: 'minimax', ltx: 'ltx', openai: 'openai', google: 'google', byteplus: 'byteplus', dashscope: 'dashscope', luma: 'luma' };
 export const runOnLabel = (id?: string | null) => (id ? RUN_ON_LABEL[id] ?? id : '');
 /** The place a quote, job, route or spend row ran or will run on, in the one set of words (server/src/shared/modelIds.ts placeOf): Your computer,
  *  Comfy Cloud, Comfy deployment, fal… The server's own place wins; then the route id; then the run-on. */
@@ -82,7 +82,7 @@ export function runOnOfRoute(route?: string | RouteLike | null, kind?: string | 
   const own = o?.runOn ?? o?.vendor; if (own && RUN_ON_LABEL[own]) return own;
   const listed = id ? ROUTE_RUN_ON.get(id) : undefined; if (listed) return listed;
   const k = kind ?? o?.kind ?? (id ? id.split(':')[0] : '');
-  if (!k) return null; if (k === 'local') return 'local'; if (k === 'comfy-cloud' || k === 'comfy-router') return 'comfy-cloud'; if (k === 'fal' || k === 'replicate') return k;
+  if (!k) return null; if (k === 'local') return 'local'; if (k === 'comfy-cloud' || k === 'comfy-router') return 'comfy-cloud'; if (k === 'fal' || k === 'replicate' || k === 'sunra' || k === 'kie') return k;
   if (k === 'direct') { const r = id; return /bfl|flux/i.test(r) ? 'bfl' : /minimax/i.test(r) ? 'minimax' : /ltx/i.test(r) ? 'ltx' : /^direct:(openai\/|direct-openai)/i.test(r) ? 'openai' : /^direct:(google\/|direct-gemini)/i.test(r) ? 'google' : /^direct:(byteplus\/|direct-seed|direct-byteplus)/i.test(r) ? 'byteplus' : /qwen3-tts|dashscope/i.test(r) ? 'dashscope' : /luma/i.test(r) ? 'luma' : 'direct'; }
   return RUN_ON_LABEL[k] ? k : null;
 }
