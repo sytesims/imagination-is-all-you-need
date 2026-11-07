@@ -135,6 +135,8 @@
 .ap-warn{margin:0;padding:8px 10px;border-radius:10px;background:rgba(232,180,74,.08);border:1px solid rgba(232,180,74,.22);font:400 11.5px/16px var(--font-sans,Inter,sans-serif);color:var(--warning,#E8B44A)}
 .ap-warn.over{background:rgba(240,100,100,.08);border-color:rgba(240,100,100,.24);color:var(--error,#F06464)}
 .ap-prop-actions{display:flex;align-items:center;gap:8px;padding-top:2px}
+/* release 2: over the board budget, the plain way out sits above Go (which is off) */
+.ap-prop-fix{display:flex;align-items:center;gap:10px;padding:2px 0 4px}.ap-prop-fix small{font:400 12px/16px var(--font-sans,Inter,sans-serif);color:var(--text-3)}.ap-prop-fix .ap-cancel{flex:none;white-space:nowrap}
 .ap-go{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 22px;border-radius:999px;cursor:pointer;background:var(--accent);color:var(--on-accent);font:600 13px/1 var(--font-sans,Inter,sans-serif);box-shadow:inset 0 -2px 0 rgba(0,0,0,.18)}
 .ap-go:hover:not(:disabled){background:var(--accent-hover)}
 .ap-go:focus-visible{box-shadow:var(--focus-ring,0 0 0 2px rgba(255,255,255,.9))}

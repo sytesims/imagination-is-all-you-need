@@ -240,9 +240,9 @@ function ProposalCard({ p, busy, onDecide, onFocus, hideNote }: { p: Proposal; b
     {!p.reason && skippedNoPrice > 0 && pending && <p className="ap-skipnote" data-testid="agent-proposal-unpriced">{noPriceLine(skippedNoPrice)}, so Go leaves {skippedNoPrice === 1 ? 'it' : 'them'} out: {skippedNoPrice === 1 ? 'it' : 'they'} can’t count against the board budget. Run {skippedNoPrice === 1 ? 'it' : 'them'} on {skippedNoPrice === 1 ? 'its' : 'their'} own first.</p>}
     {!p.reason && nSkip - skippedNoPrice > 0 && pending && (() => { const n = nSkip - skippedNoPrice; return <p className="ap-skipnote" data-testid="agent-proposal-skipped">{n === 1 ? '1 card can’t run here, so Go skips it.' : `${n} cards can’t run here, so Go skips them.`} Nothing is charged for {n === 1 ? 'it' : 'them'}.</p>; })()}
     {p.error && <p className={`ap-warn${priceStop ? '' : ' over'}`} data-testid={priceStop ? 'agent-proposal-price-stop' : undefined}>{p.error}</p>}
+    {pending && boardOver && <div className="ap-prop-fix"><button type="button" className="ap-cancel" data-testid="agent-change-budget" onClick={askBudget}>Change the budget</button><small>Only you can change it. This is priced again after.</small></div>}
     {pending && <div className="ap-prop-actions">
       <button type="button" className="ap-go" data-testid="agent-go" disabled={disabled || !!busy} onClick={() => onDecide('go')}>{busy === 'go' ? 'Starting…' : `Go${allDemo || p.totalUsd <= 0 ? '' : ` · ${fmtUsd(p.totalUsd)}`}`}</button>
-      {boardOver && <button type="button" className="ap-cancel" data-testid="agent-change-budget" onClick={askBudget}>Change the budget</button>}
       <button type="button" className="ap-cancel" data-testid="agent-cancel" disabled={!!busy} onClick={() => onDecide('cancel')}>{busy === 'cancel' ? 'Cancelling…' : 'Cancel'}</button>
     </div>}
     {p.status === 'running' && <p className="ap-prop-state">Starting the runs…</p>}

@@ -262,7 +262,7 @@ export function ShortcutsSheet() {
     <section className="cv-keys" role="dialog" aria-label="Keyboard shortcuts" data-testid="rf-shortcuts">
       <header><h2>Keyboard shortcuts</h2><button type="button" className="cv-icon-btn" aria-label="Close" onClick={() => sheetAtom.set(false)}>✕</button></header>
       <div className="cv-keys-cols">
-        <dl>{KEYS.map(([k, t]) => <div key={k}><dt><kbd>{k}</kbd></dt><dd>{t}</dd></div>)}</dl>
+        <dl>{KEYS.map(([k, t]) => <div key={`${k} ${t}`}><dt><kbd>{k}</kbd></dt><dd>{t}</dd></div>)}</dl>
         <div><h3>Dropping on a filled input</h3><dl>{DROP_KEYS.map(([k, t]) => <div key={k}><dt><kbd>{k}</kbd></dt><dd>{t}</dd></div>)}</dl>
           <p className="cv-keys-note">Right-click a card or the board for the same actions. Drag a card next to another and it snaps in and links; pull it away to let go.</p></div>
       </div>
