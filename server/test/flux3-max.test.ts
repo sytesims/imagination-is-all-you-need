@@ -72,9 +72,11 @@ try {
     Date.now = realNow; }
   const K = [img('k1.png', '1280x720'), img('k2.png', '1280x720'), img('k3.png', '1280x720')];
   const parse = async (t: any, f: Record<string, string>, files: Record<string, string[]>) => { const r: any = await t.parseInput(f, files); assert.ok(!r.error, String(r.error)); return r; };
-  { const Fastify = (await import('fastify')).default; const app = Fastify(); (await import('../src/routesBatch1.ts')).registerBatch1(app); (await import('../src/routing/http.ts')).registerRouting(app); await app.ready();
+  // A fixed clock after the launch rates ended (2026-11-07 00:00 UTC), so quote = charge is checked at the standard rates on any day.
+  { Date.now = () => Date.UTC(2026, 10, 8);
+    const Fastify = (await import('fastify')).default; const app = Fastify(); (await import('../src/routesBatch1.ts')).registerBatch1(app); (await import('../src/routing/http.ts')).registerRouting(app); await app.ready();
     const seen: Record<string, string> = {};
-    for (const [mode, s, res, route, rate] of [['t2v', '5', '720p', F.F3M_ROUTER_ROUTE, 0.0303875], ['t2v', '10', '1080p', F.F3M_ROUTE, 0.103675], ['i2v', '8', '720p', F.F3M_ROUTE, 0.060775], ['flf', '20', '1080p', F.F3M_ROUTE, 0.103675], ['r2v', '12', '720p', F.F3M_ROUTE, 0.060775]] as const) {
+    for (const [mode, s, res, route, rate] of [['t2v', '5', '720p', F.F3M_ROUTER_ROUTE, 0.12155], ['t2v', '10', '1080p', F.F3M_ROUTE, 0.4147], ['i2v', '8', '720p', F.F3M_ROUTE, 0.2431], ['flf', '20', '1080p', F.F3M_ROUTE, 0.4147], ['r2v', '12', '720p', F.F3M_ROUTE, 0.2431]] as const) {
       const qs = new URLSearchParams({ provider: F.F3M_PROVIDER, types: JSON.stringify([mode]), duration: s, resolution: res, ...(mode === 't2v' ? {} : { image: '1' }) });
       const r = await app.inject({ url: `/api/tools/h3-video/price?${qs}` }); assert.equal(r.statusCode, 200, r.body.slice(0, 300)); const b = r.json(); assert.equal(b.route, route, `${mode} ${res}: ${JSON.stringify(b).slice(0, 300)}`);
       const files = mode === 't2v' ? {} : mode === 'i2v' ? { image: [K[0]] } : mode === 'flf' ? { image: [K[0]], lastFrame: [K[1]] } : { refs: K };
@@ -82,7 +84,7 @@ try {
       const charge = routeCredits(video, findRoute(route)!, routeInput(video, job))!; const quoted = b.listCredits ?? b.credits;
       assert.equal(quoted, charge, `${mode} ${s} ${res}: quote ${quoted} = charge ${charge}`); assert.equal(charge, Math.ceil(Math.round(Number(s) * rate * 100 * 1e6) / 1e6));
       seen[`${mode} ${s}s ${res}`] = `$${(quoted / 100).toFixed(2)}`; }
-    await app.close(); ok(`quote endpoint = charge, right place: ${JSON.stringify(seen)}`); }
+    await app.close(); Date.now = realNow; ok(`quote endpoint = charge, right place: ${JSON.stringify(seen)}`); }
 
   // ---- 5. fake Comfy Cloud run + the Router body ----
   process.env.COMFY_API_KEY = 'comfyui-fake-f3max-key-0000'; process.env.COMFY_CLOUD_URL = 'http://cloud.test';
