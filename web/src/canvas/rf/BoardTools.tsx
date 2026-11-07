@@ -251,7 +251,7 @@ export function ContextMenu({ board }: { board: BoardApi }) {
   </div>;
 }
 const KEYS: [string, string][] = [['G', 'New card'], ['Enter', 'Run the selected card (asks first when its price changed)'], [`${MOD}C`, 'Copy'], [`${MOD}X`, 'Cut'], [`${MOD}V`, 'Paste (cards, files or a link)'],
-  [`${MOD}D`, 'Duplicate'], [`${MOD}G`, 'Group the selection'], ['⇧T', 'Tidy the board'], [`${MOD}A`, 'Select all'], ['⌫', 'Delete'], [`${MOD}Z`, 'Undo'], [`⇧${MOD}Z`, 'Redo'],
+  [`${MOD}D`, 'Duplicate'], [`${MOD}G`, 'Group the selection'], ['Enter', 'Rename the selected group'], ['⇧T', 'Tidy the board'], [`${MOD}A`, 'Select all'], ['⌫', 'Delete'], [`${MOD}Z`, 'Undo'], [`⇧${MOD}Z`, 'Redo'],
   ['V', 'Select tool'], ['H', 'Hand tool'], ['Esc', 'Clear the selection'], ['?', 'This sheet']];
 const DROP_KEYS: [string, string][] = [['↵', 'Replace only'], ['⇧', 'Replace and rerun (prices first)'], ['⌥', 'Add as a new card']];
 export function ShortcutsSheet() {

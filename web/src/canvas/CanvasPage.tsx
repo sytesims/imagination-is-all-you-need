@@ -14,7 +14,8 @@ import { Skeleton } from '../shared/Skeleton';
 import { listBoards, createBoard, getBoard, renameBoard, deleteBoard, setBoardProject, setBoardBudget, type Board as BoardDoc, type BoardSummary } from './boardsApi';
 import { Board, type SaveState } from './Board';
 import { AgentPanel } from './AgentPanel';
-import { SpendChip, BUDGET_EVT } from './SpendChip';
+import { SpendChip, BUDGET_EVT, BUDGET_ASK_EVT } from './SpendChip';
+import { OPEN_DOCK_EVT } from './flowRun';
 import { CoinIcon } from './icons';
 import { FollowToggle } from './FollowAgent';
 import { DOCK_W } from './agentDockModel';
@@ -146,8 +147,13 @@ export default function CanvasPage() {
   /* your agent made, renamed or switched boards (canvas_create_board / canvas_switch_board): follow it live */
   const onBoardsChanged = useCallback(() => { void refresh().catch(() => undefined); }, [refresh]);
   const onAgentOpen = useCallback((id: string, name: string, by: string) => { void refresh().catch(() => undefined); go(id); toast(`${by} opened “${name}”`); }, [refresh]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* release 2: a proposal made from the board (a Group's Run the flow) opens the dock; Change the budget on a proposal opens the dialog */
+  const budgetRef = useRef(onBudget); budgetRef.current = onBudget;
+  useEffect(() => { const dock = () => { setAgentOpen(true); writeAgentOpen(true); }; const ask = () => void budgetRef.current();
+    addEventListener(OPEN_DOCK_EVT, dock); addEventListener(BUDGET_ASK_EVT, ask);
+    return () => { removeEventListener(OPEN_DOCK_EVT, dock); removeEventListener(BUDGET_ASK_EVT, ask); }; }, []);
   const current = boards?.find(b => b.id === board?.id) ?? (board ? { ...board } : null);
-  const rootStyle = { top, bottom, '--cv-agent-w': agentOpen ? `var(--cv-dock,${DOCK_W}px)` : '0px', '--cv-panel-w': panelOn && !drawer ? (engine === 'rf' ? 'var(--cv-insp-w)' : 'var(--cv-dock,380px)') : '0px' } as CSSProperties;
+  const rootStyle = { top, bottom, '--cv-agent-w': agentOpen ? `var(--cv-dock,${DOCK_W}px)` : '0px', '--cv-drawer-w': drawer ? '344px' : '0px', '--cv-panel-w': panelOn && !drawer ? (engine === 'rf' ? 'var(--cv-insp-w)' : 'var(--cv-dock,380px)') : '0px' } as CSSProperties;
   return <div className={`cv-root${agentOpen ? ' cv-agent-open' : ''}`} style={rootStyle} data-testid="canvas-page">
     {err ? <div className="cv-msg"><p>{err}</p><button type="button" className="cv-empty-btn" onClick={() => navigate(`/canvas${search}`, { replace: true })}>Try again</button></div>
       : board && current ? <>
@@ -156,12 +162,12 @@ export default function CanvasPage() {
         <div className="cv-topl">
           {!agentOpen && <button type="button" className={`cv-agent-btn${agentBusy ? ' busy' : ''}`} aria-pressed={false} aria-label="Show the AI panel" data-testid="cv-agent-toggle" onClick={toggleAgent}><SparkleIcon size={16} /><span>AI</span>{agentBusy && <i className="cv-agent-dot" aria-hidden />}</button>}
           <BoardSwitcher boards={boards ?? []} current={current} save={save} onPick={id => id !== board.id && go(id)} onNew={onNew} onRename={onRename} onDelete={onDelete} onBudget={onBudget} /><SpendChip boardId={board.id} onBudget={onBudget} /><FollowToggle busy={agentBusy} />
+          <button type="button" className={`cv-assets-btn${drawer ? ' on' : ''}`} aria-pressed={drawer} aria-label="Assets" data-testid="cv-assets" onClick={toggleDrawer}><PanelIcon size={16} /><span>Assets</span></button>
         </div>
         <div className="cv-agent-slot" data-slot="agent-panel" data-testid="cv-agent-slot" aria-hidden={!agentOpen}>
           <AgentPanel key={board.id} boardId={board.id} ask={ask} open={agentOpen} onClose={toggleAgent} onBusy={setAgentBusy} onBoards={onBoardsChanged} onOpenBoard={onAgentOpen} />
         </div>
         {boardApi && <BoardProvider value={boardApi}><CardPanel hidden={drawer} onOpen={setPanelOn} variant={engine === 'rf' ? 'inspector' : undefined} /></BoardProvider>}
-        <button type="button" className={`cv-assets-btn${drawer ? ' on' : ''}`} aria-pressed={drawer} data-testid="cv-assets" onClick={toggleDrawer}><PanelIcon size={16} /><span>Assets</span></button>
       </> : <div className="cv-msg"><Skeleton variant="tiles" count={3} /></div>}
   </div>;
 }

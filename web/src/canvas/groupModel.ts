@@ -7,9 +7,11 @@
  *  - linked: at least one link runs between two things inside it. Only a linked Group with a step shows "Run the flow";
  *  - name: what the person typed, else the first step's own title (it follows that card until someone renames the Group).
  */
-import type { BoardApi, NodeId } from './boardApi';
-import { GEN_TYPE } from './nodeTypes';
-import { titleOf } from './cardTitle';
+import type { BoardApi, BoardNode, NodeId } from './boardApi';
+import { GEN_TYPE, NODE_DEFS } from './nodeTypes';
+
+/** A card's title (cardTitle.titleOf in the page; passed in so this file stays free of the page's UI imports). */
+export type TitleOf = (n: BoardNode) => string;
 
 /** The board's word for a Group node. */
 export const GROUP_NODE = 'frame';
@@ -59,11 +61,11 @@ export function groupLinked(board: BoardApi, id: NodeId): boolean {
 }
 
 /** The name the Group shows: the one typed, else its first step's title, else "Group". */
-export function groupName(board: BoardApi, id: NodeId): string {
+export function groupName(board: BoardApi, id: NodeId, title: TitleOf): string {
   const typed = String((board.getNode(id)?.props as any)?.name ?? '').trim();
   if (typed) return typed;
   const first = groupSteps(board, id)[0]; const n = first ? board.getNode(first) : null;
-  return (n ? titleOf(board, n).title : '') || GROUP_WORD;
+  return (n ? title(n) : '') || GROUP_WORD;
 }
 
 /** "Run the flow" takes every step that isn't running already (a running one is waited for by the cards after it). */
@@ -73,10 +75,10 @@ export function flowRunIds(board: BoardApi, id: NodeId): NodeId[] {
 
 /** What a Group's header shows, in one read: the step count, whether "Run the flow" is offered, and which cards it runs. */
 export interface GroupFacts { name: string; steps: number; linked: boolean; runIds: NodeId[]; allDone: boolean }
-export function groupFacts(board: BoardApi, id: NodeId): GroupFacts {
+export function groupFacts(board: BoardApi, id: NodeId, title: TitleOf): GroupFacts {
   const steps = groupSteps(board, id);
   const status = (k: NodeId) => (board.getNode(k)?.props as any)?.status;
-  return { name: groupName(board, id), steps: steps.length, linked: groupLinked(board, id), runIds: flowRunIds(board, id),
+  return { name: groupName(board, id, title), steps: steps.length, linked: groupLinked(board, id), runIds: flowRunIds(board, id),
     allDone: steps.length > 0 && steps.every((k) => status(k) === 'done') };
 }
 /** "Run the flow" shows only on a Group whose cards are linked and that holds a step (while every step runs, it stays, off). */
@@ -110,4 +112,38 @@ export function settleIntoGroups(board: BoardApi, ids: NodeId[]): number {
     board.setParent([id], home); moved++;
   }
   return moved;
+}
+
+/** A Group (release 2: the one box) around the selected cards, which move into it, or an empty Group in the middle of the view. It sits
+ *  behind its cards, leaves room at the top for its header strip, and has no name of its own: it takes its first step's title. ⌘G, the
+ *  toolbar's Group and the right-click menu all make it. One undo step. */
+export function createGroupNode(board: BoardApi, o: { at?: { x: number; y: number }; select?: boolean } = {}): NodeId {
+  const def = NODE_DEFS.group;
+  const sel = board.selection().filter((id) => board.getNode(id));
+  /* a card inside a selected Group goes with its Group */
+  const inSelected = (id: string) => { let up = board.parentOf(id as NodeId); for (let k = 0; up && k < 64; k++) { if (sel.includes(up)) return true; up = board.parentOf(up); } return false; };
+  const picked = sel.filter((id) => !inSelected(id)) as NodeId[];
+  const bounds = picked.map((id) => board.boundsOf(id)).filter(Boolean) as { minX: number; minY: number; maxX: number; maxY: number }[];
+  let box: { x: number; y: number; w: number; h: number };
+  if (bounds.length) {
+    const minX = Math.min(...bounds.map((b) => b.minX)), minY = Math.min(...bounds.map((b) => b.minY));
+    const maxX = Math.max(...bounds.map((b) => b.maxX)), maxY = Math.max(...bounds.map((b) => b.maxY));
+    box = { x: minX - 32, y: minY - GROUP_TOP, w: Math.max(def.minW, maxX - minX + 64), h: Math.max(def.minH, maxY - minY + GROUP_TOP + 32) };
+  } else {
+    const c = o.at ?? board.viewportBounds().center;
+    box = { x: c.x - def.defaultW / 2, y: c.y - def.defaultH / 2, w: def.defaultW, h: def.defaultH };
+  }
+  /* cards that all sit in one Group: the new Group goes inside that one */
+  const parents = new Set(picked.map((id) => board.parentOf(id) ?? ''));
+  const outer = parents.size === 1 ? ([...parents][0] as NodeId) || null : null;
+  board.mark('new group');
+  let id = '' as NodeId;
+  board.batch(() => {
+    id = board.addNode({ type: GROUP_NODE, x: box.x, y: box.y, props: { w: box.w, h: box.h, name: '', color: 'black' } });
+    if (outer) board.setParent([id], outer);
+    board.toBack([id]);
+    if (picked.length) board.setParent(picked, id);
+  });
+  if (o.select !== false) board.select([id]);
+  return id;
 }

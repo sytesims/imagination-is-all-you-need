@@ -50,7 +50,7 @@ export const NODE_DEFS: Record<NodeKind, NodeDef> = {
     defaultW: 300, defaultH: 230, minW: 220, minH: 150, maxW: 620, maxH: 760, tint: 'text' },
   compare: { kind: 'compare', type: COMPARE_TYPE, label: 'Compare', hint: 'Two inputs, before and after', input: true, output: false, inputMax: 2,
     defaultW: 440, defaultH: 420, minW: 320, minH: 300, maxW: 900, maxH: 900, tint: 'compare' },
-  group: { kind: 'group', type: GROUP_TYPE, label: 'Group', hint: 'A frame with Run all', input: false, output: false, inputMax: 0,
+  group: { kind: 'group', type: GROUP_TYPE, label: 'Group', hint: 'Cards that run together', input: false, output: false, inputMax: 0,
     defaultW: 720, defaultH: 520, minW: 360, minH: 260, maxW: 1800, maxH: 1400, tint: 'group' },
   ad: { kind: 'ad', type: AD_TYPE, label: 'Ad layout', hint: 'Your headline, price and logo on a picture', input: true, output: false, inputMax: 1,
     defaultW: 360, defaultH: 514, minW: 300, minH: 240, maxW: 820, maxH: 1500, tint: 'ad' },

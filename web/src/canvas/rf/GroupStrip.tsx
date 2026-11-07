@@ -7,12 +7,13 @@
  * "Run what changed" and "Save as template" come in later steps; nothing is shown for them yet.
  */
 import { memo, useState } from 'react';
-import { useBoardApi, useValue, type NodeId } from '../boardApi';
+import { atom, useBoardApi, useValue, type NodeId } from '../boardApi';
 import { useToast } from '../../shared/Toast';
 import { tip } from '../../shared/Tooltip';
 import { PlayIcon } from '../../ui/Icons';
 import { groupFacts, showsRun, stepsWords } from '../groupModel';
 import { useFlowPrice } from '../useFlowPrice';
+import { titleOf } from '../cardTitle';
 import { proposeCards, openDock } from '../flowRun';
 
 export function RunFlow({ id, runIds, steps, name }: { id: NodeId; runIds: NodeId[]; steps: number; name: string }) {
@@ -36,8 +37,14 @@ export function RunFlow({ id, runIds, steps, name }: { id: NodeId; runIds: NodeI
   </button>;
 }
 
+/** The Group whose name is being typed (Enter on a selected Group starts it; RfBoard's keys). */
+export const renameGroupAtom = atom<string | null>('ohf-rename-group', null);
+
 function NameField({ id, name, typed }: { id: NodeId; name: string; typed: boolean }) {
-  const board = useBoardApi(); const [edit, setEdit] = useState(false);
+  const board = useBoardApi(); const [local, setLocal] = useState(false);
+  const asked = useValue('group rename', () => renameGroupAtom.get() === id, [id]);
+  const edit = local || asked;
+  const setEdit = (v: boolean) => { setLocal(v); if (!v && renameGroupAtom.get() === id) renameGroupAtom.set(null); };
   const save = (v: string) => { setEdit(false); const next = v.trim().slice(0, 80); if (next === (typed ? name : '')) return; if (!typed && next === name) return;
     board.mark('rename group'); board.patchNode(id, { props: { name: next } }); };
   if (edit) return <input className="cv-gs-input nodrag" data-testid="group-name-input" aria-label="Group name" autoFocus defaultValue={name} maxLength={80}
@@ -49,7 +56,7 @@ function NameField({ id, name, typed }: { id: NodeId; name: string; typed: boole
 
 export const GroupStrip = memo(function GroupStrip({ id }: { id: NodeId }) {
   const board = useBoardApi();
-  const f = useValue('group facts', () => groupFacts(board, id), [board, id]);
+  const f = useValue('group facts', () => groupFacts(board, id, (n) => titleOf(board, n).title), [board, id]);
   const typed = useValue('group typed name', () => !!String((board.getNode(id)?.props as any)?.name ?? '').trim(), [board, id]);
   const running = f.steps - f.runIds.length;
   return <div className="cv-gstrip" data-testid="group-strip" data-linked={f.linked ? '1' : undefined}>

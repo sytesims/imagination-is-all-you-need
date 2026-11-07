@@ -45,6 +45,7 @@ import { makeRfBoard, clampSize, MIN_ZOOM, MAX_ZOOM, type RfPort } from './board
 import { NODE_TYPES, EDGE_TYPES, NO_DRAG, RouteCtx, StoreCtx, OptCtx, AgentPresence, useRoutes, rfTypeOf, isBack, adHeight } from './views';
 import { rfOptions } from './engine';
 import { settleIntoGroups } from '../groupModel';
+import { renameGroupAtom } from './GroupStrip';
 import { drawSize, ratioAtom } from './poster';
 import { boardActions, useClipboardEvents, useFileDrops, ContextMenu, ShortcutsSheet, MagnetLayer, DropUiLayer, ctxAtom, sheetAtom, assetPortDrop } from './BoardTools';
 import './rf.css';
@@ -115,6 +116,7 @@ function useBoardKeys(board: BoardApi, store: BoardStore, toast: ReturnType<type
       if (key === 'escape') { if (sel.length) { done(); board.select([]); } return; }
       if ((key === 'delete' || key === 'backspace') && sel.length) { done(); const nodes = sel.filter((id) => board.getNode(id)), links = sel.filter((id) => board.getLink(id));
         board.mark('delete'); board.batch(() => { board.removeLinks(links); board.removeNodes(nodes); }); return; }
+      if (key === 'enter' && !e.shiftKey && sel.length === 1 && board.getNode(sel[0])?.type === 'frame') { done(); renameGroupAtom.set(sel[0]); return; }
       if (key === 'enter' && !e.shiftKey && sel.length === 1 && board.getNode(sel[0])?.type === GEN_TYPE) {
         const focusCard = t?.closest?.('[data-shape-id]')?.getAttribute('data-shape-id'); if (focusCard && focusCard !== sel[0]) return; if (t && /^(BUTTON|A)$/.test(t.tagName)) return;
         done(); runCard(sel[0]); }
