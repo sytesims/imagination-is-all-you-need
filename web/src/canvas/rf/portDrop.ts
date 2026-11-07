@@ -2,7 +2,7 @@
  * Dropping a file, an Assets item or a link onto a card's input port (Canvas release 1, design plan §4.6). Pure, so the server tests check it.
  *  - While something is dragged, the ports that can take it glow (dropKindAtom); the others stay quiet.
  *  - The wrong kind: the port shakes and says what it takes ("This port takes a picture").
- *  - An empty port: the file goes in. A filled one: a small menu, Replace and rerun (↵), Replace only (⇧), Add as a new card (⌥).
+ *  - An empty port: the file goes in. A filled one: a small menu, Replace only (↵, the default), Replace and rerun (⇧), Add as a new card (⌥).
  *    "Rerun" makes a proposal (prices first) for this card and the cards after it: it never runs straight away.
  *  - A pasted or dropped link becomes a Link card, unless it points straight at a picture, clip or sound.
  */
@@ -38,9 +38,9 @@ export function portDropPlan(port: { kind: PortKind; filled: boolean }, kind: Me
   if (!kind || port.kind !== kind) return { do: 'refuse', why: wrongKindText(port.kind) };
   return port.filled ? { do: 'ask' } : { do: 'fill' };
 }
-/** The menu's keys: ↵ Replace and rerun, ⇧ Replace only, ⌥ Add as a new card (Esc: nothing). */
+/** The menu's keys: ↵ Replace only (the default), ⇧ Replace and rerun, ⌥ Add as a new card (Esc: nothing). */
 export function choiceForKey(e: { key: string }): DropChoice | 'cancel' | null {
-  if (e.key === 'Enter') return 'rerun'; if (e.key === 'Shift') return 'replace'; if (e.key === 'Alt') return 'new'; if (e.key === 'Escape') return 'cancel'; return null;
+  if (e.key === 'Enter') return 'replace'; if (e.key === 'Shift') return 'rerun'; if (e.key === 'Alt') return 'new'; if (e.key === 'Escape') return 'cancel'; return null;
 }
 /** The cards a "Replace and rerun" proposes: this card, then every generate card after it (graph order is the server's). */
 export function rerunIds(cardId: string, after: Iterable<string>, isGen: (id: string) => boolean): string[] { return [cardId, ...[...after].filter((id) => id !== cardId && isGen(id))]; }

@@ -5,7 +5,7 @@
  *  - the magnet: drop a card near a compatible card's side and it clicks in and links; pull it away and the snapped link lets go
  *    (LinkLayer's magnetCheck / magnetDrop over links.snapTarget; drawn here in board coordinates);
  *  - drops: files from the computer, Assets items and links, onto a card's port (it glows when it can take it), onto a card, or onto the
- *    empty board; a filled port asks first (Replace and rerun · Replace only · Add as a new card).
+ *    empty board; a filled port asks first (Replace only · Replace and rerun · Add as a new card).
  * The word is "Group", never "Frame" (Start / End / Key frames are something else).
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -164,12 +164,12 @@ export function DropUiLayer({ board }: { board: BoardApi }) {
   if (!ui) return null;
   if (ui.type === 'bubble') return <div className="cv-dropbubble" style={{ left: ui.x, top: ui.y }} role="status" data-testid="drop-bubble">{ui.text}</div>;
   const price = ui.usd === undefined ? 'pricing…' : ui.usd == null ? 'priced next' : `≈ $${ui.usd.toFixed(2)}`;
-  const row = (c: DropChoice, label: string, hint: string, key: string) => <button type="button" role="menuitem" className="cv-dm-row" data-testid={`drop-${c}`} onClick={() => void applyDropChoice(board, ui, c, toast)}>
+  const row = (c: DropChoice, label: string, hint: string, key: string) => <button type="button" role="menuitem" className={`cv-dm-row${c === 'replace' ? ' def' : ''}`} data-testid={`drop-${c}`} onClick={() => void applyDropChoice(board, ui, c, toast)}>
     <span className="cv-dm-t"><b>{label}</b><small>{hint}</small></span><kbd>{key}</kbd></button>;
   return <div className="cv-dropmenu cv-ctx" role="menu" aria-label={`Drop on ${ui.port.label}`} style={{ left: ui.x, top: ui.y }} data-testid="drop-menu">
     <p className="cv-ctx-h">{ui.port.label || 'This input'} is filled</p>
-    {row('rerun', 'Replace and rerun', `${ui.after ? `This card + ${ui.after} after it` : 'This card'} · ${price} · asks first`, '↵')}
-    {row('replace', 'Replace only', 'Nothing runs', '⇧')}
+    {row('replace', 'Replace only', 'Nothing runs', '↵')}
+    {row('rerun', 'Replace and rerun', `${ui.after ? `This card + ${ui.after} after it` : 'This card'} · ${price} · asks first`, '⇧')}
     {row('new', 'Add as a new card', 'Keeps this input as it is', '⌥')}
   </div>;
 }
@@ -255,7 +255,7 @@ export function ContextMenu({ board }: { board: BoardApi }) {
 const KEYS: [string, string][] = [['G', 'New card'], ['Enter', 'Run the selected card (asks first when its price changed)'], [`${MOD}C`, 'Copy'], [`${MOD}X`, 'Cut'], [`${MOD}V`, 'Paste (cards, files or a link)'],
   [`${MOD}D`, 'Duplicate'], [`${MOD}G`, 'Group the selection'], ['⇧T', 'Tidy the board'], [`${MOD}A`, 'Select all'], ['⌫', 'Delete'], [`${MOD}Z`, 'Undo'], [`⇧${MOD}Z`, 'Redo'],
   ['V', 'Select tool'], ['H', 'Hand tool'], ['Esc', 'Clear the selection'], ['?', 'This sheet']];
-const DROP_KEYS: [string, string][] = [['↵', 'Replace and rerun (prices first)'], ['⇧', 'Replace only'], ['⌥', 'Add as a new card']];
+const DROP_KEYS: [string, string][] = [['↵', 'Replace only'], ['⇧', 'Replace and rerun (prices first)'], ['⌥', 'Add as a new card']];
 export function ShortcutsSheet() {
   const open = useValue('rf keys sheet', () => sheetAtom.get(), []);
   useEffect(() => { if (!open) return; const k = (e: KeyboardEvent) => { if (e.key === 'Escape' || e.key === '?') { e.preventDefault(); e.stopPropagation(); sheetAtom.set(false); } }; addEventListener('keydown', k, true); return () => removeEventListener('keydown', k, true); }, [open]);

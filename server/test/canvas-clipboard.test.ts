@@ -1,7 +1,7 @@
 // Copy / paste and drops on the React Flow board (Canvas release 1; web/src/canvas/rf/clipboard.ts and portDrop.ts). On a real board store,
 // no browser: a copy keeps the links between the copied cards (and only those), a paste makes new shape: ids, works on another board, keeps
 // frames around their cards, is one undo step, and a card that was running comes back as a draft that keeps its takes. Then the drop rules:
-// the wrong kind is refused in words, an empty port fills, a filled one asks (↵ rerun, ⇧ replace only, ⌥ new card), links vs media URLs.
+// the wrong kind is refused in words, an empty port fills, a filled one asks (↵ replace only, ⇧ rerun, ⌥ new card), links vs media URLs.
 // Run: cd server && npx tsx test/canvas-clipboard.test.ts
 import assert from 'node:assert/strict';
 if (!(globalThis as any).crypto) (globalThis as any).crypto = (await import('node:crypto')).webcrypto;
@@ -73,7 +73,7 @@ assert.deepEqual(D.portDropPlan({ kind: 'audio', filled: true }, 'image'), { do:
 assert.deepEqual(D.portDropPlan({ kind: 'image', filled: false }, null), { do: 'refuse', why: 'This port takes a picture' }, 'a PDF is refused too');
 assert.deepEqual(D.portDropPlan({ kind: 'image', filled: false }, 'image'), { do: 'fill' });
 assert.deepEqual(D.portDropPlan({ kind: 'video', filled: true }, 'video'), { do: 'ask' });
-assert.equal(D.choiceForKey({ key: 'Enter' }), 'rerun'); assert.equal(D.choiceForKey({ key: 'Shift' }), 'replace'); assert.equal(D.choiceForKey({ key: 'Alt' }), 'new');
+assert.equal(D.choiceForKey({ key: 'Enter' }), 'replace', 'Enter: the default, Replace only'); assert.equal(D.choiceForKey({ key: 'Shift' }), 'rerun'); assert.equal(D.choiceForKey({ key: 'Alt' }), 'new');
 assert.equal(D.choiceForKey({ key: 'Escape' }), 'cancel'); assert.equal(D.choiceForKey({ key: 'x' }), null);
 assert.deepEqual(D.rerunIds('c1', ['n1', 'c2', 'c1', 'c3'], (id) => id.startsWith('c')), ['c1', 'c2', 'c3'], 'rerun: this card + the generate cards after it');
 assert.deepEqual(D.urlPlan('https://example.com/shot.JPG?x=1'), { as: 'media', kind: 'image' }); assert.deepEqual(D.urlPlan('https://cdn.site/clip.mp4'), { as: 'media', kind: 'video' });

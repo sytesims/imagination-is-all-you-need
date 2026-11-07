@@ -149,7 +149,7 @@
 .cv-ctx-sep{display:block;height:1px;margin:5px 6px;background:rgba(255,255,255,.07)}
 .cv-dropmenu{transform:translate(12px,-12px);min-width:288px}
 .cv-dm-t{display:flex;flex-direction:column;gap:1px}.cv-dm-t small{font-size:11.5px;line-height:15px;color:var(--text-2,#9A9BA0)}
-.cv-dm-row:first-of-type .cv-dm-t b{color:var(--accent,#FF7A1A)}
+.cv-dm-row.def .cv-dm-t b{color:var(--accent,#FF7A1A)}.cv-dm-row.def{background:rgba(255,255,255,.045)} /* the default (↵): Replace only */
 .cv-dropbubble{position:fixed;z-index:61;transform:translate(14px,-130%);padding:7px 11px;border-radius:10px;background:#2A2416;border:1px solid rgba(232,180,74,.45);color:#F3D48D;
   font:600 12.5px/16px var(--font-sans,Inter,sans-serif);box-shadow:0 10px 26px rgba(0,0,0,.45);pointer-events:none;white-space:nowrap;animation:cv-bubble-in 160ms ease-out both}
 @keyframes cv-bubble-in{from{opacity:0;transform:translate(14px,-110%)}}
