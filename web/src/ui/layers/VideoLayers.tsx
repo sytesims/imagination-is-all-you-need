@@ -47,13 +47,18 @@ export function VideoLayersStage({ m, view }: { m: LayersManifest; view: VideoLa
   const box = useRef<HTMLDivElement>(null); const { mode, playing, time, setTime, setPlaying } = view;
   const vids = () => Array.from(box.current?.querySelectorAll('video') ?? []) as HTMLVideoElement[];
   /* one clock: the first video leads, the others follow it (a drift over 1.5 frames is corrected) */
-  useEffect(() => { let raf = 0; const tick = () => { const all = vids(); const lead = all[0];
-      if (lead) { const t = lead.currentTime; for (const v of all.slice(1)) if (Math.abs(v.currentTime - t) > 1.5 / m.fps) v.currentTime = t; setTime(t); }
+  const playingRef = useRef(playing); playingRef.current = playing; const timeRef = useRef(time); timeRef.current = time;
+  useEffect(() => { const t = timeRef.current; for (const v of vids()) v.currentTime = t; }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps -- another view keeps the moment you were on
+  useEffect(() => { let raf = 0; const tick = () => { const all = vids(); const lead = (playingRef.current && all.find((v) => !v.paused)) || all[0];
+      if (lead) { const t = lead.currentTime;
+        for (const v of all) { if (v === lead) continue; if (Math.abs(v.currentTime - t) > 1.5 / m.fps) v.currentTime = t;
+          if (playingRef.current && v.paused && v.readyState >= 2) void v.play().catch(() => undefined); } // a clip that didn't start with the others joins them
+        setTime(t); }
       raf = requestAnimationFrame(tick); };
     raf = requestAnimationFrame(tick); return () => cancelAnimationFrame(raf); }, [mode, m.jobId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { for (const v of vids()) { if (playing) void v.play().catch(() => undefined); else v.pause(); } }, [playing, mode, m.jobId]); // eslint-disable-line react-hooks/exhaustive-deps
   const seek = (t: number) => { for (const v of vids()) v.currentTime = t; setTime(t); };
-  const vprops = { muted: true, loop: true, playsInline: true, preload: 'auto' as const, autoPlay: playing };
+  const vprops = { muted: true, loop: true, playsInline: true, preload: 'auto' as const, autoPlay: playing, 'data-media-keep': '' /* the stack plays together: never budget-paused one by one (shared/mediaPause.ts) */ };
   const bottomUp = [...m.layers].sort((a, b) => a.order - b.order); const shown = m.layers.filter((l) => view.visible(l.id)).length;
   const label = mode === 'depth' ? 'Depth (near is white)' : mode === 'background' ? 'Clean background' : mode === 'overview' ? 'Overview: each layer in its colour' : `${shown} of ${m.layers.length} layers shown`;
   return <div className="vly-stage" data-testid="vly-stage">

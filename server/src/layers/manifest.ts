@@ -50,7 +50,7 @@ export function buildManifest(o: {
     schema: 1, app: 'Imagination Is All You Need', kind: 'video-layers', jobId: o.jobId,
     width: o.width, height: o.height, fps: o.fps, frames: o.frames, seconds, layers,
     background: { url: o.urls.background, seconds: o.plate ? Math.min(o.plate.seconds, seconds) : 0, model: o.plate?.model ?? null,
-      note: !o.plate ? null : o.plate.seconds + 0.05 < seconds ? `The clean background covers the first ${o.plate.seconds} s; after that it holds its last frame.` : null },
+      note: !o.plate ? null : o.plate.seconds + 0.5 < seconds ? `The clean background covers the first ${o.plate.seconds} s; after that it holds its last frame.` : null },
     depth: { url: o.urls.depth, bits: o.urls.depth ? 16 : null, range: o.range, nearIs: 'white', model: o.urls.depth ? LAYERS_MODELS.depth : null },
     overviewUrl: o.urls.overview, sourceUrl: o.urls.source, models, where: o.where,
   };

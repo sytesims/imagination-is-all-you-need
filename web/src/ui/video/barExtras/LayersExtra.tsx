@@ -37,7 +37,7 @@ export const useLayersExtra: UseBarExtra = () => {
         {names.length > 0 && <ul className="lyx-chips">{names.map((n, k) => <li key={n} className="lyx-chip" data-testid={`vbar-object-${k}`}>
           <i className="lyx-dot" style={{ background: LAYER_COLOURS[k] }} aria-hidden /><span>{n}</span>
           <button type="button" className="lyx-x" aria-label={`Remove ${n}`} data-testid={`vbar-object-remove-${k}`} onClick={() => remove(k)}><CloseIcon size={12} /></button></li>)}</ul>}
-        <input className="vbar-text" type="text" maxLength={40} disabled={full} value={draft} data-testid="vbar-object-input" aria-label="Add a name"
+        <input className="vbar-text" type="text" maxLength={40} disabled={full} autoFocus value={draft} data-testid="vbar-object-input" aria-label="Add a name"
           placeholder={full ? `That’s ${LAYERS_MAX_OBJECTS}: remove one to add another` : names.length ? 'Add another, then press Enter' : 'e.g. woman, then press Enter'}
           onChange={(e) => { const v = e.target.value; if (/[,\n]$/.test(v)) add(v.slice(0, -1)); else setDraft(v); }}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(draft); } else if (e.key === 'Backspace' && !draft && names.length) remove(names.length - 1); }}

@@ -1015,6 +1015,28 @@
    "base": "qwen-image-2.1"
   },
   {
+   "file": "birefnet.safetensors",
+   "folder": "background_removal",
+   "hf_repo": "Comfy-Org/BiRefNet",
+   "revision": "main",
+   "repo_path": "background_removal/birefnet.safetensors",
+   "url": "https://huggingface.co/Comfy-Org/BiRefNet/resolve/main/background_removal/birefnet.safetensors",
+   "size": 444473596,
+   "size_gb": 0.44,
+   "sha256": "9ab37426bf4de0567af6b5d21b16151357149139362e6e8992021b8ce356a154",
+   "renamed_from": null,
+   "head_status": "ok (HEAD 2026-11-07)",
+   "workflows": [
+    "workflows/layers-split-api.json"
+   ],
+   "loaded_by": [
+    "LoadBackgroundRemovalModel"
+   ],
+   "input": [
+    "bg_removal_name"
+   ]
+  },
+  {
    "file": "camera_motion_h3_lora_v1_3000_pruned.safetensors",
    "folder": "loras",
    "hf_repo": null,
@@ -1201,6 +1223,28 @@
     "workflows/soul-ref-pulid-api.json (preset LoRA)"
    ],
    "base": "flux1-dev"
+  },
+  {
+   "file": "depth_anything_3_small.safetensors",
+   "folder": "geometry_estimation",
+   "hf_repo": "Comfy-Org/Depth-Anything-3",
+   "revision": "main",
+   "repo_path": "geometry_estimation/depth_anything_3_small.safetensors",
+   "url": "https://huggingface.co/Comfy-Org/Depth-Anything-3/resolve/main/geometry_estimation/depth_anything_3_small.safetensors",
+   "size": 137254980,
+   "size_gb": 0.14,
+   "sha256": "9c0a53d157c5b315d4c82908a43d93eeaa3a9ac3de9d15c2b4242ef46b5508ad",
+   "renamed_from": null,
+   "head_status": "ok (HEAD 2026-11-07)",
+   "workflows": [
+    "workflows/layers-split-api.json"
+   ],
+   "loaded_by": [
+    "LoadDA3Model"
+   ],
+   "input": [
+    "model_name"
+   ]
   },
   {
    "file": "depth_anything_v2_vits.pth",
@@ -3405,6 +3449,28 @@
     "workflows/object-swap/ext-4.json",
     "workflows/object-swap/ext-5.json",
     "workflows/object-swap/ext-6.json"
+   ]
+  },
+  {
+   "file": "sam3.1_multiplex_fp16.safetensors",
+   "folder": "checkpoints",
+   "hf_repo": "Comfy-Org/sam3.1",
+   "revision": "main",
+   "repo_path": "checkpoints/sam3.1_multiplex_fp16.safetensors",
+   "url": "https://huggingface.co/Comfy-Org/sam3.1/resolve/main/checkpoints/sam3.1_multiplex_fp16.safetensors",
+   "size": 1745546848,
+   "size_gb": 1.75,
+   "sha256": "9ba99c92703c2e8b4f47de2d34a539bb8e18923049e238b780d70dbe6368eb03",
+   "renamed_from": null,
+   "head_status": "ok (HEAD 2026-11-07)",
+   "workflows": [
+    "workflows/layers-split-api.json"
+   ],
+   "loaded_by": [
+    "CheckpointLoaderSimple"
+   ],
+   "input": [
+    "ckpt_name"
    ]
   },
   {
@@ -6456,6 +6522,40 @@
       "vae": "ae.safetensors",
       "te": "qwen_3_4b.safetensors",
       "dit": "z_image_turbo_bf16.safetensors"
+     },
+     "default": true
+    },
+    "nvidia-arm64": {
+     "inherit": "nvidia-x64"
+    },
+    "mac-arm64": {
+     "inherit": "nvidia-x64"
+    },
+    "cpu": null
+   }
+  },
+  "workflows/layers-split-api.json": {
+   "models": [
+    "birefnet.safetensors",
+    "depth_anything_3_small.safetensors",
+    "sam3.1_multiplex_fp16.safetensors"
+   ],
+   "total_gb": 2.33,
+   "vram_est_gb": 3.8,
+   "vram_basis": "max(resident DiT 1.8, text encoder 0.0 offloaded after encode) + VAE 0.0 + aux 0.6 + activations 1.5 GB (image/audio)",
+   "fits": {
+    "24GB": true,
+    "32GB": true,
+    "80GB": true
+   },
+   "mps": "green",
+   "mps_notes": [],
+   "variants": {
+    "nvidia-x64": {
+     "files": {
+      "aux": "birefnet.safetensors",
+      "aux2": "depth_anything_3_small.safetensors",
+      "dit": "sam3.1_multiplex_fp16.safetensors"
      },
      "default": true
     },

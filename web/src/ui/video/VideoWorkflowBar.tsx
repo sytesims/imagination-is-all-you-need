@@ -370,11 +370,12 @@ export default function VideoWorkflowBar({ wf, bar, tool, tools }: { wf: VideoWo
       {icon}{!(reel && g.id === 'words' && sum === 'End card') && <span className="wf-grp-l">{g.label}</span>}<b><Words text={sum} /></b></button>; });
   /* Sound toggles (Extend's sound, Keep the clip's sound, Re-shoot's new sound) sit in Settings, as on Create Video (SoundSetting.tsx, 2026-10-27);
    * the Settings button wears a speaker badge while one is on. It sits beside ⋯ and never folds (a 32 px square), so the sound state stays in sight. */
-  const sndCtl = shown.filter(c => c.kind === 'toggle'); const sndAny = sndCtl.some(c => valOf(c) !== '0');
+  const sndCtl = shown.filter(c => c.kind === 'toggle'); const sndAny = sndCtl.some(c => c.group === 'sound' && valOf(c) !== '0'); /* the speaker badge: sound switches only (Layers' Options are not sound) */
+  const sndLabel = sndCtl.every(c => c.group === 'sound') ? 'Sound' : bar.groups.find(g => g.id === sndCtl[0]?.group)?.label ?? 'Settings';
   const sndSum = sndCtl.map(c => `${c.label} ${valOf(c) !== '0' ? 'on' : 'off'}`).join(', ');
   const toggles = sndCtl.length ? <SettingsChip ref={el => { gRefs.current.snd = el; }} testId="vbar-settings" open={pop === 'g:snd'} soundOn={sndAny} ariaLabel={`Settings: ${sndSum}`} tip={tip(pop === 'g:snd' ? null : `Settings · ${sndSum}`)} onClick={() => setPop(pop === 'g:snd' ? '' : 'g:snd')} /> : null;
   const soundPop = sndCtl.length ? <BarPopover open={pop === 'g:snd'} anchor={anchorOf('snd')} avoid={dock} watch={dock} placement="top" gap={8} onClose={() => setPop('')} label="Settings" role="dialog" testId="vbar-pop-settings" width={300}><div className="bp-wrap">
-    <SoundSection testId="vbar-set-sound" switches={sndCtl.map(c => { const on = valOf(c) !== '0'; return { key: c.field, label: c.label, on, testId: `vbar-toggle-${c.field}`, hint: c.onLabel || c.offLabel ? (on ? c.onLabel : c.offLabel) : undefined, onChange: (v: boolean) => setVal(c.field, v ? '1' : '0') }; })} /></div></BarPopover> : null;
+    <SoundSection testId="vbar-set-sound" label={sndLabel} switches={sndCtl.map(c => { const on = valOf(c) !== '0'; return { key: c.field, label: c.label, on, testId: `vbar-toggle-${c.field}`, hint: c.onLabel || c.offLabel ? (on ? c.onLabel : c.offLabel) : undefined, onChange: (v: boolean) => setVal(c.field, v ? '1' : '0') }; })} /></div></BarPopover> : null;
   /* a tiles option (UGC Ad's presenters): the same tiles as the app screen (tools/app/AppFields AppTiles), in a popover */
   const tilesPanel = (c: VBarControl) => { const g = bar.groups.find(x => x.id === c.group)!; const v = valOf(c); const own = c.field === 'presenter' && bar.slots.some(s => s.name === 'presenterImage');
     return <BarPopover key={`t-${c.field}`} open={pop === `g:${c.group}`} anchor={anchorOf(c.group)} avoid={dock} watch={dock} placement="top" gap={8} onClose={() => setPop('')} label={g.label} testId={`vbar-pop-${c.group}`} width={440} className="vbar-tiles-pop">

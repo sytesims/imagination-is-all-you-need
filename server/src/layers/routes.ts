@@ -6,7 +6,6 @@
  * Nothing here runs a model or sends anything off this computer.
  */
 import type { FastifyInstance } from 'fastify';
-import path from 'node:path';
 import { createReadStream, statSync } from 'node:fs';
 import { jobs } from '../jobs.js';
 import { appFileName } from '../shared/fileNames.js';
@@ -24,7 +23,7 @@ export function registerLayersRoutes(app: FastifyInstance) {
   /** Make the export (or reuse it) and say where it is: the viewer then downloads it as a plain file link. */
   app.post<{ Params: { id: string } }>('/api/layers/:id/export', async (req, reply) => {
     const j = layersJob(req.params.id); if (!j) return notFound(reply);
-    try { const z = await buildExport(j.id); return { url: `/files/${path.basename(z)}`, bytes: statSync(z).size, name: appFileName(`${j.id}-layers`, 'zip') }; }
+    try { const z = await buildExport(j.id); return { url: `/api/layers/${encodeURIComponent(j.id)}/export.zip` /* /files serves media only */, bytes: statSync(z).size, name: appFileName(`${j.id}-layers`, 'zip') }; }
     catch (e) { return reply.code(410).send({ error: e instanceof Error ? e.message : 'The export could not be made', errorType: 'gone' }); }
   });
   app.get<{ Params: { id: string } }>('/api/layers/:id/export.zip', async (req, reply) => {

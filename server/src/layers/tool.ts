@@ -18,7 +18,8 @@ import { runFfmpeg, countFrames } from '../ffmpeg.js';
 import { mockRun } from '../tools/shared.js';
 import { footageFxTool } from '../tools/footageFx.js';
 import { VFX_CLOUD_ROUTE } from '../comfy/ltx23VfxCloud.js';
-import { LAYERS_TOOL, LAYERS_LOCAL, LAYERS_CLOUD, LAYERS_WORKFLOW, LAYERS_MAX_SECONDS, LAYERS_MIN_SECONDS, LAYERS_MAX_OBJECTS, LAYERS_FPS, LAYERS_LONG_SIDE,
+import { FOOTAGE_FX_WORKFLOW } from '../shared/footageFx.js';
+import { LAYERS_TOOL, LAYERS_LOCAL, LAYERS_WORKFLOW, LAYERS_MAX_SECONDS, LAYERS_MIN_SECONDS, LAYERS_MAX_OBJECTS, LAYERS_FPS, LAYERS_LONG_SIDE,
   LAYERS_PLATE_SECONDS, LAYERS_MODEL_LINE, objectNames, optionOn, layersMode } from './constants.js';
 import { sampleRaw } from './mock.js';
 import { assembleLayers } from './assemble.js';
@@ -49,9 +50,10 @@ export const layersTool: ToolDef = {
     { name: 'edges', kind: 'select', options: ['1', '0'], default: '1', label: 'Clean edges' },
     { name: 'depth', kind: 'select', options: ['1', '0'], default: '1', label: 'Depth' },
     { name: 'background', kind: 'select', options: ['1', '0'], default: '1', label: 'Clean background' },
+    { name: 'types', kind: 'list', max: 1, options: ['with-plate', 'split'], label: 'Mode (set from Clean background)' },
     { name: 'seed', kind: 'number' }],
   app: { kind: 'video', input: 'video', maxSeconds: LAYERS_MAX_SECONDS, minSeconds: LAYERS_MIN_SECONDS },
-  workflows: [LAYERS_WORKFLOW], model: LAYERS_MODEL_LINE, gpuSecPerSec: { source: 4 }, providers: [LAYERS_LOCAL, LAYERS_CLOUD], stages: LAYERS_STAGES,
+  workflows: [LAYERS_WORKFLOW, FOOTAGE_FX_WORKFLOW /* the clean background (Vanish) */], model: LAYERS_MODEL_LINE, gpuSecPerSec: { source: 4 }, providers: [LAYERS_LOCAL] /* Comfy Cloud is this model's second place (register.ts addTwin) */, stages: LAYERS_STAGES,
   /** The download set follows Clean background: off = the split graph only; on = also Footage Effects' LTX files (hardware/requirements.ts jobWorkflows). */
   routeInput: (i) => ({ types: [layersMode(i)] }),
   async parseInput(fields, files) {

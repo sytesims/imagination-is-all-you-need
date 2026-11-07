@@ -11,6 +11,7 @@ import { CLOUD_WORKFLOWS } from '../comfy/cloudWorkflows.js';
 import { VFX_CLOUD_REQUIRES, VFX_CLOUD_GRAPHS } from '../comfy/ltx23VfxCloud.js';
 import { CLOUD_RUNNER_ROUTES } from '../routing/runnable.js';
 import { NATIVE_DIRECT } from '../routing/directRoutes.js';
+import { addTwin } from '../routing/routes.js';
 import { HOSTED_PRICES, HOSTED_BY_ID, cloudGpuUsd, type HostedPrice } from '../shared/hostedPrices.js';
 import { FOOTAGE_FX_WORKFLOW } from '../shared/footageFx.js';
 import { LAYERS_LOCAL, LAYERS_CLOUD, LAYERS_CLOUD_ROUTE, LAYERS_TOOL, LAYERS_WORKFLOW, LAYERS_MAX_SECONDS, LAYERS_PLATE_SECONDS, LAYERS_MODEL_LINE, layersMode } from './constants.js';
@@ -36,7 +37,7 @@ const PARTS = [
 
 registerWorkflowLicense(LAYERS_WORKFLOW, ['sam-license', 'mit', 'apache-2.0']);
 registerLicenseComponents(LAYERS_TOOL, PARTS as any);
-registerProvider({ id: LAYERS_LOCAL, name: `${LAYERS_MODEL_LINE} · your computer`, kind: 'open-weights', via: `local ComfyUI, workflows/${LAYERS_WORKFLOW} (+ Footage Effects Vanish for the clean background)`,
+registerProvider({ id: LAYERS_LOCAL, name: LAYERS_MODEL_LINE, kind: 'open-weights', via: `local ComfyUI, workflows/${LAYERS_WORKFLOW} (+ Footage Effects Vanish for the clean background)`,
   workflows: [LAYERS_WORKFLOW, FOOTAGE_FX_WORKFLOW], docUrl: 'https://docs.comfy.org/tutorials/utility/video-segment-sam3', licenseParts: ['sam-license', 'mit', 'apache-2.0'],
   nodes: ['SAM3_Detect', 'SAM3_VideoTrack', 'SAM3_TrackToMask', 'RemoveBackground', 'DA3Inference', 'DA3Render'] } as any);
 registerProvider({ id: LAYERS_CLOUD, name: `${LAYERS_MODEL_LINE} · Comfy Cloud`, kind: 'hosted', license: 'sam-license', licenseUrl: SAM.url, docUrl: 'https://docs.comfy.org/tutorials/utility/video-segment-sam3',
@@ -65,3 +66,7 @@ CLOUD_WORKFLOWS[LAYERS_CLOUD_ROUTE] = { routeId: LAYERS_CLOUD_ROUTE, provider: L
       { loader: 'LoadDA3Model', field: 'model_name', file: 'depth_anything_3_small.safetensors' }, ...VFX_CLOUD_REQUIRES.models] },
   plan: (j) => layersPlan(j, 'cloud') };
 CLOUD_RUNNER_ROUTES.add(LAYERS_CLOUD_ROUTE);
+/** One card, two places: Comfy Cloud is a place of the local model (like Footage Effects), with its own price rule; held while unmeasured
+ *  only when OPENHIGGSFIELD_ALLOW_UNMEASURED_CLOUD=0 (the shared gate, routing/select.ts). */
+addTwin({ model: LAYERS_LOCAL, twin: LAYERS_CLOUD, tools: [LAYERS_TOOL], aliasOk: true, heldUntilMeasured: true, priceInput: (i) => ({ ...i, duration: layersBillSeconds(i) }),
+  caps: { localOnly: false, maxSeconds: LAYERS_MAX_SECONDS, objects: 4, note: 'SAM 3.1, BiRefNet and Depth Anything 3 on Comfy Cloud, with the clean background from LTX-2.3 Vanish. Up to 15 s, up to 4 objects.' } });

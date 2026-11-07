@@ -18,9 +18,9 @@ export const SettingsChip = forwardRef<HTMLButtonElement, { open: boolean; onCli
 /** One sound switch: label, "On" / "Off" on the right, a short line under it (what it adds to the price). */
 export type SoundSwitch = { key: string; label: string; on: boolean; onChange: (v: boolean) => void; hint?: ReactNode; testId?: string };
 
-export function SoundSection({ switches, note, aside, testId = 'vs-set-sound' }: { switches: SoundSwitch[]; /** shown when there is no switch (the model fixes it) */ note?: ReactNode; aside?: ReactNode; testId?: string }) {
+export function SoundSection({ switches, note, aside, testId = 'vs-set-sound', label = 'Sound' }: { switches: SoundSwitch[]; /** shown when there is no switch (the model fixes it) */ note?: ReactNode; aside?: ReactNode; testId?: string; /** the section's title when its switches aren't sound (Layers: Options) */ label?: string }) {
   const one = switches.length === 1 ? switches[0] : null;
-  return <PopSection label="Sound" aside={aside ?? (one ? (one.on ? 'On' : 'Off') : undefined)} testId={testId}>
+  return <PopSection label={label} aside={aside ?? (one ? (one.on ? 'On' : 'Off') : undefined)} testId={testId}>
     {switches.map(s => <PopSwitch key={s.key} testId={s.testId} label={s.label} hint={s.hint} on={s.on} onChange={s.onChange} />)}
     {!switches.length && note && <PopNote testId={`${testId}-note`}>{note}</PopNote>}
   </PopSection>;
