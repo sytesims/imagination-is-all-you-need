@@ -221,7 +221,8 @@ const SENDERS: Record<string, { calls?: RegExp; why: string }> = {
 };
 const sfails: string[] = [];
 for (const f of files) {
-  if (!SENDS.test(f.text)) continue; const e = SENDERS[f.rel];
+  // Fastify route definitions ({ method: 'POST', url: '/api/…' }) are this server's own routes, not outgoing requests.
+  if (!SENDS.test(f.text.replace(/method: ?['"]POST['"], ?url: ?['"]\//g, ''))) continue; const e = SENDERS[f.rel];
   if (!e) { sfails.push(`${f.rel} sends a request or runs a graph: build its body with routing/routeRequest.ts (hosted) or comfy/plans.ts buildPlan (graphs), then list it in SENDERS with why`); continue; }
   if (e.calls && !e.calls.test(code(f.text))) sfails.push(`${f.rel} no longer calls ${e.calls}: ${e.why}`);
 }
