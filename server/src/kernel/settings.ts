@@ -18,14 +18,14 @@ import { z } from 'zod';
 import { Service, type Context } from 'cordis';
 import { env, FILMING } from '../env.js';
 import { listenHost } from '../shared/listenHost.js';
-import { PROVIDER_KEY_VARS } from '../shared/providerKeys.js';
+import { isSecretVar } from '../security/secretVars.js';
 import { readProfile, type Profile, type Scalar } from './profile.js';
 
 const SERVER = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const REPO = path.resolve(SERVER, '..');
 
-/** A variable that holds (or may hold) a secret: never in the snapshot, never printed. */
-export const isSecretVar = (k: string) => PROVIDER_KEY_VARS.includes(k) || /KEY|TOKEN|SECRET|PASSW|CREDENTIAL|AUTH|COOKIE/i.test(k);
+/** A variable that holds (or may hold) a secret: never in the snapshot, never printed (security/secretVars.ts). */
+export { isSecretVar };
 
 export const KernelSettings = z.object({
   /** The profile in use (server/profiles/<name>.yml, OPENHIGGSFIELD_PROFILE). */

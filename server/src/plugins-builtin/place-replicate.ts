@@ -7,7 +7,7 @@ import type { PlaceRunner } from '../services/places.js';
 import { replicateRun, replicateGet, replicateCancel, outputUrls, replicateImageInput } from '../providers/replicate.js';
 import { replicateAuthFor } from '../security/keyHosts.js';
 import { liveBackend } from '../routing/keys.js';
-import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
+import type { KeyReader } from '../kernel/keys.js';
 import { HANDOFF_POLICY, handOff } from '../mediaHandoff.js';
 
 export const REPLICATE_KEYS = ['OPENHIGGSFIELD_REPLICATE_API_TOKEN', 'REPLICATE_API_TOKEN'];
@@ -30,6 +30,5 @@ export const replicatePlaceOf = (keys: KeyReader): PlaceRunner => ({
   inputs: HANDOFF_POLICY.replicate.accepts,
   upload: (file, kind) => handOff(file, kind, 'replicate'),
 });
-export const replicatePlace = replicatePlaceOf(ANY_KEY);
 
 export default definePlugin({ name: 'place-replicate', inject: ['places', 'keys'], keys: REPLICATE_KEYS, apply(ctx) { ctx.places.register(replicatePlaceOf(ctx.keys)); } });

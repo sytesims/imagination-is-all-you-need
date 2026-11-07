@@ -31,7 +31,7 @@ let kv: Record<string, unknown> = {}; setSettingsKv((k) => (k === 'settings.plac
 const setEndpoint = (e: string | null) => { kv = e ? { endpointId: e } : {}; };
 
 const PNG = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../samples/card-name.png'));
-const { ANY_KEY } = await import('../src/kernel/keys.js');
+const { CORE_KEYS } = await import('../src/kernel/coreKeys.js');
 const { runpodPlaceOf } = await import('../src/plugins-builtin/place-runpod.js');
 const { RUNPOD_TOO_BIG, RUNPOD_KEY_REFUSED } = await import('../src/providers/runpod.js');
 const { RUNPOD_PRICE_REF } = await import('../src/routing/runpodRoutes.js');
@@ -43,7 +43,7 @@ const tool = getTool('create-image')!;
 const R = findRoute('runpod:comfy-zimage-turbo')!; const RE = findRoute('runpod:comfy-qwen21-turbo')!;
 assert.ok(R && RE, 'the route rows exist (findRoute finds them even while the place is off)');
 assert.equal(R.kind, 'runpod'); assert.equal(R.label, 'RunPod'); assert.deepEqual(R.tools, ['create-image']);
-const runner = runpodPlaceOf(ANY_KEY, { pollMs: 2 });
+const runner = runpodPlaceOf(CORE_KEYS, { pollMs: 2 });
 
 let jn = 0;
 const mkJob = (input: Record<string, any>, provider = 'comfy-zimage-turbo') => ({ id: `rp${++jn}-${Date.now().toString(36)}`, toolId: 'create-image', provider, status: 'running', input: { prompt: 'a red fox in snow', types: ['generate'], n: 1, ...input }, createdAt: Date.now() } as any);

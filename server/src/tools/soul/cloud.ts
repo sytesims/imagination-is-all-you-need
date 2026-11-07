@@ -12,7 +12,7 @@
  * Server-side Real-ESRGAN on CPU was not used: ~1 min+ per 1 MP image on the box CPU (round-2 CPU run), so cloud upscale = fal-ai/esrgan only.
  */
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn } from '../../security/childProcess.js';
 import { rename } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import type { RouteDef } from '../../routing/types.js';

@@ -8,7 +8,7 @@
  *  - Read and written with glTF Transform (MIT, gltf-transform.dev); every extension it knows is kept.
  * Pure of HTTP: routes3d.ts serves it as POST /api/3d/light.
  */
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import { stat, readFile, writeFile, rename } from 'node:fs/promises';
 import { NodeIO, type Document, type Primitive, Accessor } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';

@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner } from '../services/places.js';
 import { liveBackend } from '../routing/keys.js';
-import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
+import type { KeyReader } from '../kernel/keys.js';
 import { pluginSettings } from '../kernel/settings.js';
 import type { RemoteHandle } from '../jobs.js';
 import { SUNRA_BASE, sunraRun, sunraResult, sunraCancel, sunraUpload, sunraOutputUrls, type SunraHandle } from '../providers/sunra.js';
@@ -42,6 +42,5 @@ export const sunraPlaceOf = (keys: KeyReader, o: { base?: () => string; f?: type
     async upload(file) { const key = keys.get(SUNRA_KEY); if (!key) throw new Error('Sunra isn’t connected: add your Sunra key in Settings → Connections'); return sunraUpload(base(), file, key, f); },
   };
 };
-export const sunraPlace = sunraPlaceOf(ANY_KEY);
 
 export default definePlugin({ name: 'place-sunra', inject: ['places', 'keys'], keys: SUNRA_KEYS, apply(ctx) { ctx.places.register(sunraPlaceOf(ctx.keys)); } });

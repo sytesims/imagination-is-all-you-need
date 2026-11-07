@@ -71,7 +71,7 @@ async function substitute(g: any, c: ComfyTransport, cache: Map<string, any>): P
 }
 /** One ffmpeg concat-list line. Quoted, so spaces and Windows backslashes stay literal; a ' in a folder name (C:\Users\O'Brien) is closed, escaped and reopened. */
 const concatLine = (f: string) => `file '${f.replace(/'/g, "'\\''")}'`;
-const probeFps = async (file: string) => { try { const { execFileSync } = await import('node:child_process'); const r = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=r_frame_rate', '-of', 'csv=p=0', file]).toString().trim(); const [a, b] = r.split('/').map(Number); return b ? a / b : a; } catch { return 30; } };
+const probeFps = async (file: string) => { try { const { execFileSync } = await import('../security/childProcess.js'); const r = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=r_frame_rate', '-of', 'csv=p=0', file]).toString().trim(); const [a, b] = r.split('/').map(Number); return b ? a / b : a; } catch { return 30; } };
 
 /** build: B2, the Comfy Cloud runner passes buildCloudPlan (cloudWorkflows.ts) so each pass runs its workflows/cloud graph. */
 export async function runNative(job: Job, transport?: ComfyTransport, build: (j: any, o: { srcFps?: number }) => Plan = buildPlan) {

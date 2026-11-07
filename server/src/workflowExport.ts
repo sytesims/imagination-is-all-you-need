@@ -91,7 +91,7 @@ const RUNTIME_WHAT: Record<string, string> = { speech: 'Filled in at run time: t
 const PREP_WHAT = (p: any): string => p.kind === 'fps' ? `Your clip, converted with ffmpeg to ${p.fps} fps at ${p.width}×${p.height}${p.seconds ? `, ${Math.round(p.seconds * 10) / 10} s` : ''}${p.start ? ` from ${Math.round(p.start * 10) / 10} s` : ''}${p.frames ? `, held on its last frame to exactly ${p.frames} frames` : ''}`
   : p.kind === 'frame' ? `A frame from your clip (${p.at === 'last' ? 'last frame' : `at ${p.at} s`}), saved as an image` : p.kind === 'frameFromPass' ? `The last frame of pass ${p.pass + 1}` : 'Prepared from your input';
 
-async function probeFps(file: string) { try { const { execFileSync } = await import('node:child_process'); const r = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=r_frame_rate', '-of', 'csv=p=0', file]).toString().trim(); const [a, b] = r.split('/').map(Number); return b ? a / b : a; } catch { return 30; } }
+async function probeFps(file: string) { try { const { execFileSync } = await import('./security/childProcess.js'); const r = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=r_frame_rate', '-of', 'csv=p=0', file]).toString().trim(); const [a, b] = r.split('/').map(Number); return b ? a / b : a; } catch { return 30; } }
 
 /** Partner-node graph from a provider's workflows/ file + node-map (cloud-h3), or from the node definition (object_info snapshot). */
 function partnerGraph(job: Job, providerId: string, media: MediaNote[]): { workflow: string; graph: Record<string, any>; note: string } | null {

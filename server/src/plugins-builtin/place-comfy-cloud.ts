@@ -7,7 +7,7 @@
  */
 import { definePlugin } from '../kernel/index.js';
 import type { PlaceRunner } from '../services/places.js';
-import { ANY_KEY, type KeyReader } from '../kernel/keys.js';
+import type { KeyReader } from '../kernel/keys.js';
 import { cloudLive, runCloudWorkflow, cloudTargetFor } from '../routing/cloudRun.js';
 import { charswapAnchorAddOn } from '../comfy/h3CharSwapAnchor.js';
 
@@ -30,6 +30,5 @@ export const cloudPlaceOf = (keys: KeyReader): PlaceRunner => ({
   },
   inputs: { image: ['content-hash'], video: ['content-hash'], audio: ['content-hash'] }, // uploaded as Comfy assets inside the run (Idempotency-Key per file)
 });
-export const cloudPlace = cloudPlaceOf(ANY_KEY);
 
 export default definePlugin({ name: 'place-comfy-cloud', inject: ['places', 'keys', 'pricing'], keys: CLOUD_KEYS, apply(ctx) { ctx.places.register(cloudPlaceOf(ctx.keys)); ctx.pricing.addOn(charswapAnchorAddOn); } });

@@ -19,7 +19,7 @@ import { EXTRA_ROUTES, FAL_ENV, COMFY_ENV, LOCAL_ROUTE_BLOCK, LOCAL_HW_BLOCK, PA
 import { NATIVE_DIRECT } from '../routing/directRoutes.js';
 import { ROUTER_MODELS, ROUTER_RUNNER_ROUTES } from '../routing/routerModels.js';
 import { routerBase, ROUTER_NO_FALLBACK } from '../comfyRouter.js';
-import { keyValue } from '../routing/keys.js';
+import { keyValue } from '../kernel/coreKeys.js';
 import { clipLink } from '../routing/renderUpload.js';
 import type { RouteDef, RouteAttempt } from '../routing/types.js';
 import type { Job } from '../jobs.js';

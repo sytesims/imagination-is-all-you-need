@@ -1,9 +1,8 @@
-/** Key status only: never returns key values. The key functions live in kernel/keys.ts (ctx.keys); they are re-exported here for code
- *  that has no ctx yet (full access, as before). */
+/** Key status only: never returns key values (plugins read values through ctx.keys; the core through kernel/coreKeys.ts). */
 import { config } from '../config.js';
 import { env } from '../env.js';
 import { getPrefs } from './prefs.js';
-export { keyConfigured, keyValue } from '../kernel/keys.js';
+export { keyConfigured } from '../kernel/coreKeys.js';
 /** Tests/demos only, MOCK backend only: OPENHIGGSFIELD_MOCK_KEYS=1 (or PUT /api/me/routing {global:{mockKeys:true}}) treats the NATIVE hosted keys
  * (Comfy API, direct vendor APIs) as configured, i.e. the pre-routing behaviour where hosted runs were mocked. fal/Replicate still need real keys. */
 export const mockKeys = () => config.backend === 'mock' && (/^(1|true|on|yes)$/i.test(env('MOCK_KEYS') ?? '') || getPrefs().global.mockKeys === true);

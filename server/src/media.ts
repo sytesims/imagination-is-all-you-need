@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn } from './security/childProcess.js';
 import { statSync } from 'node:fs';
 
 export interface Probe { duration: number; width: number; height: number; hasAudio: boolean; /** frames per second (r_frame_rate), when ffprobe says */ fps?: number }

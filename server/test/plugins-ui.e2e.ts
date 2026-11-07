@@ -4,7 +4,7 @@
 //  - Turning off Canvas names what else goes off (409 confirm), then does it live; turning Canvas agent on brings Canvas back (same routes).
 //  - Restart-only plugins (webhooks) and route plugins that weren't running at start (comfy-deploy) say "after a restart".
 //  - Install kie.ai / RunPod: they need their key (RunPod: and its Endpoint ID).
-//  - Safe mode pauses a plugin that isn't ours; ours stay on. A plugin that throws at start is marked failed, the app keeps going.
+//  - A plugin that isn't ours is refused (never loaded or run; Turn on answers 403); safe mode shows it paused and keeps ours on.
 //  - Choices survive a restart (a second server on the same data dir); /api/ui follows them.
 //  - The old workflow folder list lives at /api/workflow-folders; the web's Your workflows page at /workflows/yours.
 // Run: npm test -- --only "plugins-ui" --jobs 1 (or npx tsx test/plugins-ui.e2e.ts). Temp data dir, mock backend, no key, nothing sent anywhere.
@@ -20,9 +20,9 @@ delete process.env.OPENHIGGSFIELD_PLUGIN_CHOICES; // this test is about the choi
 for (const k of Object.keys(process.env)) if (/_KEY$|TOKEN/.test(k)) delete process.env[k];
 
 const SB = await import('../src/kernel/switchboard.js');
-const live = { outside: false };
-SB.registerOutsidePlugin('fake-outside', { name: 'Pixel theme', description: 'Someone else’s plugin', load: async () => ({ default: { name: 'fake-outside', apply(ctx: any) { ctx.effect(() => { live.outside = true; return () => { live.outside = false; }; }); } } }) });
-SB.registerOutsidePlugin('fake-broken', { name: 'Broken one', description: 'Throws while it starts', load: async () => ({ default: { name: 'fake-broken', apply() { throw new Error('The speech model isn’t on this computer yet.'); } } }) });
+const live = { outside: false, loaded: 0, key: undefined as unknown };
+SB.registerOutsidePlugin('fake-outside', { name: 'Pixel theme', description: 'Someone else’s plugin', load: async () => { live.loaded++; return { default: { name: 'fake-outside', keys: ['OPENHIGGSFIELD_FAL_KEY'], apply(ctx: any) { try { live.key = ctx.keys.get('OPENHIGGSFIELD_FAL_KEY'); } catch { /* */ } ctx.effect(() => { live.outside = true; return () => { live.outside = false; }; }); } } }; } });
+SB.registerOutsidePlugin('fake-broken', { name: 'Broken one', description: 'Throws while it starts', load: async () => ({ default: { name: 'fake-broken', apply() { live.loaded++; throw new Error('The speech model isn’t on this computer yet.'); } } }) });
 const { boot } = await import('../src/boot.js'); await boot();
 
 const get = async (u: string, base = B) => { const r = await fetch(base + u); return { status: r.status, body: (await r.json().catch(() => null)) as any }; };
@@ -93,18 +93,17 @@ try {
   assert.ok((await ui()).includes('place-kie') && (await ui()).includes('place-runpod'));
   ok('kie.ai and RunPod install (nothing downloaded) and then need their key; RunPod also its Endpoint ID');
 
-  // ---- safe mode and a plugin that isn't ours ----
-  const fo = await row('fake-outside'); assert.equal(fo.source, 'community'); assert.equal(fo.state, 'on'); assert.equal(live.outside, true);
+  // ---- plugins that aren't ours: refused for now; safe mode ----
+  const fo = await row('fake-outside'); assert.equal(fo.source, 'community'); assert.equal(fo.state, 'off'); assert.equal(fo.reason, SB.OUTSIDE_REFUSED);
+  assert.equal(live.outside, false); assert.equal(live.loaded, 0, 'never loaded, so none of its code ran'); assert.equal(live.key, undefined, 'it read no key');
+  const on = await send('POST', '/api/plugins/fake-outside', { on: true }); assert.equal(on.status, 403); assert.equal(on.body.code, 'outside_refused'); assert.equal(live.loaded, 0);
+  assert.equal((await row('fake-broken')).state, 'off'); assert.equal((await get('/api/health')).status, 200);
   assert.equal((await send('PUT', '/api/settings/safe-mode', { on: true })).status, 200);
-  assert.equal(live.outside, false); assert.equal((await row('fake-outside')).state, 'paused'); assert.equal((await row('fake-outside')).reason, 'Paused by safe mode');
+  assert.equal((await row('fake-outside')).state, 'paused'); assert.equal((await row('fake-outside')).reason, 'Paused by safe mode');
   assert.equal((await row('canvas')).state, 'on'); assert.equal((await list()).safeMode, true); assert.equal((await get('/api/ui')).body.safeMode, true);
-  await send('PUT', '/api/settings/safe-mode', { on: false }); assert.equal(live.outside, true);
-  ok('safe mode pauses the outside plugin (its effects undone) and keeps ours on; off brings it back');
-
-  // ---- a plugin that throws while it starts ----
-  const fb = await row('fake-broken'); assert.equal(fb.state, 'failed'); assert.match(fb.reason, /speech model/); assert.equal((await get('/api/health')).status, 200);
-  await send('POST', '/api/plugins/fake-broken', { on: false }); assert.equal((await row('fake-broken')).state, 'off');
-  ok('a plugin that throws is marked failed with its reason, the app keeps going; Turn off clears it');
+  await send('PUT', '/api/settings/safe-mode', { on: false }); assert.equal(live.outside, false); assert.equal(live.loaded, 0, 'safe mode off still starts nothing of theirs');
+  assert.ok(!(await ui()).includes('fake-outside')); assert.equal((await send('POST', '/api/plugins/fake-outside', { on: false })).status, 200);
+  ok('plugins that are not ours are refused (never loaded, no key read, Turn on 403); safe mode shows them paused and keeps ours on');
 
   // ---- the old list moved ----
   const wf = await get('/api/workflow-folders'); assert.equal(wf.status, 200); assert.ok(Array.isArray(wf.body));

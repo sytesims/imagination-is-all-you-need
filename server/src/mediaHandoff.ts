@@ -16,7 +16,7 @@
  * Comfy Cloud graphs upload their inputs with the Comfy Cloud upload API (comfy/cloudV2.ts upload()), the documented way for workflows
  * (docs.comfy.org/development/cloud/api-reference "Uploading Inputs"); that path stays in the cloud client because it needs the run's client.
  */
-import { readKey } from './kernel/keys.js';
+import { readKey } from './kernel/coreKeys.js';
 import { places } from './services/places.js';
 import { createHash } from 'node:crypto';
 import { statSync } from 'node:fs';

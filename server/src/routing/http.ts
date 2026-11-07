@@ -32,7 +32,7 @@ import { freeSamples, SAMPLE_NOTE, adjustNotesById, option, autoOrder, plan, res
 import { mockKeys } from './keys.js';
 import { getPrefs, savePrefs, livePerModel, envUseLocal, setFavourite } from './prefs.js';
 import { CLOUD_DEFAULTS } from '../shared/cloudDefaults.js';
-import { providerSettings, storeKey, storeField, removeKey, isLoopback, ACCOUNT_ONLY } from './settings.js';
+import { providerSettings, storeKey, storeField, removeKey, isLoopback, ACCOUNT_ONLY, keyBaseWarnings } from './settings.js';
 import { continueCheck, continueOn, decline, plainRoute } from './run.js';
 import type { RoutingPrefs, RouteOption, ToolPin } from './types.js';
 import { preferRunnablePart } from './partPick.js';
@@ -420,7 +420,7 @@ export function registerRouting(app: FastifyInstance) {
     const r = resolveModelId(toolId, id, req.query.types ? { types: req.query.types } : null);
     return r ? r : reply.code(404).send({ error: `${getTool(toolId)!.name} has no model "${id}".`, errorType: 'not_found', models: toolModels(toolId).map((m) => m.key) });
   });
-  app.get('/api/settings/providers', async () => ({ providers: providerSettings(), canStoreKeys: isLoopback(process.env.HOST), storeKeysNote: 'Keys can be saved here only when the server runs on this computer. Otherwise add them to the server’s settings file. Saved keys are never shown again.', storeKeysDetail: 'POST /api/settings/providers writes .env.local only when the server binds to 127.0.0.1/::1 (HOST env). Key values are never returned.' }));
+  app.get('/api/settings/providers', async () => ({ providers: providerSettings(), baseWarnings: keyBaseWarnings(), canStoreKeys: isLoopback(process.env.HOST), storeKeysNote: 'Keys can be saved here only when the server runs on this computer. Otherwise add them to the server’s settings file. Saved keys are never shown again.', storeKeysDetail: 'POST /api/settings/providers writes .env.local only when the server binds to 127.0.0.1/::1 (HOST env). Key values are never returned.' }));
   app.post('/api/settings/providers', async (req, reply) => {
     if (!isLoopback(process.env.HOST)) return reply.code(403).send({ error: 'Saving keys from the browser is off because the server isn’t running on this computer. Add the key to the server’s settings file instead.', errorType: 'forbidden', detail: 'The server is not bound to localhost: set HOST=127.0.0.1, or put the key in .env.local.' });
     const b = (req.body ?? {}) as { id?: string; key?: string; field?: string; value?: string };
