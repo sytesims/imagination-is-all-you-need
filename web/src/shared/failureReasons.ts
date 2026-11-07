@@ -205,7 +205,7 @@ export function failView(j: FailJob, ctx: FailCtx = {}): FailView {
     : r.key === 'declined' && refusalReason(j.providerError) ? refusalReason(j.providerError)! /* the provider said why: "The provider refused a photo of a real person." */
     : MADE.has(r.key) && !j.canCollect ? 'It can’t be fetched any more. Run it again to make a new one.'
     : r.key === 'local_stalled' && mins ? `Nothing moved for ${mins} minute${mins === '1' ? '' : 's'}, so we stopped it. Try again.` : r.key === 'local_too_long' && mins ? `It hit the ${mins} min limit set for this computer. Try again.` : r.line;
-  return { ...r, title: titleFor(j, r.title), line, actions: actions.length ? actions : ['retry'], charge: chargeOf(j, r, ctx), detail: detailOf(j) };
+  return { ...r, title: made && !j.canCollect && r.key !== 'lost_contact' ? 'Made, but couldn’t be saved' : titleFor(j, r.title), line, actions: actions.length ? actions : ['retry'], charge: chargeOf(j, r, ctx), detail: detailOf(j) };
 }
 /** Button words. */
 export const ACTION_LABEL: Record<FailAction, string> = {
