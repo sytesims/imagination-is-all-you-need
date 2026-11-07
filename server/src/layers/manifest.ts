@@ -68,3 +68,7 @@ export function exportManifest(m: LayersManifest, files: { layer: (e: LayerEntry
     models: m.models,
   };
 }
+
+/** The clean background's line in the viewer's list: the model's short name (no brackets) and, when it stops early, how much it covers. */
+export const bgLine = (m: Pick<LayersManifest, 'seconds' | 'background'>) => [(m.background.model ?? '').replace(/\s*\(.*\)\s*/g, ' ').trim() || 'Clean background',
+  m.background.seconds + 0.5 < m.seconds ? `first ${m.background.seconds} s` : ''].filter(Boolean).join(' · ');

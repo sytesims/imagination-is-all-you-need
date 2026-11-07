@@ -3,7 +3,7 @@
  * recolour it (drag it on the picture, or type the numbers); add up to four texts, each in front of everything or behind a layer; Render makes a
  * new video on this computer (free) and opens it. The split itself never changes. Shared viewer classes (layerStack.css, resultViewer.css).
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { tip } from '../../shared/Tooltip';
 import type { LayersManifest } from '../../../../server/src/layers/manifest';
 import type { VideoLayerView } from './VideoLayers';
@@ -19,6 +19,9 @@ function Slider({ label, value, min, max, step, shown, onChange, testId }: { lab
 
 export function LayerEditPanel({ m, view, onError }: { m: LayersManifest; view: VideoLayerView; onError?: (msg: string) => void }) {
   const { edit } = view; const sel = edit.selected; const [busy, setBusy] = useState('');
+  /* picking a layer or a text opens its controls below the list: bring them (and Render) into view in the panel's scroll */
+  const box = useRef<HTMLDivElement>(null); const selKey = sel ? `${sel.kind}:${sel.kind === 'layer' ? sel.id : sel.index}` : '';
+  useEffect(() => { if (selKey) box.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); }, [selKey]);
   const spec = specOf(edit, view.hidden, m.layers.map((l) => l.id)); const ready = hasChanges(spec);
   const layer = sel?.kind === 'layer' ? m.layers.find((l) => l.id === sel.id) : undefined; const e = layer ? edit.edits[layer.id] ?? NO_EDIT(layer.id) : undefined;
   const text = sel?.kind === 'text' ? edit.texts[sel.index] : undefined;
@@ -29,7 +32,7 @@ export function LayerEditPanel({ m, view, onError }: { m: LayersManifest; view: 
     try { const id = await renderChanges(m.jobId, spec, m.width, m.height, (s) => setBusy(s === 'composite' ? 'Putting it together…' : 'Rendering…')); setBusy('Opening your new video…');
       const q = new URLSearchParams(location.search); q.set('view', id); location.assign(`${location.pathname}?${q}`); }
     catch (err) { setBusy(''); onError?.(err instanceof Error ? err.message : 'The render stopped.'); } };
-  return <div className="vle" data-testid="vle-panel">
+  return <div className="vle" ref={box} data-testid="vle-panel">
     <div className="rvx-sec-h"><span className="rvx-lbl">Change the layers</span></div>
     {!sel && <p className="rvx-hint" data-testid="vle-hint">Pick a layer above to move, scale or recolour it, then drag it on the picture. The eye hides it.</p>}
     {layer && e && <div className="vle-box" data-testid="vle-layer">

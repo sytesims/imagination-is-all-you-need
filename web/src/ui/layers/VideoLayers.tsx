@@ -10,25 +10,30 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePluginOn } from '../../shared/plugins';
 import { tip } from '../../shared/Tooltip';
+import { appFileName } from '../../shared/brand';
 import { LayerSheetsIcon, DownloadIcon, PlayIcon, PauseIcon } from '../Icons';
-import type { LayersManifest } from '../../../../server/src/layers/manifest';
+import { bgLine, type LayersManifest } from '../../../../server/src/layers/manifest';
 import { LAYER_JOB_TOOLS } from '../../../../server/src/layers/constants';
 import { stackOrder, isChanged } from '../../../../server/src/layers/edit';
 import { useLayerEdits, useTextPictures, cssFilter, cssTransform, NO_EDIT } from './layerEdit';
 import { LayerEditPanel } from './LayerEditPanel';
+import { useLayerThumb } from './layerThumb';
 import '../../shared/layerStack.css';
 import './videoLayers.css';
 
 export type { LayersManifest };
 export type LayersMode = 'layers' | 'depth' | 'background' | 'overview';
 
-export function useVideoLayers(job: { id: string; toolId?: string; status?: string } | null): LayersManifest | null {
-  const on = usePluginOn('studio-edit'); /* Video to layers is part of the Edit studio, with Footage Effects */ const [m, setM] = useState<LayersManifest | null>(null);
+/** The split's manifest; undefined while it loads (the viewer waits instead of flashing the plain clips), null when there is none. */
+export function useVideoLayers(job: { id: string; toolId?: string; status?: string } | null): LayersManifest | null | undefined {
+  const on = usePluginOn('studio-edit'); /* Video to layers is part of the Edit studio, with Footage Effects */
+  const [got, setGot] = useState<{ id: string; m: LayersManifest | null } | null>(null);
   const want = !!job && LAYER_JOB_TOOLS.includes(String(job.toolId)) && job.status === 'done' && on;
-  useEffect(() => { setM(null); if (!want) return; const ac = new AbortController();
-    fetch(`/api/layers/${encodeURIComponent(job!.id)}`, { signal: ac.signal }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.kind === 'video-layers') setM(d); }).catch(() => undefined);
+  useEffect(() => { if (!want) return; const id = job!.id; const ac = new AbortController();
+    fetch(`/api/layers/${encodeURIComponent(id)}`, { signal: ac.signal }).then((r) => (r.ok ? r.json() : null)).then((d) => setGot({ id, m: d?.kind === 'video-layers' ? d : null }))
+      .catch((e) => { if (e?.name !== 'AbortError') setGot({ id, m: null }); });
     return () => ac.abort(); }, [job?.id, want]); // eslint-disable-line react-hooks/exhaustive-deps
-  return want ? m : null;
+  return !want ? null : got?.id === job!.id ? got.m : undefined;
 }
 
 /** The viewer's state: hidden layers (by id), the solo layer, the background shown or not, the view, the shared clock. */
@@ -94,7 +99,7 @@ export function VideoLayersStage({ m, view }: { m: LayersManifest; view: VideoLa
         {sel?.kind === 'layer' && <><span className="vly-sel" style={{ transform: cssTransform(selEdit, W, H) }} aria-hidden data-testid="vly-sel" />
           <span className="vly-handle" onPointerDown={down('scale')} data-testid="vly-scale-handle" title="Drag towards the middle to shrink, away to grow" /* always in view, wherever the layer went */ /></>}
         {sel?.kind === 'text' && edit.texts[sel.index] && <span className="vly-text-sel" style={{ left: `${(edit.texts[sel.index].x / W) * 100}%`, top: `${(edit.texts[sel.index].y / H) * 100}%` }} aria-hidden data-testid="vly-text-sel" />}
-        {shown === 0 && !(view.bgOn && m.background.url) && !changed && <span className="ly-none">All layers hidden</span>}
+        {shown === 0 && !(view.bgOn && view.solo == null && m.background.url) && !(changed && !m.background.url) && !edit.texts.length && <span className="ly-none" data-testid="vly-none">All layers hidden</span>}
       </>}
       {mode === 'depth' && m.depth.url && <video key="depth" src={m.depth.url} {...vprops} data-testid="vly-depth" />}
       {mode === 'background' && m.background.url && <video key="plate" src={m.background.url} {...vprops} data-testid="vly-plate" />}
@@ -119,9 +124,16 @@ const SoloGlyph = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="no
 const EyeGlyph = ({ off }: { off: boolean }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
   <path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z" /><circle cx="12" cy="12" r="2.6" />{off && <path d="M4 20 20 4" />}</svg>;
 
+/** A layer's tile: its cut-out cropped to the object over the checkerboard (layerThumb.ts); the clip itself until (or if) that can't be made. */
+function LayerThumb({ url }: { url: string }) {
+  const src = useLayerThumb(url);
+  return src ? <img className="vly-thumb alpha-bg" src={src} alt="" aria-hidden data-testid="vly-thumb" />
+    : <video className="vly-thumb alpha-bg" src={`${url}#t=0.5`} muted playsInline preload="metadata" aria-hidden />;
+}
+
 export function VideoLayersPanel({ m, view, onError }: { m: LayersManifest; view: VideoLayerView; onError?: (msg: string) => void }) {
   const [ex, setEx] = useState<'' | 'busy' | 'done'>(''); const topDown = [...m.layers].sort((a, b) => b.order - a.order);
-  const modes = MODES.filter((x) => (x.id !== 'depth' || !!m.depth.url) && (x.id !== 'background' || !!m.background.url));
+    const modes = MODES.filter((x) => (x.id !== 'depth' || !!m.depth.url) && (x.id !== 'background' || !!m.background.url));
   const exportZip = async () => { if (ex === 'busy') return; setEx('busy');
     try { const r = await fetch(`/api/layers/${encodeURIComponent(m.jobId)}/export`, { method: 'POST' }); const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.url) throw new Error(d.error || 'The export could not be made');
@@ -139,17 +151,17 @@ export function VideoLayersPanel({ m, view, onError }: { m: LayersManifest; view
           <button type="button" className={`ly-eye vly-solo${solo ? ' on' : ''}`} aria-pressed={solo} aria-label={`${solo ? 'Stop solo' : 'Solo'} ${l.name}`} {...tip(solo ? 'Show every layer again' : 'Show only this layer')} onClick={() => view.toggleSolo(l.id)} data-testid={`vly-solo-${l.id}`}><SoloGlyph /></button>
           <button type="button" className="ly-pick" aria-pressed={view.edit.selected?.kind === 'layer' && view.edit.selected.id === l.id} data-testid={`vly-pick-${l.id}`} {...tip('Change this layer: move, scale, colour')}
             onClick={() => { view.setMode('layers'); view.edit.select(view.edit.selected?.kind === 'layer' && view.edit.selected.id === l.id ? null : { kind: 'layer', id: l.id }); }}>
-          <video className="vly-thumb" src={`${l.matteUrl}#t=0.5`} muted playsInline preload="metadata" aria-hidden />
+          <LayerThumb url={l.previewUrl} />
           <span className="ly-name"><b><i className="vly-dot" style={{ background: l.colour }} aria-hidden />{l.name}</b>
             <small>{pos}{l.depth != null ? ` · depth ${Math.round(l.depth * 100)}%` : ''}{l.coverage < 0.5 ? ` · in ${Math.round(l.coverage * 100)}% of the clip` : ''}</small></span></button>
-          <a className="ly-dl" href={l.previewUrl} download aria-label={`Download ${l.name} (WebM with transparency)`} {...tip('This layer as a WebM with transparency')} data-testid={`vly-dl-${l.id}`}><DownloadIcon size={15} /></a>
+          <a className="ly-dl" href={l.previewUrl} download={appFileName(`${m.jobId}-${l.name}`, 'webm')} aria-label={`Download ${l.name} (WebM with transparency)`} {...tip('This layer as a WebM with transparency')} data-testid={`vly-dl-${l.id}`}><DownloadIcon size={15} /></a>
         </li>; })}
       {m.background.url && <li className={`ly-row${view.bgOn && view.solo == null ? '' : ' off'}`} data-testid="vly-row-bg">
         <button type="button" className="ly-eye" aria-pressed={view.bgOn} aria-label={`${view.bgOn ? 'Hide' : 'Show'} the clean background`} onClick={view.toggleBg} data-testid="vly-eye-bg"><EyeGlyph off={!view.bgOn} /></button>
         <span className="vly-solo-gap" aria-hidden />
         <video className="vly-thumb" src={`${m.background.url}#t=0.5`} muted playsInline preload="metadata" aria-hidden />
-        <span className="ly-name"><b>Clean background</b><small>{m.background.model}{m.background.note ? ` · first ${m.background.seconds} s` : ''}</small></span>
-        <a className="ly-dl" href={m.background.url} download aria-label="Download the clean background" data-testid="vly-dl-bg"><DownloadIcon size={15} /></a></li>}
+        <span className="ly-name"><b>Clean background</b><small {...tip(m.background.model ?? null)}>{bgLine(m)}</small></span>
+        <a className="ly-dl" href={m.background.url} download={appFileName(`${m.jobId}-clean-background`, 'mp4')} aria-label="Download the clean background" data-testid="vly-dl-bg"><DownloadIcon size={15} /></a></li>}
     </ul>
     {m.background.note && <p className="rvx-hint vly-note" data-testid="vly-bg-note">{m.background.note}</p>}
     <LayerEditPanel m={m} view={view} onError={onError} />
