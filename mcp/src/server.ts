@@ -13,6 +13,7 @@ import { buildIndex, search, toolModes, type Entry } from './search.js';
 import { parseRecipe, recipeToRun } from './recipe.js';
 import { quoteView } from './quoteView.js';
 import { issuesOf } from './issues.js';
+import { parseIntent, matchModels, limitsFromEngines, narrowSchema } from './modelSearch.js';
 /** A tool's real presets: an app that locks its base tool's mode or style (Transitions, UGC Ad, Change Voice, Product Shot, Anime Restyle…) has none of
  *  its own; the base tool's modes (t2v, i2v, translate…) are not presets there, and the app always runs its locked one. */
 const toolPresets = (t: any): any[] => (t.app?.gallery?.locked?.types || t.app?.gallery?.locked?.preset ? [] : t.presets ?? []);
@@ -409,18 +410,31 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
   const workflowRun = (w: any) => w.run !== undefined ? w.run : w.area === 'video' ? { tool_id: w.toolId, fields: { [w.field ?? 'videoPreset']: w.id, prompt: '…' } }
     : w.area === 'audio' && w.mode ? { tool_id: w.toolId, fields: { types: [w.mode], prompt: '…' } } : w.area === '3d' && w.mode ? { tool_id: w.toolId, fields: { types: [w.mode] } } : { tool_id: w.toolId, fields: {} };
   /** describe for one tool: field schema, presets, models with limits and run_on prices, and the price rules (draft, option factors, ladder). `focus` puts that model first. */
-  const describeTool = async (t: any, focus?: string) => {
-    const ms = await get(`/api/models?toolId=${encodeURIComponent(t.id)}`).catch(() => null); const list: any[] = !ms ? [] : Array.isArray(ms) ? ms : ms.groups ? ms.groups.flatMap((g: any) => g.models) : ms.models ?? [];
+  /** A tool's model engines (GET /api/models?toolId=: modes, seconds, resolutions per engine), cached 30 s for search and describe. */
+  const engineCache = new Map<string, { at: number; list: Promise<any[]> }>();
+  const enginesOf = (toolId: string): Promise<any[]> => { const c = engineCache.get(toolId); if (c && Date.now() - c.at < 30_000) return c.list;
+    const list = get(`/api/models?toolId=${encodeURIComponent(toolId)}`).then((ms: any) => (Array.isArray(ms) ? ms : ms?.groups ? ms.groups.flatMap((g: any) => g.models) : ms?.models ?? []), () => []);
+    engineCache.set(toolId, { at: Date.now(), list }); return list; };
+  /** narrow (describe {id, model}): the fields narrowed to that model (its modes, lengths, resolutions, with its defaults), only that model's card, and a price at those defaults. */
+  const describeTool = async (t: any, focus?: string, narrow = false) => {
+    const list: any[] = await enginesOf(t.id);
     const capsByKey = new Map<string, any>(); for (const x of list) if (x.modelKey && (x.capabilities || x.videoLimits) && !capsByKey.has(x.modelKey)) capsByKey.set(x.modelKey, x.capabilities ?? x.videoLimits);
     const pg: any = await get('/api/prompt-grammar').catch(() => null); // prompt grammar (read-only): how each model reads @image1… and its prompt cap
     const models = (t.models ?? []).map((x: any) => { const tip = pg?.models?.[x.key]; return { ...modelCard(x, capsByKey.get(x.key)), ...(tip && !tip.noPrompt ? { prompt: { refs: tip.refs, ...(tip.limit ? { limit: tip.limit } : {}), ...(tip.triggers ? { triggers: tip.triggers } : {}) } } : {}) }; }); if (focus) models.sort((a: any, b: any) => Number(b.model === focus) - Number(a.model === focus));
     const factors = t.pricing?.optionFactors && Object.keys(t.pricing.optionFactors).length ? t.pricing.optionFactors : null;
+    const lim = narrow && focus ? limitsFromEngines(list.filter((x: any) => x.modelKey === focus)) : null; const narrowFields = lim ? narrowSchema(fieldSchema(t), lim) : null;
+    let atDefault: Record<string, unknown> | null = null;
+    if (narrowFields) { const p = narrowFields.properties ?? {}; const fields: Record<string, unknown> = {};
+      if (p.types) { const e = (p.types.items ?? p.types).enum; if (e?.length) fields.types = [e[0]]; } if (p.duration?.default != null) fields.duration = p.duration.default; if (p.resolution?.default != null) fields.resolution = p.resolution.default;
+      const q = await quoteOne(t.id, { ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, Array.isArray(v) ? JSON.stringify(v) : String(v)])), model: focus! }).catch(() => null);
+      atDefault = { fields, ...(q ? { priceLabel: q.priceLabel, usd: q.costUsd ?? q.usd, runnable: q.runnable, ...(q.runnable ? {} : { blockedReason: q.blockedReason }), runOn: q.runOn } : { priceLabel: null }) }; }
+    if (narrow && focus) { const keep = models.filter((x: any) => x.model === focus); if (keep.length) models.splice(0, models.length, ...keep); }
     return { kind: 'tool', id: t.id, name: t.name, media: t.media, category: t.category ?? t.group ?? null, description: t.description, page: t.route ? webLink(t.route) : null,
-      fields: fieldSchema(t), commonFields: COMMON_JOB_FIELDS,
+      fields: narrowFields ?? fieldSchema(t), commonFields: COMMON_JOB_FIELDS,
       presets: toolPresets(t).map((p: any) => ({ id: p.id, label: p.label ?? p.name, group: p.group ?? null, ...(p.description ? { description: p.description } : {}) })) /* all of them (Camera Moves: 82) */, presetField: toolPresets(t).length ? ((t.inputs ?? []).some((i: any) => i.name === 'types') ? 'types' : 'preset') : null,
-      defaultModel: (t.models ?? []).find((x: any) => x.isDefault)?.key ?? null, ...(focus ? { model: focus, modelOffered: models.some((x: any) => x.model === focus) } : {}), models, localFree: !!t.localFree, ...(t.draft ? { draft: t.draft } : {}),
+      defaultModel: (t.models ?? []).find((x: any) => x.isDefault)?.key ?? null, ...(focus ? { model: focus, modelOffered: models.some((x: any) => x.model === focus) } : {}), ...(lim ? { modelLimits: lim, atDefault, narrowedTo: focus } : {}), models, localFree: !!t.localFree, ...(t.draft ? { draft: t.draft } : {}),
       priceRules: { perModelAndPlace: 'models[].run_on[].credits (1 credit = $0.01); quote gives the exact price for your fields', ...(t.draft ? { draft: `draft:true renders ${t.draft.quality} at ×${t.draft.factor} of the price` } : {}), ...(factors ? { optionFactors: factors } : {}), ...(t.priceLadder ? { ladder: t.priceLadder } : {}) },
-      next: `quote {tool_id:"${t.id}", fields, model, run_on} → tell the user the price → run {tool_id:"${t.id}", fields, model, run_on, max_usd}. Fields not in the schema are passed through (e.g. loop:1 when a model's limits say loop:true; videoPreset on h3-video).`, catalog: catalogSource() };
+      next: `quote {tool_id:"${t.id}", fields, model, run_on} → tell the user the price → run {tool_id:"${t.id}", fields, model, run_on, max_usd}. Fields not in the schema are passed through (e.g. loop:1 when a model's limits say loop:true; videoPreset on h3-video). types takes a list (["i2v"]) or one id ("i2v").`, catalog: catalogSource() };
   };
   const CORE_DESC_RUN = 'Start a job on ANY studio tool (tool ids come from the app catalogue: Generate Video incl. Loop on LTX-2.5, Transitions/Morph, Object Swap / Motion Transfer / Restyle incl. cloud Kling or Seedance edit, Re-shoot, Camera Moves, the Edit Video tools, Audio, Voice, 3D, Render for Direct a Shot, the image apps…). fields = the job fields from describe (media fields take a local path, URL or /files/… path; lists as arrays). It ALWAYS quotes first and returns the quote with the job; max_usd refuses the run with nothing sent when the quote is over it (pass the price the user approved; 0 = free runs only). If approval is configured for paid runs, a paid quote asks the user with the price; free local runs go straight through. from_job hands a past output in without re-uploading. Waits for the result by default; wait:false returns the id for status.';
 
@@ -441,7 +455,13 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
         const mediaOk = (e: Entry) => !m || (e.kind === 'model' ? e.ref.tools?.some((id: string) => ts.find((t: any) => t.id === id)?.media === m) : e.media === m);
         const want = (e: Entry) => (!kind || e.kind === kind) && mediaOk(e)
           && (!wantFree || (e.kind === 'model' ? e.ref.local : e.kind === 'tool' ? isLocal(e.ref) : e.kind === 'mode' ? isLocal(e.ref.tool) : true));
-        const hits = search(index, ws.join(' ') || (wantFree ? '' : query ?? ''), want); const partial = hits.length > 0 && hits[0].partial;
+        const intent = parseIntent(query ?? '');
+        let hits = search(index, ws.join(' ') || (wantFree ? '' : query ?? ''), want);
+        // "Kling 15 s from an image": the phrases are limits, not names; search the name words alone when the whole query finds nothing whole
+        if ((!hits.length || hits[0].partial) && intent.words.length && intent.words.join(' ') !== ws.join(' ')) { const h2 = search(index, intent.words.join(' '), want); if (h2.length && !h2[0].partial) hits = h2; }
+        const partial = hits.length > 0 && hits[0].partial;
+        const matches = await matchModels(m ? ts.filter((x: any) => x.media === m) : ts, m && !intent.media ? { ...intent, media: m } : intent, enginesOf).catch(() => []);
+        const understood = intent.seconds != null || intent.mode || intent.resolution || intent.free ? { seconds: intent.seconds, mode: intent.mode, resolution: intent.resolution, free: intent.free, local: intent.local, names: intent.words } : null;
         const of = (k: Entry['kind']) => hits.filter((h) => h.entry.kind === k).map((h) => h.entry.ref);
         const tools = of('tool').map((t: any) => ({ id: t.id, name: t.name, media: t.media, description: String(t.description ?? '').slice(0, 200), models: (t.models ?? []).length, page: t.route ? webLink(t.route) : null }));
         const modes = of('mode').map(({ tool: t, mode: md }: any) => ({ id: `${t.id}/${md.id}`, name: `${t.name} · ${md.label}`, media: t.media, description: md.description, run: { tool_id: t.id, fields: md.fields } }));
@@ -449,16 +469,23 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
         const wfs = of('workflow').map((w: any) => ({ id: w.id, area: w.area, name: w.name, tagline: w.tagline, toolId: w.toolId, status: w.status, ...(w.kind ? { kind: w.kind } : {}), run: workflowRun(w), ...(w.note ? { note: w.note } : {}) }));
         const top = hits.slice(0, 5).map((h) => { const e = h.entry; const r = e.kind === 'workflow' ? workflowRun(e.ref) : e.kind === 'mode' ? { tool_id: e.ref.tool.id, fields: e.ref.mode.fields } : e.kind === 'tool' ? { tool_id: e.id, fields: {} } : null;
           return { id: e.id, kind: e.kind, name: e.name, ...(r ? { run: r } : {}) }; });
-        return text({ query: query ?? '', ...(partial ? { partial: true, note: 'Nothing matched every word; these match most of them.' } : {}), top, tools: tools.slice(0, limit), modes: modes.slice(0, limit), models: models.slice(0, limit), workflows: wfs.slice(0, limit),
-          next: 'describe {id} (a tool id, tool mode like footage-fx/vanish, model key or workflow id) for the exact fields, limits and prices; the run arguments go to quote, then run.' });
+        const best = matches.filter((x) => x.fits).slice(0, 3).map((x) => ({ id: `${x.tool_id}:${x.model}`, kind: 'model-run', name: `${x.name} · ${x.toolName}`, run: x.run, why: x.why.join('; ') }));
+        return text({ query: query ?? '', ...(understood ? { understood } : {}), ...(partial && !best.length ? { partial: true, note: 'Nothing matched every word; these match most of them.' } : {}), top: [...best, ...top].slice(0, 6),
+          ...(matches.length ? { modelMatches: matches.map((x) => ({ tool_id: x.tool_id, toolName: x.toolName, model: x.model, name: x.name, maker: x.maker, fits: x.fits, why: x.why.join('; '), ...(x.notes.length ? { notes: x.notes } : {}), run: x.run, places: x.places })) } : {}),
+          tools: tools.slice(0, limit), modes: modes.slice(0, limit), models: models.slice(0, limit), workflows: wfs.slice(0, limit),
+          next: matches.some((x) => x.fits) ? 'modelMatches[0].run is ready: quote it (tell the user the price), then run with the quote_id. describe {id: tool_id, model} gives that model\'s exact fields and limits.'
+            : 'describe {id} (a tool id, tool mode like footage-fx/vanish, model key or workflow id; add model to narrow a tool to one model) for the exact fields, limits and prices; the run arguments go to quote, then run.' });
       } catch (e) { return fail(e); }
     });
 
-  s.registerTool('describe', { title: 'Describe', description: 'Exact options for one id, generated from the app: a workflow / flow / template id (video/loop, video/lip-sync, template/fruit-drama, explore/…) or a tool mode (footage-fx/vanish) gives its ready run arguments plus the full tool description below, with its model first; a tool id gives its job fields as a JSON Schema (types, allowed values, required, which fields take media), presets, modes, the fields every job takes, and its models with real names, open weights, licence, limits (lengths, resolutions, aspects, sound, loop, reference kinds) and every run_on place with status and price in credits (1 credit = $0.01). A model key gives that model across tools. A workflow id gives the workflow, the tool that runs it and the run arguments. Spends nothing. Next: quote, then run.', inputSchema: { id: z.string().describe('Tool id (h3-video, app-transition, object-swap, reshoot, make-it-real, three-d…), model key (ltx-2.5-22b, seedance-2.0…) or workflow id') } },
-    async ({ id }) => {
+  s.registerTool('describe', { title: 'Describe', description: 'Exact options for one id, generated from the app: a workflow / flow / template id (video/loop, video/lip-sync, template/fruit-drama, explore/…) or a tool mode (footage-fx/vanish) gives its ready run arguments plus the full tool description below, with its model first; a tool id gives its job fields as a JSON Schema (types, allowed values, required, which fields take media), presets, modes, the fields every job takes, and its models with real names, open weights, licence, limits (lengths, resolutions, aspects, sound, loop, reference kinds) and every run_on place with status and price in credits (1 credit = $0.01). A model key gives that model across tools. A workflow id gives the workflow, the tool that runs it and the run arguments. Spends nothing. Next: quote, then run.', inputSchema: { id: z.string().describe('Tool id (h3-video, app-transition, object-swap, reshoot, make-it-real, three-d…), model key (ltx-2.5-22b, seedance-2.0…) or workflow id'),
+      model: z.string().optional().describe('With a tool id: narrow the fields to this model (its modes, lengths, resolutions and defaults, e.g. kling-v3 on h3-video: 3–15 s, 720p / 1080p) and price it at those defaults') } },
+    async ({ id, model }) => {
       try {
         const ts = await loadTools(); const t: any = (await loadTools(false, true)).find((x: any) => x.id === id);
-        if (t) return text(await describeTool(t));
+        if (t) { if (model && !(t.models ?? []).some((x: any) => x.key === model)) { const near = (t.models ?? []).map((x: any) => x.key).filter((k: string) => k.includes(model) || model.includes(k) || k.split('-')[0] === model.split('-')[0]).slice(0, 6);
+            return fail(new Error(`${t.name} (${t.id}) has no model "${model}".${near.length ? ` Did you mean: ${near.join(', ')}?` : ''} describe {id:"${t.id}"} lists its models.`)); }
+          return text(await describeTool(t, model, !!model)); }
         const mc = modelIndex(ts).find((x) => x.model === id);
         if (mc) { const promptGrammar = await get(`/api/models/${encodeURIComponent(id)}/prompt-grammar`).catch(() => null); // read-only: reference syntax, limits, syntax, sources
           return text({ kind: 'model', ...mc, ...(promptGrammar ? { promptGrammar } : {}), perTool: ts.filter((x: any) => mc.tools.includes(x.id)).map((x: any) => ({ toolId: x.id, toolName: x.name, ...modelCard((x.models ?? []).find((y: any) => y.key === id)) })), next: 'describe {tool id} for the fields; run with model set to this key.' }); }
