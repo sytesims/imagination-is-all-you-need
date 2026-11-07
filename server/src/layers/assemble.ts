@@ -111,8 +111,8 @@ export async function assembleLayers(job: { id: string; input: Record<string, an
     const bg = out('background.mp4'); const grow = Math.max(4, band.outer * 2); const ins = mattes.flatMap((f) => ['-i', f]);
     const hole = mattes.map((_, k) => `[${k + 2}:v]format=gray[h${k}]`); let cur = '[h0]';
     for (let k = 1; k < n; k++) { hole.push(`${cur}[h${k}]blend=all_mode=lighten[u${k}]`); cur = `[u${k}]`; }
-    const fc = [...hole, `${cur}${Array.from({ length: Math.min(grow, 24) }, () => 'dilation').join(',')},gblur=sigma=${Math.max(2, grow / 2)},format=gray[hole]`,
-      `[1:v]scale=${W}:${H}:flags=lanczos,fps=${fps},tpad=stop_mode=clone:stop=-1,format=yuv420p[pl]`, '[0:v]format=yuv420p[src]', '[src][pl][hole]maskedmerge,format=yuv420p[o]'].join(';');
+    const fc = [...hole, `${cur}${Array.from({ length: Math.min(grow, 24) }, () => 'dilation').join(',')},gblur=sigma=${Math.max(2, grow / 2)},format=gbrp[hole]` /* the mask on all three planes: a grey mask on YUV only blended the brightness and left the colour of what was removed */,
+      `[1:v]scale=${W}:${H}:flags=lanczos,fps=${fps},tpad=stop_mode=clone:stop=-1,format=gbrp[pl]`, '[0:v]format=gbrp[src]', '[src][pl][hole]maskedmerge,format=yuv420p[o]'].join(';');
     await ff(['-y', '-v', 'error', '-i', i.videoPath, '-i', raw.plate, ...ins, '-filter_complex', fc, '-map', '[o]', '-frames:v', String(frames), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '16', '-movflags', '+faststart', bg], 'clean background');
     bgUrl = fileUrl(bg);
     plate = { seconds: Number(i.plate?.footageFx?.plan?.seconds) || 5, model: where === 'comfy-cloud' ? LAYERS_MODELS.plateCloud : LAYERS_MODELS.plateLocal };
@@ -130,7 +130,7 @@ export async function assembleLayers(job: { id: string; input: Record<string, an
     urls: { preview, matte: matteUrl, overview: fileUrl(ov), source: fileUrl(i.videoPath), depth: depthUrl, background: bgUrl } });
   await writeFile(manifestPath(job.id), JSON.stringify(m, null, 1));
   if (raw.notes?.length) ((job as any).warnings ??= []).push(...raw.notes);
-  if (where === 'comfy-cloud' && i.background) ((job as any).warnings ??= []).push(CLOUD_PLATE_NOTE);
+  if (where === 'comfy-cloud' && i.background && !raw.plate) ((job as any).warnings ??= []).push(CLOUD_PLATE_NOTE);
   const warn = order.filter((id) => cov[id] < 0.05).map((id) => `“${i.objects[id]}” was hardly found in the clip. Try other words, or check it is in the first frame.`);
   if (warn.length) ((job as any).warnings ??= []).push(...warn);
   return [
