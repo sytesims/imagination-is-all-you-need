@@ -77,5 +77,11 @@ try {
   ok(`describe {h3-video, kling-v3}: 3–15 s, 720p / 1080p, priced at ${JSON.stringify(d.atDefault.fields)} → ${d.atDefault.priceLabel}`);
   const bad = await call('describe', { id: 'h3-video', model: 'kling' }); assert.ok(bad.err); assert.match(String(bad.body), /no model "kling"\. Did you mean: .*kling-v3/);
   ok('describe with a model the tool lacks → did you mean');
+  // step 8: tool_id is a plain string checked live ("did you mean"); types takes "generate" or ["generate"] (same request, same quote)
+  const typo = await call('run', { tool_id: 'create_image', fields: { prompt: 'a mug', types: ['generate'] }, run_on: 'local' }); assert.ok(typo.err); assert.match(String(typo.body), /Unknown tool .create_image.\. Did you mean: create-image/);
+  const qa = (await call('quote', { tool_id: 'h3-video', fields: { prompt: 'x', types: 'i2v', image: '/samples/sample-pattern.png' }, model: 'kling-v3' })).body; const qb = (await call('quote', { tool_id: 'h3-video', fields: { prompt: 'x', types: ['i2v'], image: '/samples/sample-pattern.png' }, model: 'kling-v3' })).body;
+  assert.equal(qa.credits, qb.credits); assert.equal(qa.runnable, qb.runnable);
+  const fr = await call('run', { tool_id: 'create-image', fields: { prompt: 'a mug on a desk', types: 'generate' }, run_on: 'local', wait_sec: 60 }); assert.ok(!fr.err, JSON.stringify(fr.body).slice(0, 300)); assert.equal(fr.body.status, 'done');
+  ok('tool_id typo → did you mean create-image; types "i2v" prices like ["i2v"]; a free run with types "generate" runs');
   console.log('ALL OK model-search');
 } finally { await c.close(); }

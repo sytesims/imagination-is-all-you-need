@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { loadPermissions, permFor, permOrigin, spendBlockIsPriceAware, spendBlockedReason, SAFE_SPEND_HINT } from '../src/permissions.js';
 import { quoteView } from '../src/quoteView.js';
 import { issuesOf } from '../src/issues.js';
+import { nearIds } from '../src/catalog.js';
 const ok = (m: string) => console.log('ok ' + m);
 
 // ---- #1 permissions ----
@@ -67,4 +68,9 @@ const ok = (m: string) => console.log('ok ' + m);
   assert.deepEqual(issuesOf({ error: 'x' }), []); assert.deepEqual(issuesOf(null), []);
   ok('a single issue keeps field + allowed ids (from the issue, the body or the tool) + next');
 }
+// ---- #11 tool ids: did you mean ----
+{ const ts = [{ id: 'h3-video', name: 'Generate Video' }, { id: 'create-image', name: 'Create Image' }, { id: 'object-swap', name: 'Object / Person Swap' }];
+  assert.equal(nearIds('h3video', ts)[0], 'h3-video'); assert.equal(nearIds('create_image', ts)[0], 'create-image'); assert.equal(nearIds('generate video', ts)[0], 'h3-video');
+  assert.equal(nearIds('create-imag', ts)[0], 'create-image'); assert.deepEqual(nearIds('zzz', ts), []);
+  ok('nearIds: - _ and spaces ignored, names, typos within 2 edits'); }
 console.log('ALL OK agent-path');

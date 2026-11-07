@@ -520,9 +520,15 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
     return (j: any) => { const p = j.progressInfo ? progressView(j.progressInfo) : null; const pct = Number(j.percent ?? j.progress ?? 0) || 0; const line = (p?.line as string) ?? `${j.status}${j.stage ? ` · ${j.stage}` : ''}`; const sig = `${pct}|${line}`; if (sig === last) return; last = sig;
       void extra.sendNotification({ method: 'notifications/progress', params: { progressToken: token, progress: pct, total: 100, message: line } }).catch(() => {}); }; };
   const pollAfter = (j: any) => Math.max(2, Math.min(30, Math.round(Number(j.eta) > 0 ? Number(j.eta) / 4 : 5)));
+  /** List fields (types…) as a list whatever the agent sent: ["i2v"], "i2v", "i2v,t2v" or '["i2v"]' → ["i2v"], so quote and run hash the same request. */
+  const normListFields = (t: any, fields: Record<string, unknown>) => { const out = { ...fields };
+    for (const i of t.inputs ?? []) { if (i.kind !== 'list' || typeof out[i.name] !== 'string') continue; const v = String(out[i.name]).trim(); let arr: unknown = null;
+      if (v.startsWith('[')) { try { arr = JSON.parse(v); } catch { /* not JSON: a plain id */ } }
+      out[i.name] = Array.isArray(arr) ? arr.map(String) : v.split(',').map((x) => x.trim()).filter(Boolean); }
+    return out; };
   /** One request → its parts, its price params and its hash (the same for quote and run, so a quote_id matches exactly one request). */
   const prepare = async (a: { tool_id: string; fields?: Record<string, unknown>; files?: Record<string, string[]>; model?: string; run_on?: string; route?: string; draft?: boolean }) => {
-    const t: any = await findTool(a.tool_id); const { form, media, unlisted } = splitFields(t, a.fields ?? {}, a.files ?? {});
+    const t: any = await findTool(a.tool_id); const { form, media, unlisted } = splitFields(t, normListFields(t, a.fields ?? {}), a.files ?? {});
     const params = priceParams(form, media, a.model, a.run_on, a.draft, media.video?.[0], t.id); if (a.route) params.route = a.route;
     return { t, form, media, unlisted, params, hash: requestHash({ toolId: t.id, form, media, model: a.model, run_on: a.run_on, draft: a.draft, ...(a.route ? { route: a.route } : {}) }) };
   };
@@ -556,7 +562,7 @@ export function createServer(opts: { http?: boolean; channel?: boolean } = {}) {
     }));
 
   s.registerTool('run', { title: 'Run', description: `${CORE_DESC_RUN}`, inputSchema: {
-    ...runRequest, tool_id: z.enum(knownToolIds() as [string, ...string[]]).describe('Tool id (generated from the app catalogue; search_capabilities / describe)'),
+    ...runRequest, tool_id: z.string().min(1).describe(`Tool id from the app catalogue (search_capabilities / describe), e.g. ${knownToolIds().slice(0, 6).join(', ')}. Checked against the live catalogue on each call, so a new tool needs no restart; an unknown id answers "did you mean"`),
     quote_id: z.string().optional().describe('From quote, for this exact request. Required when the run costs money'),
     seed: z.number().int().min(0).max(2147483647).optional(),
     from_job: z.string().optional().describe('Past job id whose output goes in as input (server-side hand-off; next_actions lists the tools that take it)'), from_output: z.number().int().min(0).optional().describe('With from_job: which output (default 0)'),
