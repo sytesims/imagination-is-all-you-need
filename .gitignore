@@ -65,3 +65,6 @@ site-try/public/
 
 # wrangler dev state
 .wrangler/
+
+# macOS Finder files
+.DS_Store
