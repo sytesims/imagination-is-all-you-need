@@ -42,7 +42,8 @@ import { fileURLToPath } from 'node:url';
 import { jobs, Job, flushJobs } from './jobs.js';
 import { db } from './db.js';
 import { enqueue, cancel, history, stateOf, canCancel, inFlight, MAX_PARALLEL, laneSizes } from './queue.js';
-import { collectable as collectableJob } from './routing/reattach.js';
+import { collectable as collectableJob, rerunNeedsPriceOk } from './routing/reattach.js';
+import { ledgerUsd as ledgerUsdOf } from './shared/priceText.js';
 import { getKv, setKv } from './db.js';
 import * as I from './idempotency.js';
 import { registerJsonErrors } from './jsonErrors.js';
@@ -1043,6 +1044,9 @@ app.post<{ Params: { id: string }; Querystring: { failedOnly?: string; runOn?: s
     { const b = (req.body ?? {}) as Record<string, any>; const rerunQuote = { credits: free ? 0 : cost, routeId: routed?.first.routeId ?? null, runOn: routed?.routing.runOn ?? null, free };
       if (/^(1|true)$/i.test(String(b.quote ?? ''))) return { sent: reply.send({ quote: rerunQuote, retryOf: j.id, charged: false }) };
       const qc = b.quotedCredits != null && b.quotedCredits !== '' ? Number(b.quotedCredits) : null;
+      // 2026-11-07 (jobs e47bb4e4 → 42a3ef5c): a failed job whose result was made (and maybe paid for) but not saved never starts a NEW paid run on
+      // one click. Without the price the user OK'd (quotedCredits), it answers the price and starts nothing; Retry download (collect) is the free way.
+      if (rerunNeedsPriceOk(j, rerunQuote.credits, qc)) return { sent: reply.code(409).send({ error: 'confirm_price', code: 'confirm_price', message: `This starts a new paid run (about ${ledgerUsdOf(rerunQuote.credits)}). Confirm the price to run it again. Nothing was charged.`, charged: false, quote: rerunQuote, credits: rerunQuote.credits, retryOf: j.id, canCollect: collectableJob(j) }) };
       if (qc != null && Number.isFinite(qc) && (await import('./shared/priceChange.js')).priceAskAgain({ quotedCredits: qc, credits: rerunQuote.credits })) return { sent: reply.code(409).send({ error: 'route_changed', code: 'route_changed', message: 'The price changed. Nothing was charged.', charged: false, quote: rerunQuote, quotedCredits: qc, credits: rerunQuote.credits, dearer: true }) }; }
     const sg = await spendGuard(reply, { kind: routed ? routed.first.kind : isLocalFree(prov?.kind) ? 'local' : 'direct', routeId: routed?.first.routeId ?? null, credits: cost, demo: !!routed?.routing.demo, free });
     if ('sent' in sg) return { sent: sg.sent };

@@ -99,19 +99,22 @@ export function tripoGraph(i: In, image?: unknown, views: Record<string,unknown>
   graph['3']={class_type:'SaveGLB',inputs:{mesh:['2',mode==='multiview-to-3d'?2:1],filename_prefix:'3d/openhiggsfield'}};
   return graph;
 }
-/** Run Tripo on Comfy Cloud (comfy/cloudV2.ts transport): upload the photo, submit the graph once, poll, save the GLB. Real whenever the Comfy key is set. */
+/** Run Tripo on Comfy Cloud (comfy/cloudV2.ts transport): upload the photo, submit the graph once, poll, save the GLB. Real whenever the Comfy key is set.
+ *  The Cloud job is stored on the job the moment it is submitted (job.remote, routing/cloudRun.ts noteCloudSubmitted), so a restart or a result
+ *  that couldn't be saved is picked up by POLLING that job (Retry download): nothing is uploaded or submitted (or paid for) again. */
 async function runTripoCloud(job: Job, r: RouteDef, attempt: RouteAttempt) {
   const { refInputFor } = await import('../routing/jobRefs.js');
-  const { ComfyCloudV2, CloudError, cloudFailure } = await import('../comfy/cloudV2.js'); const { cloudBase } = await import('../routing/cloudRun.js');
-  const c = new ComfyCloudV2(cloudBase(), keyValue(r)!, `${job.id}-a${attempt.n}`);
+  const { CloudError, cloudFailure } = await import('../comfy/cloudV2.js'); const { cloudBase, cloudClient, cloudResumeOf, noteCloudSubmitted } = await import('../routing/cloudRun.js');
+  const rm = cloudResumeOf(job, r, attempt); const c = cloudClient(job, attempt, { base: cloudBase(), token: keyValue(r)! }, rm);
   try {
-    job.stage = 'uploading'; const assets:Record<string,unknown>={};
-    if(threeDMode(job.input)==='multiview-to-3d') { for(const slot of THREE_D_VIEW_SLOTS) if(job.input.viewPaths?.[slot.name]) { if((job.status as string)==='canceled') return;assets[slot.name]=await c.upload(job.input.viewPaths[slot.name]); } }
-    else if(threeDMode(job.input)!=='text-to-3d') assets.image=await c.upload(photo(job.input));
+    const assets:Record<string,unknown>={};
+    if (!rm) { job.stage = 'uploading';
+      if(threeDMode(job.input)==='multiview-to-3d') { for(const slot of THREE_D_VIEW_SLOTS) if(job.input.viewPaths?.[slot.name]) { if((job.status as string)==='canceled') return;assets[slot.name]=await c.upload(job.input.viewPaths[slot.name]); } }
+      else if(threeDMode(job.input)!=='text-to-3d') assets.image=await c.upload(photo(job.input)); }
     if((job.status as string)==='canceled') return;
     job.stage = 'submitted';
-    const res = await c.run(tripoGraph(refInputFor(job,r), assets.image, assets), { partnerAuth: true, isCanceled: () => (job.status as string) === 'canceled',
-      onSubmitted: (id) => { attempt.requestId = id; job.cloudJobId = id; (job.requestIds ??= []).push(id); }, onProgress: (p) => { job.stage = p.phase === 'queued' ? 'submitted' : 'rendering'; if (p.known) job.progress = p.percent; } });
+    const res = await c.run(tripoGraph(refInputFor(job,r), assets.image, assets), { partnerAuth: true, resumeId: rm?.id ?? null, isCanceled: () => (job.status as string) === 'canceled',
+      onSubmitted: (id) => noteCloudSubmitted(job, r, attempt, id), onProgress: (p) => { job.stage = p.phase === 'queued' ? 'submitted' : 'rendering'; if (p.known) job.progress = p.percent; } });
     const outs = Object.values(res.outputs).flat() as any[];
     const glb = outs.find((o) => /\.glb$/i.test(String(o.filename ?? ''))) ?? outs.find((o) => /gltf/i.test(String(o.content_type ?? ''))) ?? outs.find((o) => /3d|model/i.test(String(o.kind ?? '')));
     if (!glb) throw new CloudError('cloud_job_failed', 'the run finished without a 3D model.', null, true, 'no glb output');

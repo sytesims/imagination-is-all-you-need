@@ -12,6 +12,7 @@
  */
 import type { Job, RemoteHandle } from '../jobs.js';
 import { env } from '../env.js';
+import { NATIVE_DIRECT } from './directRoutes.js';
 
 /** Thrown instead of ever submitting again when a pick-up turns out impossible (a multi-pass graph, the key gone): runRouted then cancels the
  *  request at its provider, as for any orphan. */
@@ -45,9 +46,22 @@ export function pickUpOnBoot(j: Job): boolean {
   return !!j.routeAttempts?.some((a) => a.n === h.attempt && a.routeId === h.routeId);
 }
 /** Mark it for a pick-up: runRouted then reuses the attempt and only polls. */
-export function startPickUp(j: Job) { const h = remoteOf(j)!; j.remote = { ...h, resuming: true, collectable: undefined }; }
+export function startPickUp(j: Job) { const h = legacyCloudHandle(j) ?? remoteOf(j)!; j.remote = { ...h, resuming: true, collectable: undefined }; }
+/**
+ * Recovery (2026-11-07, jobs e47bb4e4 and 42a3ef5c): the Comfy Cloud partner-node runners (Tripo 3D, Topaz video) did not store job.remote before
+ * this date, so a result made and paid for but not saved lost its Retry download. Such a job still has its Cloud job id (cloudJobId = the last
+ * attempt's requestId): when it failed with download_failed / lost_contact on a one-graph partner-node route, the handle is rebuilt from it.
+ * Collecting it only POLLS that Cloud job and downloads its file; nothing is uploaded, submitted or charged.
+ */
+export function legacyCloudHandle(j: Job): RemoteHandle | null {
+  if (j.remote || j.status !== 'failed' || !j.cloudJobId || !/^(download_failed|lost_contact)$/.test(String(j.reasonCode ?? ''))) return null;
+  const a = j.routeAttempts?.[j.routeAttempts.length - 1];
+  if (!a || a.requestId !== j.cloudJobId || !a.routeId.startsWith('comfy-cloud:')) return null;
+  if (!NATIVE_DIRECT[a.routeId.slice('comfy-cloud:'.length)]?.cloudRun) return null; // a partner-node runner: one graph, one output file
+  return { kind: 'cloud', id: j.cloudJobId, routeId: a.routeId, attempt: a.n, output: 0, outputs: 1, at: a.startedAt, collectable: j.reasonCode === 'lost_contact' ? 'lost_contact' : 'download' };
+}
 /** A failed job whose paid result can still be collected (Retry download). */
-export const collectable = (j: Job) => j.status === 'failed' && !!j.remote?.collectable && canPickUp(j.remote) && !!j.routing;
+export const collectable = (j: Job) => j.status === 'failed' && !!j.routing && ((!!j.remote?.collectable && canPickUp(j.remote)) || canPickUp(legacyCloudHandle(j)));
 /** Can Cancel stop this running hosted job at its provider? (fal, Replicate, Router, Cloud have a cancel call; the labs don't.) */
 export const remoteCancellable = (j: Job) => j.status === 'running' && !!j.remote && j.remote.kind !== 'direct';
 
@@ -70,4 +84,9 @@ export async function cancelRemote(h: RemoteHandle): Promise<boolean | null> {
       return await new ComfyCloudV2(tg.base, tg.token, `${h.id}-cancel`, f).cancel(h.id); }
     return null;
   } catch { return false; }
+}
+/** The money rule for a plain Retry (2026-11-07): a failed job whose result was made and maybe paid for (download_failed) or may still finish
+ *  (lost_contact) never starts a new PAID run unless the request carries the price the user OK'd (quotedCredits). A free re-run is not held. */
+export function rerunNeedsPriceOk(j: Pick<Job, 'reasonCode'>, credits: number, quotedCredits: number | null): boolean {
+  return /^(download_failed|lost_contact)$/.test(String(j.reasonCode ?? '')) && credits > 0 && !(quotedCredits != null && Number.isFinite(quotedCredits));
 }
