@@ -4,13 +4,21 @@
  *   POST /api/plugins/:id {on, confirm?}     turn one on or off (409 {code:'confirm', alsoOff|alsoOn} names what else changes; resend with confirm)
  *   POST /api/plugins/:id/install            install an installable one (kie.ai, RunPod): it is in the app already, nothing is downloaded
  *   PUT  /api/settings/safe-mode {on}        safe mode: plugins that aren't ours are paused
- *   GET  /api/ui                             the plugins running now (the web hides what belongs to the others)
+ *   GET  /api/ui                             the plugins running now (the web hides what belongs to the others), and toolStudio: every
+ *                                           built-in tool id → its studio (toolNeeds: a gallery recipe → its base's studio), so a
+ *                                           link into a studio that is off can hide
  * The spend guard can never be turned off: 400 with a plain sentence.
  */
 import type { FastifyReply } from 'fastify';
 import type { Http } from './kernel/http.js';
 import { listPlugins, setPlugin, setSafeMode, activePlugins, PluginRefused } from './kernel/switchboard.js';
 import { catalogEntry } from './shared/pluginCatalog.js';
+import { BUILTIN_TOOL_STUDIO, GALLERY_BASE_STUDIO } from './tools/builtin.js';
+
+/** Built-in tool id (and alias) → its studio plugin: the web's links into /video, /image… hide while that studio is off.
+ *  toolNeeds: a gallery recipe → its base tool's studio (Relight needs Image too). */
+const TOOL_STUDIO: Record<string, string> = Object.fromEntries(BUILTIN_TOOL_STUDIO);
+const TOOL_NEEDS: Record<string, string> = Object.fromEntries(GALLERY_BASE_STUDIO);
 
 const refuse = (reply: FastifyReply, status: number, code: string, message: string, extra: Record<string, unknown> = {}) =>
   reply.code(status).send({ error: message, userMessage: message, errorType: code, code, ...extra });
@@ -24,7 +32,7 @@ async function change(reply: FastifyReply, run: () => Promise<unknown>) {
 
 export function registerPluginRoutes(http: Http) {
   http.route({ method: 'GET', url: '/api/plugins', handler: async () => listPlugins() }, 'kernel');
-  http.route({ method: 'GET', url: '/api/ui', handler: async () => activePlugins() }, 'kernel');
+  http.route({ method: 'GET', url: '/api/ui', handler: async () => ({ ...activePlugins(), toolStudio: TOOL_STUDIO, toolNeeds: TOOL_NEEDS }) }, 'kernel');
   http.route({ method: 'POST', url: '/api/plugins/:id', handler: async (req, reply) => {
     const { id } = req.params as { id: string }; const b = (req.body ?? {}) as { on?: unknown; confirm?: unknown };
     if (typeof b.on !== 'boolean') return refuse(reply, 400, 'bad_request', 'Say on: true or on: false.');

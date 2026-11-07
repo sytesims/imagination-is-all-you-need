@@ -3,6 +3,7 @@ import { SAMPLE_OUTPUT } from './sampleSite';
 import { VIDEO_PAGE } from '../../../server/src/shared/videoWorkflows';
 import { recreateHref as jobRecreateHref, toolHandoffHref, lipSyncHandoffHref, frameHandoffHref, handoffHome } from './workflowLinks';
 import { goClick } from './goToWorkflow';
+import { useLinkOn, toolOn } from './plugins';
 import { saveVideoFrame } from './videoFrame';
 import { appFileName } from './brand';
 import { Viewer3D, jobItem3d } from './Viewer3D';
@@ -16,6 +17,8 @@ import { modelNameOf } from './imageFeatures';
 import { jobInputs, isFileUrl, type JobInput } from './jobInputs';
 import { isVectorUrl } from '../../../server/src/shared/imageVector';
 import { downloadSvgAsPng } from './svgPng';
+/** editRow's why for a hand-off whose studio is off: the row hides. */
+const OFF = 'off';
 const inputRefHref = (u: string) => `${IMAGE_PAGE}?refUrl=${encodeURIComponent(u)}`;
 /** The job's source photo when the result is that photo changed (upscale, edit, relight, swaps, brush edit): the viewer's Compare. Not for jobs that make a new picture from it (Product Shot, Character Sheet). */
 const COMPARE_TOOLS = new Set(['image-upscale', 'app-image-vector' /* before / after: the picture and its SVG */, 'app-relight', 'app-face-swap', 'app-person-swap', 'app-material-swap', 'app-inpaint']);
@@ -100,6 +103,8 @@ export function friendlyRoute(id: string, rt?: any, model?: any): string {
 }
 export default function ResultView({ beforeImage, job, beforeUrl, title, children, extraActions, moreActions, menuTop, showOriginalTab, audio = true, retentionDays, watermark, variant = 'card', onClose, recreateHref, reserve, tools, onPrev, onNext, pos, out, onGone, onReference, referenceTip, stage, view3d }: { /** a GLB result (shared Viewer3D): the 3D page's options (record the turntable on open, its callback, the big-file limit) */ view3d?: { recordOnOpen?: boolean; onTurntable?: (jobId: string) => void; bigBytes?: number }; /** viewer: replaces the output on the stage (Render: Preview vs Render); an input picked in the strip still shows over it */ stage?: React.ReactNode; tools?: ToolInfo[]; /** viewer: Reference stays on the page that opened the viewer (Create Image fills its photo or a workflow slot) instead of navigating */ onReference?: (url: string, out: number) => void; referenceTip?: string; /** viewer: step to the previous/next result (null = none that way), the "2 / 6" position, and the output to show first. */ onPrev?: (() => void) | null; onNext?: (() => void) | null; pos?: string; out?: number; /** viewer, a result in Trash: after Restore or Delete forever (default: close) */ onGone?: () => void; beforeImage?: string; reserve?: boolean; moreActions?: React.ReactNode; /** viewer: the page's own items at the top of More (Generate Video: Generate more, Re-run same seed, +5s / +10s) */ menuTop?: React.ReactNode; retentionDays?: number | null; watermark?: boolean; audio?: boolean; job: JobState; beforeUrl: string; title: string; children?: React.ReactNode; extraActions?: React.ReactNode; showOriginalTab?: boolean; variant?: 'card' | 'viewer'; onClose?: () => void; recreateHref?: string | null }) {
   const [modelName, setModelName] = useState(''); const sample = isSample(job);
+  /* a hand-off into a studio turned off in Plugins hides (shared/studioLinks.ts); viewing the result still works */
+  const linkOn = useLinkOn(); const lk = (u: string | null | undefined) => (u && linkOn(u) ? u : null);
   const demo = !sample && isDemoJob(job);
   /* a sample run (mock backend, or a keyless preview): the server says nothing was generated or billed (isSample). Like a Community sample, it
      offers no tools (Edit tab, Continue, Use frame, Add sound): its stand-in clip must never feed a real run. Recreate stays. */
@@ -168,13 +173,13 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   const saveStamped = async (e: React.MouseEvent) => { e.preventDefault();
     try { toast('Adding your logo…'); const u = await stampedUrl(); const a = document.createElement('a'); a.href = u; a.download = appFileName(`${job.id}-${cur.label || 'result'}-logo`, u.split('.').pop() || ext); document.body.appendChild(a); a.click(); a.remove(); toast('Saved with your logo. The original stays as it is.'); }
     catch (err: any) { toast(err?.message || 'Couldn’t add the logo.', 'error'); } };
-  type Row = { available?: boolean; url?: string | null; reason?: string | null } | null;
+  type Row = { available?: boolean; url?: string | null; reason?: string | null; tool?: string } | null; /* tool: the hand-off's tool (its studio may be off) */
   const [rows, setRows] = useState<Record<string, Row | undefined>>({}); const rows0 = rows; const rowsKey = useRef('');
   const loadRows = () => { const key = `${job.id}:${outIx}`; if (!job.id || standIn || rowsKey.current === key) return; rowsKey.current = key; setRows({});
     const acts: [string, string][] = [['translate', 'action=translate'], ['change-voice', 'action=change-voice'], ['relight', 'action=relight'], ['upscale', 'action=upscale'], ['reshoot', 'action=reshoot'], ['finish', 'action=finish'], ['vector', 'action=vector']]; /* no Director palette row: Director was removed 2026-10-23 */
     /* BH2 #8: only the hand-offs this media kind offers (the menu shows the same set), so an image never asks for Translate / Change voice. */
     const KINDS: Record<string, string[]> = { translate: ['video'], 'change-voice': ['video'], relight: ['image'], upscale: ['image', 'video'], reshoot: ['video'], finish: ['video'], vector: ['image'] };
-    acts.filter(([k]) => (KINDS[k]?.includes(kind) ?? true) && !(silent && NEEDS_SOUND.has(k))).forEach(([k, q]) => fetch(`/api/jobs/${encodeURIComponent(job.id)}/prefill?${q}&out=${outIx}`).then(r => r.json().then(b => ({ ok: r.ok, b }))).then(({ ok, b }) => setRows(m => rowsKey.current !== key ? m : ({ ...m, [k]: ok ? { available: b.available !== false, url: b.url ?? null, reason: b.reason ?? null } : { available: false, url: null, reason: b.error ?? null } })))
+    acts.filter(([k]) => (KINDS[k]?.includes(kind) ?? true) && !(silent && NEEDS_SOUND.has(k))).forEach(([k, q]) => fetch(`/api/jobs/${encodeURIComponent(job.id)}/prefill?${q}&out=${outIx}`).then(r => r.json().then(b => ({ ok: r.ok, b }))).then(({ ok, b }) => setRows(m => rowsKey.current !== key ? m : ({ ...m, [k]: ok ? { available: b.available !== false, url: b.url ?? null, reason: b.reason ?? null, tool: typeof b.tool === 'string' ? b.tool : undefined } : { available: false, url: null, reason: b.error ?? null } })))
       .catch(() => setRows(m => rowsKey.current !== key ? m : ({ ...m, [k]: null })))); };
   // Stepping to another job/output: drop the old hand-off rows (late replies are ignored by key) and reload if the ⋯ menu is still open.
   const moreOpen = useRef(false);
@@ -213,8 +218,8 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
   const copyLink = () => { const tok = (job as any).shareToken; const u = tok ? `${location.origin}/s/${tok}` : `${location.origin}/jobs/${job.id}`; navigator.clipboard?.writeText(u).then(() => flash('link')).catch(() => toast('Couldn’t copy the link', 'error')); };
   /* Director was removed (2026-10-23): its old jobs (and stories) still open and play here, with no Recreate (its page now opens Create Video). */
   const retired = job.toolId === 'cinema' || job.toolId === 'director';
-  const recreate = sample || recreateHref === null || retired ? null : recreateHref ?? (job as any).example?.recreateHref ?? jobRecreateHref(job, tools);
-  const toVideo = kind === 'image' && !isVectorUrl(cur.url) /* an SVG goes to no model: Download PNG first */ && job.id && !sample ? `${VIDEO_PAGE}?fromJob=${encodeURIComponent(job.id)}&as=image&out=${outIx}` : null;
+  const recreate = sample || recreateHref === null || retired ? null : lk(recreateHref ?? (job as any).example?.recreateHref ?? jobRecreateHref(job, tools));
+  const toVideo = kind === 'image' && !isVectorUrl(cur.url) /* an SVG goes to no model: Download PNG first */ && job.id && !sample ? lk(`${VIDEO_PAGE}?fromJob=${encodeURIComponent(job.id)}&as=image&out=${outIx}`) : null;
   const download = <a className="btn rv-dl" data-testid="rv-download" href={cleanHref(cur.url)} download={appFileName(`${job.id}-${cur.label}`, ext)}><DownloadIcon size={15} />{storyShots && !showingOriginal ? 'Download film' : 'Download'}</a>;
   const rcCost = rcPrice ? (rcPrice.needsKey && rcPrice.runnable === false ? 'Needs a key' : (rcPrice as any).demo ? 'Sample' : shownCredits(rcPrice) === 0 ? 'Free' : runPrice({ own: ownAccountsNow(), credits: shownCredits(rcPrice), runOn: placeOfQuote(rcPrice) }) ?? '') : ''; /* QA #7: the Generate button's words */
   const recreateBtn = (primary: boolean) => recreate && <a href={recreate} onClick={goClick(recreate, onClose)} className={`btn ${primary ? 'rv-primary' : 'rv-second'} recreate-btn`} data-action="recreate" data-testid="rv-recreate"><span aria-hidden>↻</span>Recreate{rcCost && <span className="rv-cost" data-testid="rv-recreate-cost">{rcCost}</span>}</a>;
@@ -226,7 +231,8 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
      The tools live in the viewer's Edit tab ("Use it in…"); the card (no Edit tab) lists its tool rows here. Owner-only rows hide when isOwner is false. */
   const owner = (job as any).isOwner !== false;
   const medium = is3dUrl(cur.url) ? '3d' : kind;
-  const rmTool = (a: string, label: string, testid: string, icon: React.ReactNode): MItem => { const r = rows[a];
+  const rmTool = (a: string, label: string, testid: string, icon: React.ReactNode): MItem | null => { const r = rows[a];
+    if (r && (r.tool && !toolOn(r.tool) || r.url && !linkOn(handoffHome(r.url)))) return null; /* its studio is off: hidden, not greyed */
     return r === undefined ? { k: a, label, icon, testid, dis: 'Checking…' } : !r || r.available === false || !r.url ? { k: a, label, icon, testid, dis: r?.reason ?? 'Not available for this result' }
       : { k: a, label, icon, testid, href: handoffHome(r.url), onClick: goClick(handoffHome(r.url), onClose) }; };
   /* Add logo: always findable on your image and video results; with a brand that has a logo it turns on the stage stamp, else it leads to Assets › Brands */
@@ -252,12 +258,12 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     ].filter(Boolean) as MItem[];
     const editTab = viewer && owner && !standIn && (medium === 'image' || medium === 'video') && !(job as any).deletedAt && !isVectorUrl(cur.url); /* an SVG goes to no other tool (Download PNG first) */
     /* the viewer: frame / Make it talk shortcuts that didn't fit the tiles, then "Use it in…" (the Edit tab). The card: its tool rows. */
-    let use: MItem[] = editTab ? [...overflow.filter(t => ['useframe', 'saveframe', 'talk'].includes(t.k)), ...(medium === 'image' && asIs ? [rmTool('vector', 'Make it a vector', 'rv-vector', <VectorIcon size={16} />)] /* Image to vector: in More (user 2026-11-03), free on your computer */ : []),
+    let use = (editTab ? [...overflow.filter(t => ['useframe', 'saveframe', 'talk'].includes(t.k)), ...(medium === 'image' && asIs ? [rmTool('vector', 'Make it a vector', 'rv-vector', <VectorIcon size={16} />)] /* Image to vector: in More (user 2026-11-03), free on your computer */ : []),
       { k: 'useit', label: 'Use it in…', icon: <ToolIcon size={16} />, testid: 'rm-use-it', trail: '›', hint: 'Relight, upscale, make a video and more, in the Edit tab', onClick: () => { setVTab('edit'); loadRows(); } }]
       : viewer ? overflow : !asIs || isVectorUrl(cur.url) /* an SVG goes to no other tool */ ? [] : medium === 'image' ? [rmTool('relight', 'Relight', 'rv-relight', <LightIcon size={16} />), rmTool('upscale', 'Upscale', 'rv-upscale', <UpscaleIcon size={16} />), rmTool('vector', 'Make it a vector', 'rv-vector', <VectorIcon size={16} />),
-        ...(job.id && !sample ? [{ k: 'to3d', label: 'Make it 3D', icon: <CubeIcon size={16} />, testid: 'rv-send-3d', hint: 'Turn this picture into a 3D model', href: sendTo3dHref(job.id, outIx), onClick: goClick(sendTo3dHref(job.id, outIx), onClose) }] : [])]
+        ...(job.id && !sample && linkOn(sendTo3dHref(job.id, outIx)) ? [{ k: 'to3d', label: 'Make it 3D', icon: <CubeIcon size={16} />, testid: 'rv-send-3d', hint: 'Turn this picture into a 3D model', href: sendTo3dHref(job.id, outIx), onClick: goClick(sendTo3dHref(job.id, outIx), onClose) }] : [])]
       : medium === 'video' ? [rmTool('upscale', 'Upscale', 'rv-upscale', <UpscaleIcon size={16} />), rmTool('finish', 'Finish', 'rv-finish', <FinishIcon size={16} />), rmTool('reshoot', 'Re-shoot', 'rv-reshoot', <ReshootIcon size={16} />),
-        ...(silent ? [] : [rmTool('translate', 'Translate', 'rv-translate', <TranslateIcon size={16} />), rmTool('change-voice', 'Change voice', 'rv-change-voice', <ChangeVoiceIcon size={16} />)])] : [];
+        ...(silent ? [] : [rmTool('translate', 'Translate', 'rv-translate', <TranslateIcon size={16} />), rmTool('change-voice', 'Change voice', 'rv-change-voice', <ChangeVoiceIcon size={16} />)])] : []).filter(Boolean) as MItem[]; /* rmTool: null while its studio is off */
     if (standIn) use = [];
     if (!viewer && asIs && job.id && !standIn) use.push({ k: 'sendto', label: '', icon: <ToolIcon size={16} />, testid: 'rv-send-to', node: <HandoffMenu jobId={job.id} /> });
     const organise: MItem[] = [
@@ -363,7 +369,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     const trashed = !!(job as any).deletedAt;
     const live = !standIn && !showingOriginal && !!job.id && !trashed;
     const canHand = live && kind === 'image' && !isVectorUrl(cur.url); /* an SVG (Image to vector) is never handed to a model as an input */
-    const refUrl = canHand ? (tools?.length ? refTarget(job, tools, outIx)?.url : null) ?? `${IMAGE_PAGE}?${qs}&as=ref` : null;
+    const refUrl = canHand ? lk((tools?.length ? refTarget(job, tools, outIx)?.url : null) ?? `${IMAGE_PAGE}?${qs}&as=ref`) : null;
     const S = Object.fromEntries(sets) as Record<string, any>;
     const mk = modelOfEngine(job.toolId, (job as any).provider, (job as any).modelKey);
     const o: any = cur;
@@ -421,10 +427,10 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
         {(job as any).elements?.length > 0 && <div className="el-chips rv-els">{(job as any).elements.map((e: any) => <span key={e.id + e.start} className="el-chip" title={e.kind}>{e.url && <img src={e.url} alt="" />}<b>{e.mention ?? `@${e.name}`}</b></span>)}</div>}</>} />
       <ResultDetails job={job} info={details} extra={<RouteAttempts job={job} label={credit.ranOn} />} onViewWorkflow={wfOk ? () => setWf('get') : undefined} /></>;
     /* Edit: the existing hand-offs, with this result as the input (availability from GET /api/jobs/:id/prefill). */
-    const editRow = (k: string, label: string, note: string, ic: React.ReactNode, url: string | null | undefined, why?: string) => url
+    const editRow = (k: string, label: string, note: string, ic: React.ReactNode, url: string | null | undefined, why?: string) => why === OFF || (url && !linkOn(url)) ? null : url
       ? <a key={k} className="rvx-edit" href={url} onClick={go(url)} data-testid={`rvx-edit-${k}`}>{ic}<span><b>{label}</b><small>{note}</small></span><span className="rvx-chev" aria-hidden>›</span></a>
       : <span key={k} className="rvx-edit dis" aria-disabled="true" data-testid={`rvx-edit-${k}`}>{ic}<span><b>{label}</b><small>{why ?? 'Checking…'}</small></span></span>;
-    const hr = (k: string) => { const r = rows0[k]; return r === undefined ? { url: null, why: 'Checking…' } : !r || r.available === false || !r.url ? { url: null, why: r?.reason ?? `Not available for this ${kind === 'video' ? 'clip' : 'image'}` } : { url: handoffHome(r.url), why: '' }; };
+    const hr = (k: string) => { const r = rows0[k]; return r === undefined ? { url: null, why: 'Checking…' } : r && r.tool && !toolOn(r.tool) ? { url: null, why: OFF } : !r || r.available === false || !r.url ? { url: null, why: r?.reason ?? `Not available for this ${kind === 'video' ? 'clip' : 'image'}` } : { url: handoffHome(r.url), why: '' }; };
     const others = <ToolsPanel jobId={job.id} out={outIx} onClose={onClose} skip={kind === 'video' ? RM_SKIP_VIDEO : RM_SKIP_IMAGE} />;
     /* Video hand-offs by tool (fromJob=…): Extend and Upscale when this server has those tools. */
     const toolOf = (id: string) => tools?.find(t => t.id === id);
@@ -459,7 +465,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     /* PB-18: the media scales to fit the stage (small items grow too); the shape comes from the output size, else the loaded file. */
     const inX = inView != null ? ioTiles[inView] ?? null : null; const inUrl = inX && !badIn.has(inView!) ? inX.url : null;
     const vMedia = inX && inUrl ? <><div className="rvx-inbar" data-testid="rvx-input-bar"><b>{inX.label}</b><small>{inX.mask ? 'Input · the painted area is marked on its tile' : 'Input'}</small>
-        {inX.kind === 'image' && <a className="rvx-inbtn" href={inputRefHref(inUrl)} onClick={go(inputRefHref(inUrl))} data-testid="rvx-input-ref" {...tip('Use this photo in Create Image')}><RefGlyph />Use as reference</a>}
+        {inX.kind === 'image' && linkOn(inputRefHref(inUrl)) && <a className="rvx-inbtn" href={inputRefHref(inUrl)} onClick={go(inputRefHref(inUrl))} data-testid="rvx-input-ref" {...tip('Use this photo in Create Image')}><RefGlyph />Use as reference</a>}
         <button type="button" className="rvx-inbtn" onClick={() => setInView(null)} data-testid="rvx-input-back" {...tip('Back to the result (Esc)')}>Back to result</button></div>
       {inX.kind === 'video' ? <ViewerVideo key={inUrl} src={inUrl} poster={`/api/media/thumb?url=${encodeURIComponent(inUrl)}`} autoPlay={false} label={`${inX.label}: input clip`} />
         : inX.kind === 'audio' ? <ViewerAudio key={inUrl} src={inUrl} cover={null} label={`${inX.label}: input audio`} />
@@ -480,6 +486,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
        else Upscale); audio → none (Recreate leads the row). */
     /* frame actions: a finished video of yours that is on this computer */
     const frameOk = kind === 'video' && live && owner && !mBad && /^\/(files|samples)\//.test(cur.url);
+    const frameGo = frameOk && linkOn(frameHandoffHref(job.id, outIx, 'last')); /* Use frame / Continue open Video: hidden while Video is off */
     const playerTime = () => { const el = vidEl.current; return el && isFinite(el.currentTime) ? el.currentTime : 0; };
     const saveFrame = async () => { const t = playerTime(); try { const r = await saveVideoFrame({ jobId: job.id, out: outIx, at: t > 0 ? t : 'first' }); toast(`Frame saved to your uploads${r.item.width ? ` (${r.item.width}×${r.item.height})` : ''}`); } catch (e: any) { toast(`Couldn’t save that frame (${e?.message ?? 'error'}).`, 'error'); } };
     const vidLead = kind === 'video' && !recreate ? (extendUrl ? 'extend' : upUrl ? 'upscale' : '') : '';
@@ -497,10 +504,10 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
       kind === 'video' && vidLead !== 'extend' && extendUrl ? { k: 'ext', label: 'Extend', icon: <ExtendIcon size={18} />, testid: 'rv-extend', tip: 'Keep the shot going from its last frame', href: extendUrl, onClick: go(extendUrl) } : null,
       canSound ? { k: 'sound', label: 'Sound', icon: <SoundIcon size={18} />, testid: 'rv-add-sound', tip: 'Add sound: music and effects timed to the clip, free on your computer', onClick: (e: React.MouseEvent) => { e.preventDefault(); setAddSound(true); } } : null,
       /* an audio result (speech, a song) → Video's Lip Sync with it as the Speech (free on LTX-2.5 locally, photo optional) */
-      kind === 'audio' && live && owner ? { k: 'talk', label: 'Make it talk', icon: <UserIcon size={18} />, testid: 'rv-make-it-talk', tip: 'Make a photo talk or sing with this sound (Lip Sync)', href: lipSyncHandoffHref(job.id, outIx), onClick: go(lipSyncHandoffHref(job.id, outIx)) } : null,
+      kind === 'audio' && live && owner && linkOn(lipSyncHandoffHref(job.id, outIx)) ? { k: 'talk', label: 'Make it talk', icon: <UserIcon size={18} />, testid: 'rv-make-it-talk', tip: 'Make a photo talk or sing with this sound (Lip Sync)', href: lipSyncHandoffHref(job.id, outIx), onClick: go(lipSyncHandoffHref(job.id, outIx)) } : null,
       /* a frame of this clip (2026-10-26): the frame on screen as Video → Generate's start image, or saved as an image (Continue sits in row 1) */
-      ...(frameOk ? [{ k: 'useframe', label: 'Use frame', icon: <FrameGrabIcon size={18} />, testid: 'rv-use-frame', tip: 'Use this frame: the frame on screen as the start image (Video → Generate)', href: frameHandoffHref(job.id, outIx, 0, true), onClick: (e: React.MouseEvent) => go(frameHandoffHref(job.id, outIx, playerTime(), true))(e) },
-        { k: 'saveframe', label: 'Save frame', icon: <ImageIcon size={18} />, testid: 'rv-save-frame', tip: 'Save frame as image: the frame on screen, full size, in your uploads', onClick: () => void saveFrame() }] : []),
+      ...(frameGo ? [{ k: 'useframe', label: 'Use frame', icon: <FrameGrabIcon size={18} />, testid: 'rv-use-frame', tip: 'Use this frame: the frame on screen as the start image (Video → Generate)', href: frameHandoffHref(job.id, outIx, 0, true), onClick: (e: React.MouseEvent) => go(frameHandoffHref(job.id, outIx, playerTime(), true))(e) },
+      ] : []), ...(frameOk ? [{ k: 'saveframe', label: 'Save frame', icon: <ImageIcon size={18} />, testid: 'rv-save-frame', tip: 'Save frame as image: the frame on screen, full size, in your uploads', onClick: () => void saveFrame() }] : []),
       kind === 'video' && vidLead !== 'upscale' && upUrl ? { k: 'up', label: 'Upscale', icon: <UpscaleIcon size={18} />, testid: 'rv-upscale', tip: 'Sharper, bigger frames', href: upUrl, onClick: go(upUrl) } : null,
     ].filter(Boolean) as Tile[];
     const core: Tile[] = [
@@ -514,7 +521,7 @@ export default function ResultView({ beforeImage, job, beforeUrl, title, childre
     const moreTile = sample ? <button type="button" className="rvx-tile" data-testid="rv-copy-link" aria-label="Copy link" {...tip(copied === 'link' ? null : 'Copy link')} onClick={copyLink}><span aria-hidden className="rvx-tile-glyph">⧉</span><span>{copied === 'link' ? 'Copied' : 'Link'}</span></button>
       : moreOf(true, overflow.map(t => ({ k: t.k, label: t.label, icon: t.icon, hint: t.tip, href: t.href, download: t.download, onClick: t.onClick, testid: t.testid })), menuTop);
     /* Continue from last frame: the exact last frame into Video → Generate's start image, the prompt as "Continue the shot: …" (beside the primary) */
-    const contHref = frameOk && !(vly && job.toolId === 'layers') /* a split's first clip is the tinted overview: nothing to continue */ ? frameHandoffHref(job.id, outIx, 'last') : null;
+    const contHref = frameGo && !(vly && job.toolId === 'layers') /* a split's first clip is the tinted overview: nothing to continue */ ? frameHandoffHref(job.id, outIx, 'last') : null;
     const contA = contHref && <a key="cont" className="rvx-second" href={contHref} onClick={go(contHref)} data-action="continue-frame" data-testid="rv-continue-frame" {...tip('Continue from last frame: a new clip that starts where this one ends (Video → Generate)')}><LastFrameIcon size={16} />Continue</a>;
     const row1 = [primary, !usedRecreate && recreateA(false), contA].filter(Boolean).slice(0, 2);
     const footer = trashed ? <TrashActions job={job} onGone={onGone ?? onClose ?? (() => 0)} /> : <>

@@ -2,6 +2,8 @@
  * Plugins (plan step 7): the web's one door to the server's switches.
  *  - usePluginOn(id): is this plugin running? Read once from GET /api/ui and again after every change, so a part of the app whose plugin
  *    is off can hide (the Canvas tab when Canvas is off). Unknown (loading, or an older server without /api/ui) counts as on.
+ *  - useLinkOn(): (href) => may this link show? A link into a studio that is off (Video, Image, Audio, 3D, Edit…) hides: the header tabs,
+ *    hand-offs, Explore and Workflows cards all ask it (shared/studioLinks.ts finds the studio of a link).
  *  - usePluginList(): GET /api/plugins for the Plugins page and the quick menu, refreshed after every change.
  *  - setPluginOn / installPlugin / setSafeMode: the changes. A change that also switches others asks first (the shared confirm dialog),
  *    naming them; the data it keeps is said too.
@@ -9,11 +11,14 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import type { PluginsAnswer, PluginRow } from '../../../server/src/shared/pluginCatalog';
 import { askConfirm } from './Dialog';
+import { refreshTools } from './useTools';
+import { studiosOfHref } from './studioLinks';
+import { catalogEntry } from '../../../server/src/shared/pluginCatalog';
 
 export type { PluginsAnswer, PluginRow };
 export { PLUGIN_GROUPS } from '../../../server/src/shared/pluginCatalog';
 
-let ui: { on: string[]; safeMode: boolean } | null = null; let list: PluginsAnswer | null = null; let listErr = false;
+let ui: { on: string[]; safeMode: boolean; toolStudio?: Record<string, string>; toolNeeds?: Record<string, string> } | null = null; let list: PluginsAnswer | null = null; let listErr = false;
 const subs = new Set<() => void>(); const tell = () => subs.forEach((f) => f());
 const subscribe = (f: () => void) => { subs.add(f); return () => { subs.delete(f); }; };
 
@@ -27,12 +32,35 @@ export function refreshPluginList(): Promise<void> {
   return (listLoading ??= fetch('/api/plugins', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))).then((j: PluginsAnswer) => { list = j; listErr = false; tell(); })
     .catch(() => { listErr = true; tell(); }).finally(() => { listLoading = null; }));
 }
-const refreshAll = () => Promise.all([refreshPluginsUi(), refreshPluginList()]);
+/** After a change: the switches, and the tool list (a studio turned on brings its tools back, no reload). */
+const refreshAll = () => { refreshTools(); return Promise.all([refreshPluginsUi(), refreshPluginList()]); };
 
 /** Is the plugin running? (true while unknown) */
 export function usePluginOn(id: string): boolean {
   useEffect(() => { if (!ui && !uiLoading) void refreshPluginsUi(); }, []);
   return useSyncExternalStore(subscribe, () => !ui || ui.on.includes(id));
+}
+/** Is this plugin running, right now (true while unknown)? For code outside React; components use usePluginOn. */
+const onNow = (id: string) => !ui || ui.on.includes(id);
+/** The studio that a link opens and that is off right now ({id, name}), or null: the link is fine. */
+export function offStudioOf(href: string): { id: string; name: string } | null {
+  const id = studiosOfHref(href, ui?.toolStudio ?? {}, ui?.toolNeeds ?? {}).find((s) => !onNow(s));
+  return id ? { id, name: catalogEntry(id)?.name ?? id } : null;
+}
+/** Is this tool's studio on (true for tools no studio owns, and while unknown)? */
+export const toolOn = (toolId: string): boolean => [ui?.toolStudio?.[toolId], ui?.toolNeeds?.[toolId]].every((s) => !s || onNow(s));
+/** May this link show? false for a link into a studio that is off. */
+export const linkOn = (href: string | null | undefined): boolean => !href || !offStudioOf(href);
+/** linkOn for components: re-renders when a plugin is turned on or off. */
+export function useLinkOn(): (href: string | null | undefined) => boolean {
+  useEffect(() => { if (!ui && !uiLoading) void refreshPluginsUi(); }, []);
+  useSyncExternalStore(subscribe, () => ui);
+  return linkOn;
+}
+/** The studio a page opens that is off ({id, name}), or null (the router shows "<Studio> is off" for it). */
+export function useOffStudio(href: string): { id: string; name: string } | null {
+  useLinkOn();
+  return offStudioOf(href);
 }
 export function usePluginList(): { data: PluginsAnswer | null; error: boolean; reload: () => Promise<unknown> } {
   useEffect(() => { void refreshPluginList(); }, []);
