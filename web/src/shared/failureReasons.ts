@@ -49,6 +49,8 @@ export interface FailCtx { /** own-accounts billing (no app balance); null = bil
 export const REASONS: Record<string, FailReason> = {
   // audit 2026-11-01 #4, #10: the provider made (and billed) the result, or may still: fetch it again rather than paying for a new run
   download_failed:   { key: 'download_failed', mood: 'offline', title: 'Made, but not saved yet', line: 'The result is ready; fetch it again.', actions: ['collect', 'details'] },
+  /* comfy/cloudV2.ts: the signed download link was refused or expired (the job itself ends download_failed; this is the step's own code) */
+  download_refused:  { key: 'download_refused', mood: 'offline', title: 'Made, but not saved yet', line: 'The result is ready; fetch it again.', actions: ['collect', 'details'] },
   lost_contact:      { key: 'lost_contact', mood: 'offline', title: 'Lost contact while it ran', line: 'It may still finish; check again to fetch it.', actions: ['collect', 'details'] },
   // One-time setup (2026-10-27): a run that needs a file imported into your Comfy Cloud library, or your own deployment. The steps are in Details and on the card.
   cloud_import_missing: { key: 'cloud_import_missing', mood: 'needsDownload', title: 'One-time setup in Comfy Cloud', line: 'Add its file to Comfy Cloud once, then try again.', actions: ['setupCloud', 'details'] },

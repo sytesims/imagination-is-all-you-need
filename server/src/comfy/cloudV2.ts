@@ -168,17 +168,17 @@ export class ComfyCloudV2 {
     if (abs && !onBase) add(abs.toString(), false); // a signed or provider link: it carries its own authorization
     return out;
   }
-  /** One fetch of one place, following redirects by hand (at most 4 hops): the key rides only on a hop to the Cloud base itself, so the 302 to a
-   *  signed storage link (or any other host) is fetched without it. A relative Location stays on the host that sent it. */
+  /** One fetch of one place, following redirects by hand (at most 4 hops): the key rides only on the first request, to the Cloud base itself; every redirect (the 302 to a
+   *  signed storage link, on any host) is fetched without it. A relative Location stays on the host that sent it. */
   private async fetchOnce(p: { url: string; auth: boolean }): Promise<Buffer> {
     let at = p.url; let step = p.auth ? 'content endpoint' : 'download link';
     for (let hop = 0; ; hop++) {
-      const key = p.auth && sameOrigin(at, this.base); const onBase = sameOrigin(at, this.base);
-      let r: Response; try { r = await this.f(at, { headers: key ? this.auth() : {}, redirect: 'manual' }); } catch (e) { throw downloadErrorFor(step, at, null, onBase, String(e instanceof Error ? e.message : e)); }
+      const key = hop === 0 && p.auth && sameOrigin(at, this.base);
+      let r: Response; try { r = await this.f(at, { headers: key ? this.auth() : {}, redirect: 'manual' }); } catch (e) { throw downloadErrorFor(step, at, null, key, String(e instanceof Error ? e.message : e)); }
       const loc = r.status >= 300 && r.status < 400 ? r.headers.get('location') : null;
       if (loc && hop < 4) { await r.arrayBuffer().catch(() => null); at = new URL(loc, at).toString(); step = 'signed link'; continue; }
-      if (!r.ok) throw downloadErrorFor(step, at, r.status, onBase, await r.text().catch(() => ''));
-      const buf = Buffer.from(await r.arrayBuffer()); if (!buf.length) throw downloadErrorFor(step, at, 502, onBase, 'empty body'); return buf;
+      if (!r.ok) throw downloadErrorFor(step, at, r.status, key, await r.text().catch(() => ''));
+      const buf = Buffer.from(await r.arrayBuffer()); if (!buf.length) throw downloadErrorFor(step, at, 502, key, 'empty body'); return buf;
     }
   }
   /** Save one output (audit 2026-11-01 #10): a few tries with back-off; every try asks the content endpoint again, so a refused or expired signed
