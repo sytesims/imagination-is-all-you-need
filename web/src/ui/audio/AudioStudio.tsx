@@ -27,6 +27,7 @@ import { SeparationNote } from './SeparationNote';
 import { JobRowFor } from '../../shared/GenTile';
 import { FailIcon, FailTitle } from '../../shared/FailureState';
 import { useEffect, useRef, useState } from 'react';
+import { useSoundScope } from '../../shared/soundDirector';
 import type { JobState, ToolInfo } from '../../api';
 import type { VideoMeta } from '../../shared/UploadVideo';
 import { readVideo } from '../../shared/UploadVideo';
@@ -71,6 +72,7 @@ const CARDS: Record<string, [string, string, string][]> = {
 const SAVE_KEY = 'oj.audio.settings.v1';
 
 export default function AudioStudio(p: AudioStudioProps) {
+  const soundScope = useRef<HTMLDivElement>(null); useSoundScope(soundScope); /* leaving the page stops its sound (shared/soundDirector.ts) */
   const cfg: any = p.tool.app; const fields: any[] = cfg.fields ?? [];
   const fOpts = (n: string) => (n === 'language' && p.langOpts ? p.langOpts.map(o => ({ value: o.value, label: o.label ?? o.value })) : (fields.find(f => f.name === n)?.options ?? [])) as { value: string; label: string }[];
   const nOpts: number[] = ((p.tool as any).inputs?.find((i: any) => i.name === 'n')?.options ?? ['1']).map(Number);
@@ -131,7 +133,7 @@ export default function AudioStudio(p: AudioStudioProps) {
       opts={opts.map(o => ({ value: o.value, label: o.label, extra: o.previewUrl ? <span role="button" tabIndex={0} className="as-vplay" data-testid={`voice-preview-${o.value}`} aria-label={(o as any).kind === 'standin' ? `${o.label}: ${sampleLabel('standin')}` : `Preview ${o.label}`} title={(o as any).kind === 'standin' ? sampleLabel('standin') : undefined} data-kind={(o as any).kind ?? undefined} onClick={e => { e.stopPropagation(); preview(o.previewUrl); }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); preview(o.previewUrl); } }}>▶</span> : null }))}
       onPick={val => p.setFieldVals(f => ({ ...f, [name]: val }))} />; };
 
-  return <div className="as" data-testid="audio-studio">
+  return <div ref={soundScope} className="as" data-testid="audio-studio">
     <aside ref={panel} className="as-panel" aria-label="Voice settings">
       {p.workflowChip ?? <nav className="as-tabs" role="tablist" aria-label="Voice tools">{TABS.filter(([id]) => (p.tool.presets ?? []).some(x => x.id === id)).map(([id, l]) => <button key={id} type="button" role="tab" aria-selected={p.mode === id} className={p.mode === id ? 'on' : ''} data-testid={`as-tab-${id}`} onClick={() => { p.setMode(id); setMOpen(false); }}>{l}</button>)}</nav>}
       <div className="as-form">

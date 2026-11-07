@@ -17,6 +17,7 @@ import { registerMedia } from '../../shared/mediaPause';
 import { SwitchNote, useSwitchNote } from '../../shared/SwitchNote';
 import { metaTagsFor, insertTag, type MetaTag } from '../next/MetaTags';
 import { useEffect, useRef, useState } from 'react';
+import { useSoundScope } from '../../shared/soundDirector';
 import type { JobState, ToolInfo } from '../../api';
 import type { VideoMeta } from '../../shared/UploadVideo';
 import { readVideo } from '../../shared/UploadVideo';
@@ -121,6 +122,7 @@ export function unitRateOf(m: Pick<ToolModel, 'engines' | 'runsOn'>, engines?: s
 const durOf = (f: File): Promise<number | undefined> => new Promise(res => { const a = document.createElement('audio'); a.preload = 'metadata'; const u = URL.createObjectURL(f); a.onloadedmetadata = () => { res(Number.isFinite(a.duration) ? a.duration : undefined); URL.revokeObjectURL(u); }; a.onerror = () => { res(undefined); URL.revokeObjectURL(u); }; a.src = u; });
 
 export default function AudioPage(p: AudioPageProps) {
+  const soundScope = useRef<HTMLDivElement>(null); useSoundScope(soundScope); /* leaving the page stops its sound (shared/soundDirector.ts) */
   const toast = useToast(); const { wf } = p; const recipes = useAudioRecipes(); const live = recipes[wf.id];
   const askedWf = new URLSearchParams(location.search).get('workflow'); const [nfGone, setNfGone] = useState(false);
   const wfNotFound = !!askedWf && !audioWorkflowById(askedWf) && !nfGone;
@@ -383,7 +385,7 @@ export default function AudioPage(p: AudioPageProps) {
       ...Object.fromEntries(Object.entries(p.fieldVals).filter(([, v]) => v !== '' && v != null).map(([k, v]) => [k, typeof v === 'boolean' ? (v ? '1' : '0') : String(v)])) },
     files: { ...(p.video ? { video: 1 } : {}), ...(p.clip || (wf.id === 'cover' && p.song) ? { audio: 1 } : {}), ...(voiceOn && p.samples.length && voiceV === 'clone' ? { voiceAudio: p.samples.length } : {}) }, photo: null };
 
-  return <div className="ap" data-testid="audio-page" data-workflow={wf.id}>
+  return <div ref={soundScope} className="ap" data-testid="audio-page" data-workflow={wf.id}>
     {filePreview.preview}
     <section className="ap-main" aria-label="Your audio">
       {wfNotFound && <Notice kind="warn" testId="ap-wf-not-found" className="ap-wf-nf" action={{ label: 'All workflows', to: '/workflows' }} onClose={() => setNfGone(true)}>

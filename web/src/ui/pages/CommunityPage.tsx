@@ -2,7 +2,8 @@ import { InlineError } from '../../shared/InlineError';
 import { Skeleton } from '../../shared/Skeleton';
 import { onReconnect } from '../../shared/connectivity';
 import { isSample } from '../../shared/sample';
-import { useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import { useSoundScope } from '../../shared/soundDirector';
 import Hub from './Hub';
 import { Link } from '../../platform/router';
 import { listPublicProjects, PublicProject } from '../../api';
@@ -23,13 +24,14 @@ const TABS = [['shots', 'Shots'], ['projects', 'Projects'], ['models', 'Models &
 /** C10: a short badge on the card; the full credit lives in the tooltip and the viewer. */
 const shortCredit = (c: string) => /blender/i.test(c) ? 'CC BY · Blender' : 'Sample';
 export default function CommunityPage({ tools = [] }: { tools?: ToolInfo[] }) {
+  const soundScope = useRef<HTMLDivElement>(null); useSoundScope(soundScope); /* leaving the page stops its sound (shared/soundDirector.ts) */
   const [tab, setTab] = useState<typeof TABS[number][0]>(() => (new URLSearchParams(location.search).get('tab') as any) || 'shots');
   const search = useSearch(); const shot = new URLSearchParams(search).get('shot');
   useEffect(() => { const q = new URLSearchParams(location.search); if (q.get('tab') === tab) return; q.set('tab', tab); history.replaceState(history.state, '', `${location.pathname}?${q}`); }, [tab]);
   /* J8/C3: a shot opens the viewer here (?shot=<id>), without a page load; closing returns to this grid at the same scroll. */
   const shotHref = (id: string) => { const q = new URLSearchParams(location.search); q.set('tab', 'shots'); q.set('shot', id); return `/community?${q}`; };
   const closeTo = (() => { const q = new URLSearchParams(location.search); q.delete('shot'); return `/community?${q}`; })();
-  return <div className="page comm-page" data-testid="community">
+  return <div ref={soundScope} className="page comm-page" data-testid="community">
     <div {...(shot ? { inert: '', 'aria-hidden': true } as any : {})}>
       <div className="pre-head"><h1 className="pre-h">COMMUNITY</h1><p className="helper">Work people chose to make public, plus models and workflows to install.</p></div>
       <div className="seg comm-tabs" role="tablist" aria-label="Community">{TABS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={tab === k} data-testid={`comm-tab-${k}`} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
