@@ -1,7 +1,7 @@
 // Feature plugins (plan Phase 5: plugins-builtin/features.ts, kernel/http.ts group, eta-learning, webhooks, route add-ons).
 //  - Every route group is its own plugin and every route records it; the openapi list is the routes that are on.
 //  - A feature turned off: its routes answer exactly like an unknown route (404 not_found), the other features keep answering.
-//  - workflow-folders off: /api/plugins still answers (lists none), as #191 promised.
+//  - workflow-folders off: /api/workflow-folders still answers (lists none), as #191 promised.
 //  - ETA learning and webhooks run on job/settled through their plugins; off = they stop.
 //  - Route add-ons: an add-on whose plugin is off adds nothing to the route price.
 // Run: npx tsx test/feature-plugins.e2e.ts (the real server in this process on its own port; temp data dir, mock backend, no key, nothing is
@@ -29,7 +29,7 @@ try {
   for (const id of FEATURE_IDS.filter((x) => x !== 'web-static')) assert.ok(by[id]?.length, `${id} owns routes`);
   for (const r of ['GET /api/captions/status', 'GET /api/canvas/agent/starters', 'GET /api/hub/items', 'GET /api/films', 'GET /api/openapi.json']) assert.ok(Object.values(by).flat().includes(r), r);
   assert.ok(by['canvas-demo'].includes('POST /api/canvas/boards/:id/agent/demo') && !by['canvas-agent'].includes('POST /api/canvas/boards/:id/agent/demo'));
-  assert.ok(by['workflow-folders'].includes('GET /api/plugins') && by['workflow-folders'].includes('POST /api/workflows/import'));
+  assert.ok(by['workflow-folders'].includes('GET /api/workflow-folders') && by['workflow-folders'].includes('POST /api/workflows/import'));
   assert.ok(!(by.legacy ?? []).some((r) => /\/api\/(captions|films|hub|canvas|brand-kits|hardware|export)\b/.test(r)), 'legacy keeps none of the moved groups');
   ok(`${FEATURE_IDS.length} feature plugins, each owns its routes (legacy keeps ${by.legacy.length})`);
 
@@ -57,8 +57,8 @@ try {
   ok('open-models off: its settings routes go and its quote hook is inert; quotes still answer');
 
   // ---- workflow-folders off: the routes stay and say so (#191) ----
-  await off('workflow-folders'); const pl = await get('/api/plugins'); assert.equal(pl.status, 200); assert.deepEqual(pl.body, []);
-  ok('workflow-folders off: GET /api/plugins answers [] (kept on, as #191 promised)');
+  await off('workflow-folders'); const pl = await get('/api/workflow-folders'); assert.equal(pl.status, 200); assert.deepEqual(pl.body, []);
+  ok('workflow-folders off: GET /api/workflow-folders answers [] (kept on, as #191 promised)');
 
   // ---- ETA learning and webhooks on job/settled ----
   const W = await import('../src/plugins-builtin/webhooks.js'); const sent: string[] = []; W.setWebhookSink(async (id) => { sent.push(id); });

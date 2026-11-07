@@ -22,7 +22,7 @@ import { TRANSLATE_DOC } from './brand';
 
 const COMFY_CREDITS = 'https://platform.comfy.org/';
 const routeOf = (j: any) => String(j?.route ?? (Array.isArray(j?.routeAttempts) ? j.routeAttempts.at(-1)?.routeId : '') ?? '');
-const billingIdOf = (route: string) => /^local:/.test(route) ? 'local' : /^sunra:/.test(route) ? 'sunra' : /^kie:/.test(route) ? 'kie' : /^fal:/.test(route) ? 'fal' : /^replicate:/.test(route) ? 'replicate' : /bfl/.test(route) ? 'bfl' : /minimax/.test(route) ? 'minimax' : /dashscope|qwen-api/.test(route) ? 'dashscope' : 'comfy';
+const billingIdOf = (route: string) => /^local:/.test(route) ? 'local' : /^sunra:/.test(route) ? 'sunra' : /^kie:/.test(route) ? 'kie' : /^runpod:/.test(route) ? 'runpod' : /^fal:/.test(route) ? 'fal' : /^replicate:/.test(route) ? 'replicate' : /bfl/.test(route) ? 'bfl' : /minimax/.test(route) ? 'minimax' : /dashscope|qwen-api/.test(route) ? 'dashscope' : 'comfy';
 /** #11: list items carry runOn but no route; map it to the same billing id so the list item and the full job agree. */
 const billingIdOfJob = (j: any) => { const r = routeOf(j); if (r) return billingIdOf(r); const o = String(j?.runOn ?? ''); return !o || o === 'comfy-cloud' ? 'comfy' : o; };
 

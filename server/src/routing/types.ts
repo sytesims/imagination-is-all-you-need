@@ -1,5 +1,5 @@
 /** Multi-provider routing types (approved feature, 2026-10-16). */
-export type RouteKind = 'local' | 'comfy-router' | 'comfy-cloud' | 'fal' | 'replicate' | 'sunra' | 'kie' | 'direct';
+export type RouteKind = 'local' | 'comfy-router' | 'comfy-cloud' | 'fal' | 'replicate' | 'sunra' | 'kie' | 'runpod' | 'direct';
 export interface RouteDef {
   /** `<kind>:<id>` e.g. local:comfy-qwen-image, fal:fal-ai/qwen-image, replicate:qwen/qwen-image. */
   routeId: string;

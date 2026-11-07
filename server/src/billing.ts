@@ -62,6 +62,9 @@ export const PROVIDER_BILLING: ProviderBilling[] = [
   { id: 'kie', name: 'kie.ai · reseller, may change without notice', failureRule: 'not-charged', failureNote: 'kie.ai says failed tasks consume no credits (creditsConsumed 0). It is a reseller: prices and models may change without notice.', failureSource: 'https://docs.kie.ai/market/common/get-task-detail',
     actualCost: 'per-job', actualNote: 'Each finished task reports creditsConsumed (200 credits = $1); it is recorded as the run’s cost.', balance: 'none', balanceNote: 'kie.ai shows the credit balance in its dashboard.', scopedKeys: 'Not documented.',
     billingUrl: 'https://kie.ai/pricing', docsUrl: 'https://docs.kie.ai/' },
+  { id: 'runpod', name: 'RunPod', failureRule: 'may-charge', failureNote: 'RunPod bills the GPU seconds a job ran, also when the workflow fails or is cancelled while running. A file refused before sending costs nothing.', failureSource: 'https://docs.runpod.io/serverless/pricing',
+    actualCost: 'per-job', actualNote: 'Each job reports its GPU time (executionTime); the cost is those seconds × your GPU rate (Settings, default the 48 GB rate). The price before a run is an estimate.', balance: 'none', balanceNote: 'RunPod shows the balance in its console.', scopedKeys: 'Yes: keys can be limited to read or to some endpoints.',
+    billingUrl: 'https://www.runpod.io/console/user/billing', docsUrl: 'https://docs.runpod.io/serverless/endpoints/send-requests' },
   { id: 'bfl', name: 'Black Forest Labs', failureRule: 'not-charged', failureNote: 'BFL says only finished generations (status Ready) use credits; moderated requests are free.', failureSource: 'https://help.bfl.ai/articles/4212278032-my-prompt-is-getting-moderated',
     actualCost: 'per-job', actualNote: 'Each request returns its cost in BFL credits (1 credit = $0.01).', balance: 'api', balanceNote: 'Read from BFL’s credits endpoint.', scopedKeys: 'Not documented.',
     billingUrl: 'https://docs.bfl.ai/quick_start/pricing', docsUrl: 'https://docs.bfl.ai/api-reference/get-the-users-credits' },
@@ -94,7 +97,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 export function billedToOf(kind: string | null | undefined, routeId?: string | null): BilledTo {
   if (!kind || kind === 'local') return 'local';
   if (kind === 'comfy-router' || kind === 'comfy-cloud') return 'comfy';
-  if (kind === 'fal' || kind === 'replicate' || kind === 'sunra' || kind === 'kie') return kind;
+  if (kind === 'fal' || kind === 'replicate' || kind === 'sunra' || kind === 'kie' || kind === 'runpod') return kind;
   const r = routeId ? findRoute(routeId) : undefined; return providerForEnvKey(r?.envKey) ?? (routeId?.startsWith('direct:bfl') ? 'bfl' : 'direct');
 }
 export interface CostEstimate { billedTo: BilledTo; billedToName: string; estUsd: number; estUnits?: number; unitLabel?: string; failureRule: FailureRule; failureNote: string; estimated: boolean;
@@ -375,6 +378,8 @@ async function account(id: string, refresh: boolean): Promise<AccountView> {
     v = { ...base, connected: true, fetchedAt: new Date().toISOString(), source: 'unavailable', note: why, keyCheck }; }
   cache.set(id, { at: Date.now(), v }); return v;
 }
+/** Did the provider refuse this key on the last balance read? Cached reads only: never calls the provider (Plugins page: the orange dot). */
+export const keyRejected = (id: string): boolean => cache.get(id)?.v.keyCheck === 'rejected';
 export const accounts = (refresh = false) => Promise.all(PROVIDER_BILLING.filter((p) => p.id !== 'local').map((p) => account(p.id, refresh)));
 
 // ---------- HTTP ----------

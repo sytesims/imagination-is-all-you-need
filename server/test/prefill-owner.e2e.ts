@@ -128,9 +128,9 @@ try {
     ok('director&focus=palette: video → cinema mode=edit slot video, image → mode=image slot refs (as=ref), palette=auto; both submitted → 200'); }
 
   // ---- available:false (tool turned off) instead of an error ----
-  { const r = await req('POST', '/api/plugins/cutout', { enabled: false }); assert.ok(r.status < 300, JSON.stringify(r.body));
+  { const r = await req('POST', '/api/workflow-folders/cutout', { enabled: false }); assert.ok(r.status < 300, JSON.stringify(r.body));
     const p = await req('GET', `/api/jobs/${vid.id}/prefill?action=send-to&tool=cutout`); assert.equal(p.status, 200); assert.equal(p.body.available, false); assert.ok(p.body.reason); assert.equal(p.body.form, null);
-    await req('POST', '/api/plugins/cutout', { enabled: true }); ok(`disabled tool → 200 available:false ("${p.body.reason}")`); }
+    await req('POST', '/api/workflow-folders/cutout', { enabled: true }); ok(`disabled tool → 200 available:false ("${p.body.reason}")`); }
 
   // ---- errors ----
   { const e = async (u: string, s: number, code?: string) => { const r = await req('GET', u); assert.equal(r.status, s, `${u} ${JSON.stringify(r.body)}`); if (code) assert.equal(r.body.code, code); return r.body; };

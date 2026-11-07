@@ -13,3 +13,5 @@ export const REPO_URL = GET_APP_URL;
 export const repoDoc = (path: string, anchor = '') => `${REPO_URL}/blob/main/${path}${anchor ? `#${anchor}` : ''}`;
 /** How Translate (voice) works: the Speech translation section of docs/CONFIGURATION.md. */
 export const TRANSLATE_DOC = repoDoc('docs/CONFIGURATION.md', 'speech-translation');
+/** The label on the plugins we ship (Plugins page section, row and detail tags, quick menu). One line to change at a rebrand, e.g. "Made by Immy". */
+export const MADE_BY_US = 'Made by us';

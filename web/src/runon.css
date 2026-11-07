@@ -112,6 +112,9 @@ html body .ro-lnk:disabled{opacity:.6;cursor:default}
 .conn-input,.conn-key>.secret{flex:1 1 220px;min-width:0}
 .conn-key>.btn-sm{height:40px;min-height:40px}
 .conn-key-help{flex-basis:100%}
+/* a connection setting besides its key (RunPod: Endpoint ID): its own row under the facts */
+.conn-field{grid-column:1/-1;display:grid;gap:8px}
+.conn-field>.conn-facts{align-items:center}
 .conn-ok{color:#86efac}
 .conn-pref{grid-column:1/-1;display:flex;align-items:flex-start;gap:12px;padding:10px 0 0;border-top:1px solid rgba(255,255,255,.06);margin-top:4px}
 .conn-sec>.conn-pref{padding:12px 0;margin:0}

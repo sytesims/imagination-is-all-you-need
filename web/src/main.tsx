@@ -9,6 +9,7 @@ import './tokens.css';
 import './styles.css';
 import './ui-states.css';
 import './runon.css';
+import './ui/plugins/plugins-ui.css';
 /* tab switching (2026-10-27): nothing plays in a hidden tab, off-screen clips drop their source, and a reload comes back to the same place */
 installMediaManager(); installTabRestore();
 createRoot(document.getElementById('root')!).render(<App />);

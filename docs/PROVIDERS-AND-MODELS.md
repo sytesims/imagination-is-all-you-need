@@ -87,7 +87,7 @@ Some places ship in the code but are **off** until you add them to your profile.
 
 To turn it on:
 
-1. Copy `server/profiles/desktop.yml` to your own file (for example `my.yml`), add a line `  - place-kie` above `  - legacy`, and start the app with `OPENHIGGSFIELD_PROFILE=/path/to/my.yml`.
+1. Open **Plugins** (the puzzle button next to Assets) and press **Install** on kie.ai. Nothing is downloaded: it ships with the app. (Or copy `server/profiles/desktop.yml` to your own file, for example `my.yml`, add a line `  - place-kie` above `  - legacy`, and start the app with `OPENHIGGSFIELD_PROFILE=/path/to/my.yml`.)
 2. Add your kie.ai key in **Settings → Connections** (`OPENHIGGSFIELD_KIE_KEY`).
 
 Then Run on offers it for Seedance 2.5 ($0.14 / $0.315 / $0.79 per second at 480p / 720p / 1080p) and Nano Banana 2 ($0.04 / $0.06 / $0.09 per image at 1K / 2K / 4K), prices from [kie.ai's model pages](https://kie.ai/pricing), checked 2026-11-06.
@@ -95,6 +95,20 @@ Then Run on offers it for Seedance 2.5 ($0.14 / $0.315 / $0.79 per second at 480
 - It keeps results for 14 days; the app saves each one as soon as it's ready.
 - It has no cancel call: Cancel stops the app waiting, but the task may still finish and bill there.
 - Failed tasks use no credits, per its docs. Sources: [task details](https://docs.kie.ai/market/common/get-task-detail), [uploads](https://docs.kie.ai/file-upload-api/upload-file-stream).
+
+**RunPod** (`place-runpod`). Runs our own Create Image workflows (the same ComfyUI graphs as Your computer) on a GPU you rent on RunPod Serverless. You pay RunPod for the GPU seconds each run uses.
+
+To turn it on:
+
+1. On RunPod, create a Serverless endpoint from the official **worker-comfyui** image ([source](https://github.com/runpod-workers/worker-comfyui), AGPL-3.0 licence; the app only calls it, no code is copied). Pick an image tag or build one with the models of the workflows you want (each model's files are listed on the Models & Licences page). Set max workers to at least 1 and active (always-on) workers to 0 so it costs nothing while idle.
+2. Open **Plugins** and press **Install** on RunPod (or add `  - place-runpod` above `  - legacy` in your own profile copy, as for kie.ai above).
+3. In **Settings → Connections → RunPod**, add your RunPod API key (`OPENHIGGSFIELD_RUNPOD_API_KEY`, or `RUNPOD_API_KEY`) and your endpoint's **Endpoint ID** (shown on the endpoint's page). Its models stay hidden until both are set.
+
+Then Run on offers RunPod for the Create Image models that have a ComfyUI workflow here.
+- **Price:** RunPod bills per GPU second, so the price before a run is an estimate: about 60 GPU seconds per image × $0.000486 per second (RunPod's listed rate for the 48 GB class, [pricing](https://www.runpod.io/pricing), checked 2026-11-06), about $0.03 per image. After each run the real GPU time RunPod reports (`executionTime`) × your rate is recorded as the run's cost. Set your own GPU's rate and seconds per image in your profile (`config: place-runpod: gpuUsdPerSecond:` / `secondsPerImage:`) or `OPENHIGGSFIELD_PLACE_RUNPOD_GPU_USD_PER_SECOND` / `_SECONDS_PER_IMAGE`.
+- **Size limit:** RunPod takes requests up to 10 MB, and input photos travel inside the request. A larger photo is refused before anything is sent (nothing is charged): use a smaller file or another place.
+- RunPod bills GPU time even when a workflow fails or is cancelled while running. Cancel asks RunPod to stop the job. Results are kept 30 minutes; the app saves each one at once.
+- For now: images only (Create Image). Sources: [sending requests](https://docs.runpod.io/serverless/endpoints/send-requests), [worker-comfyui](https://github.com/runpod-workers/worker-comfyui).
 
 ### Retiring and removed models
 
