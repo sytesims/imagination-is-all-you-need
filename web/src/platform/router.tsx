@@ -6,6 +6,7 @@ import { threeDRedirectTarget } from '../../../server/src/shared/threeD';
 import { redirectTarget, withSearch, addedImageRedirect } from '../shared/workflowLinks';
 import { selfHostRedirect } from '../shared/legacyRoutes';
 import { useEffect, useState } from 'react';
+import { useLinkOn } from '../shared/plugins';
 /** Minimal pushState router (no dependency). */
 export function navigate(to: string, o: { replace?: boolean; state?: Record<string, unknown> } = {}) { to = canonTo(to); /* inApp: this entry was reached by a click in the app (✕ can go back to it). A replace keeps the entry's own flag: a direct link stays a direct link, so ✕ closes to the page's list, as Esc does */
   const st = { ...(o.replace ? history.state : {}), inApp: o.replace ? !!(history.state as any)?.inApp : true, ...(o.state ?? {}) }; if (o.replace) history.replaceState(st, '', to); else history.pushState(st, '', to); dispatchEvent(new PopStateEvent('popstate')); }
@@ -40,6 +41,8 @@ export function useSearch() {
 export const videoWorkflowParam = (search = location.search): string => new URLSearchParams(search).get('workflow') ?? '';
 
 export function Link({ to, children, className, onClick, ...rest }: { to: string; children: React.ReactNode; className?: string } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & { [k: `data-${string}`]: string | undefined }) {
+  /* a page of a studio turned off in Plugins (Video, Image, Audio, 3D, Edit…): the link hides, so nothing leads to a dead end (shared/studioLinks.ts) */
+  if (!useLinkOn()(to)) return null;
   /* an outside address (the GitHub repo and docs) opens in a new tab: no prefetch, no in-app navigation */
   if (/^https?:\/\//i.test(to)) return <a {...rest} href={to} className={className} target="_blank" rel="noopener noreferrer" onClick={onClick}>{children}</a>;
   /* prefetch the page's code on hover / focus / touch, so the click rarely waits for a chunk */

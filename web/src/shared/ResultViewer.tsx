@@ -1,4 +1,5 @@
 import { recreateHref } from './workflowLinks';
+import { useLinkOn } from './plugins';
 import { goClick } from './goToWorkflow';
 import { tip } from './Tooltip';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
@@ -188,7 +189,7 @@ export function FailedViewer({ job, onClose, onPrev, onNext, pos, model, onGone 
   const toast = useToast(); const [copied, flash] = useCopied(); const [busy, setBusy] = useState(false); const x: any = job; const inp: any = job.input ?? {};
   const t = job.errorType ?? 'temporary'; const title = (job.status as string) === 'blocked' ? STATE_LABELS.blocked : ERROR_LABELS[t] ?? 'This run failed';
   const retry = async () => { if (busy) return; setBusy(true); try { await retryJob(job.id); toast('Trying again with the same settings'); window.dispatchEvent(new Event('ohf:jobs-changed')); onClose(); } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); } };
-  const recreate = recreateHref(job)!;
+  const recreate = recreateHref(job)!; const linkOn = useLinkOn(); /* Change settings hides while its studio is off */
   const rows = ([['Feature', x.feature?.label ?? ''], ['Model', model || x.modelName || x.model || ''], ['Run on', ranOnOf(x) || x.runOnLabel ? <RunOnCell job={x} label={ranOnOf(x) || x.runOnLabel} /> : ''], ['Status', title], ['Created', whenText(x.createdAt)], ['Seed', inp.seed ?? x.seed ?? '']] as [string, ReactNode][]).filter(([, v]) => v !== '' && v != null);
   /* The bean in a mood with the reason and its fix (shared/FailureState); Try again, Change settings and Run on stay in the footer below. */
   const media = <div className="rvx-media rvx-fail-stage" data-testid="rvx-fail"><FailureState job={job} skip={['retry', 'recreate', 'runLocal']} onLeave={() => onClose()} /></div>;
@@ -196,7 +197,7 @@ export function FailedViewer({ job, onClose, onPrev, onNext, pos, model, onGone 
   return <ViewerShell label="Failed result" media={media} who={{ name: 'You', role: 'Author', self: true }} badge={trashed ? <TrashChip /> : null} tabs={[{ id: 'info', label: 'Info' }]} tab="info" setTab={() => 0} onClose={onClose} onPrev={onPrev} onNext={onNext} pos={pos} testId="result-viewer-failed" fullscreen={false} itemKey={job.id}
     body={<><ViewerPrompt text={String(inp.prompt ?? '').trim()} onCopy={() => navigator.clipboard?.writeText(String(inp.prompt ?? '')).then(() => { toast('Prompt copied'); }, () => false)} /><ViewerDetails rows={rows} /></>}
     footer={trashed ? <TrashActions job={job} onGone={onGone ?? onClose} /> : <><TryOnButtons job={job} onStarted={() => onClose()} />{!MADE.has(String((job as any).reasonCode ?? '')) /* made but not saved: Retry download / Run again · $X sit on the stage */ && <button type="button" className="rvx-primary" data-testid="rvx-try-again" disabled={busy} onClick={retry}><RecreateGlyph />{busy ? 'Starting…' : 'Try again'}</button>}
-      <div className="rvx-row2"><a className="rvx-second" href={recreate} data-testid="rvx-edit-settings" onClick={goClick(recreate, onClose)}>Change settings</a>
+      <div className="rvx-row2">{linkOn(recreate) && <a className="rvx-second" href={recreate} data-testid="rvx-edit-settings" onClick={goClick(recreate, onClose)}>Change settings</a>}
         <button type="button" className="rvx-second" data-testid="rvx-copy-support" onClick={() => copySupport(job.id, `job ${job.id} · ${job.toolId} · ${t} · ${job.error ?? ''}`).then(() => flash(), () => toast('Couldn’t copy the support info', 'error'))}>{copied ? <Copied /> : 'Copy support info'}</button></div></>} />;
 }
 

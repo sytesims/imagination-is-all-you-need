@@ -10,6 +10,7 @@ import { toolHandoffHref } from './workflowLinks';
 import { ToolIconFor } from '../ui/Icons';
 import { TOOL_TAGLINE } from '../ui/headerMenus';
 import { useItGroupOf, USE_IT_TITLE, type UseItGroup } from './useItGroups';
+import { useLinkOn } from './plugins';
 import './resultMenu.css';
 
 export type MItem = {
@@ -56,12 +57,13 @@ function useTargets(jobId: string) {
   return t;
 }
 /** Hand-off rows grouped by where they open (Edit the picture · Make it move · Sound and voice · 3D; shared/useItGroups.ts), minus tool ids the Edit tab lists as its own rows. */
-function toolSections(t: Target[] | null, jobId: string, out: number, onClose: (() => void) | undefined, skip: Set<string>): MSection[] {
+function toolSections(t: Target[] | null, jobId: string, out: number, onClose: (() => void) | undefined, skip: Set<string>, linkOn: (href: string) => boolean): MSection[] {
   if (!t) return [{ k: 'tools-loading', items: [{ k: 'loading', label: 'Loading tools…', icon: null, testid: 'rm-tools-loading', dis: 'Loading' }] }];
   const seen = new Set<string>(); const by = new Map<UseItGroup, MItem[]>();
   for (const x of t) {
     if (skip.has(x.toolId) || seen.has(x.toolId)) continue; seen.add(x.toolId);
     const url = toolHandoffHref({ id: x.toolId }, `fromJob=${encodeURIComponent(jobId)}&out=${out}${x.as ? `&as=${x.as}` : ''}`);
+    if (!linkOn(url)) continue; /* it opens a studio turned off in Plugins (Relight → Image while Image is off) */
     const d = useItGroupOf(x.toolId, url); /* the page it opens: a video tool is under "Make it move", never "Edit the picture" */ const tag = TOOL_TAGLINE[x.toolId];
     by.set(d, [...(by.get(d) ?? []), { k: x.toolId, label: <><b>{nameOf(x)}</b>{tag && <small>{tag}</small>}</>, icon: <ToolIconFor id={x.toolId} size={16} />, testid: `rv-send-${x.toolId}`, href: url, onClick: goClick(url, onClose) }]);
   }
@@ -70,8 +72,8 @@ function toolSections(t: Target[] | null, jobId: string, out: number, onClose: (
 
 /** The Edit tab's "Use it in…" list: every other tool that takes this result, with an icon and a one-line hint. */
 export function ToolsPanel({ jobId, out, onClose, skip }: { jobId: string; out: number; onClose?: () => void; skip: Set<string> }) {
-  const t = useTargets(jobId);
-  const secs = useMemo(() => toolSections(t, jobId, out, onClose, skip), [t, jobId, out, onClose, skip]);
+  const t = useTargets(jobId); const linkOn = useLinkOn();
+  const secs = useMemo(() => toolSections(t, jobId, out, onClose, skip, linkOn), [t, jobId, out, onClose, skip, linkOn]);
   const count = t ? secs.reduce((n, s) => n + s.items.length, 0) : null;
   if (t && !count) return null;
   return <section className="rm-tools" data-testid="rvx-other-tools" aria-label="Use it in"><p className="rm-tools-h">Use it in…<small>{count != null ? `${count} tools` : ''}</small></p>

@@ -7,6 +7,7 @@
  * the app's own (VideoControls, AudioCard, GenTile, WorkflowControls, DockGenerate, GenPrice, MakerTile, linksFor, QUICK_ACTIONS +
  * actionPrice, variationOf, toolHrefOf, jobCaption). The panel reads the board live (the board's useValue) and keeps only its pin.
  */
+import { linkOn } from '../shared/plugins';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useBoardApi, useValue, type BoardApi, type BoardNode, type NodeId } from './boardApi';
 import { getJob, type JobState } from '../api';
@@ -494,7 +495,7 @@ function Actions({ v }: { v: View }) {
   const wfDis = workflowTip(wfInfo.info, wfInfo.err);
   useEffect(() => setWf(false), [m.jobId]);
   const page = m.kind === 'video' ? 'Video' : m.kind === 'audio' ? 'Audio' : m.kind === '3d' ? '3D' : 'Image';
-  const href = v.gen ? toolHrefOf(v.p.flow, m.jobId || v.p.jobId) : v.job ? workflowRecreateHref(v.job as any) : null;
+  const rc = v.job ? workflowRecreateHref(v.job as any) : null; const href = v.gen ? toolHrefOf(v.p.flow, m.jobId || v.p.jobId) : rc && linkOn(rc) ? rc : null; /* none into a studio that is off */
   return <div className="cp-foot-row">
     <a className="cp-btn cp-dl" href={m.url} download aria-label="Download" {...tip('Save the file')}><DownloadIcon size={14} /><span>Download</span></a>
     {v.s.type !== UPLOAD_TYPE && <button type="button" className="cp-btn" disabled={!href} onClick={() => href && navigate(href)} {...tip(href ? `Open in ${page} with these settings` : 'Made outside a workflow: nothing to open')}><PullOutIcon size={14} /><span>Open in {page}</span></button>}

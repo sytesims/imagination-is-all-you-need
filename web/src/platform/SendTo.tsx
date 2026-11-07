@@ -2,6 +2,7 @@ import { isVectorUrl } from '../../../server/src/shared/imageVector';
 import { recreateHref, toolHandoffHref, withSearch } from '../shared/workflowLinks';
 import type { JobState, ToolInfo } from '../api';
 import { navigate } from './router';
+import { linkOn } from '../shared/plugins';
 
 export type Medium = 'image' | 'video' | 'audio';
 const MEDIA_RX: [Medium, RegExp][] = [['image', /\.(png|jpe?g|webp|gif|avif)(\?|$)/i], ['video', /\.(mp4|webm|mov|m4v)(\?|$)/i], ['audio', /\.(m4a|wav|mp3|ogg|flac|aac|opus)(\?|$)/i]];
@@ -21,7 +22,7 @@ export function takes(t: ToolInfo): Set<Medium> {
 /** Tools that take this asset's output medium (image → image-input tools, video → video-input tools, audio → audio-input tools). */
 export function sendTargets(job: JobState, tools: ToolInfo[], out = 0) {
   if (!job.outputs.length) return []; const m = outputMedium(job, tools, out); if (!m) return [];
-  return tools.filter(t => takes(t).has(m));
+  return tools.filter(t => takes(t).has(m) && linkOn(sendUrl(job, t, out))); /* a tool that opens in a studio turned off in Plugins (Image's workflows while Image is off) is left out */
 }
 /** Relight, Face Swap, Upscale… open Create Image with that workflow picked (shared/workflowLinks.ts); other tools open their own page. */
 export const sendUrl = (job: JobState, tool: ToolInfo, out = 0) => toolHandoffHref(tool, `fromJob=${encodeURIComponent(job.id)}&out=${out}`);
@@ -54,7 +55,7 @@ export default function SendTo({ job, tools, out = 0 }: { job: JobState; tools: 
 export function refTarget(job: JobState, tools: ToolInfo[], out = 0): { tool: ToolInfo; url: string } | null {
   if (job.status !== 'done' || outputMedium(job, tools, out) !== 'image') return null; const hasRefs = (t?: ToolInfo) => !!t?.inputs?.some(i => i.name === 'refs');
   const own = tools.find(t => t.id === job.toolId); const t = hasRefs(own) ? own! : tools.find(x => x.id === 'create-image' && hasRefs(x)); if (!t) return null;
-  return { tool: t, url: withSearch(t.route, `fromJob=${encodeURIComponent(job.id)}&out=${out}&as=ref`) };
+  const url = withSearch(t.route, `fromJob=${encodeURIComponent(job.id)}&out=${out}&as=ref`); return linkOn(url) ? { tool: t, url } : null;
 }
 /** Recreate: the tool that made it, with its settings prefilled (GET /api/jobs/:id/prefill?action=recreate via ?recreate=). */
-export const recreateUrl = (job: JobState, tools: ToolInfo[]) => { const t = tools.find(x => x.id === job.toolId); return t && !(job as any).sample ? { tool: t, url: recreateHref(job, tools)! } : null; };
+export const recreateUrl = (job: JobState, tools: ToolInfo[]) => { const t = tools.find(x => x.id === job.toolId); const url = t && !(job as any).sample ? recreateHref(job, tools)! : null; return t && url && linkOn(url) ? { tool: t, url } : null; };

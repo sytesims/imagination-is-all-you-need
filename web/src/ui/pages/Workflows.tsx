@@ -17,6 +17,7 @@ import { ToolIconFor, SearchIcon, CloseIcon, OfficialBadgeIcon, CommunityIcon, S
 import { FlowDiagram, hasDiagram } from '../exploreArt';
 import { featuredByKey, runByJob, type FeaturedRun } from '../../../../server/src/shared/featured';
 import { workflowName } from '../../../../server/src/shared/imageFeatures';
+import { useLinkOn } from '../../shared/plugins';
 import { resolveRow, whyHidden, runsPrice, runCost, openHrefOf, type Row, type Hub } from './workflowRows';
 import { WF_ENTRIES, WF_CHAINS, workflowPageSections, cardThumb, entryHay, type WfChain } from '../../../../server/src/shared/workflowCatalog';
 import { countLine } from '../../../../server/src/shared/workflowCount';
@@ -59,13 +60,16 @@ const fetched = new Set<string>(); const warm = (href: string) => { const p = hr
 function useRows(tools: ToolInfo[]) {
   const [hub, setHub] = useState<Hub>(null);
   useEffect(() => { let live = true; loadHub().then((h) => live && setHub(h)).catch(() => undefined); return () => { live = false; }; }, []);
-  return useMemo(() => { const w = { device: device() };
+  const linkOn = useLinkOn(); /* a card that opens a studio turned off in Plugins (Relight while Image is off) is left out, search too */
+  const all = useMemo(() => { const w = { device: device() };
     /* plugins with a tab (shared/pluginPlacement.ts) join the catalogue from GET /api/tools: they show and search like the built-in ones, with their Plugin badge */
     const entries = [...WF_ENTRIES, ...pluginWfEntries(tools as any)];
     const rows = entries.map((e) => resolveRow(e, tools, hub, w)).filter((r): r is Row => !!r);
     /* left out here, and why (tools still loading: nothing yet) */
     const left = tools.length ? entries.map((e) => ({ e, why: whyHidden(e, tools, hub) })).filter((x): x is { e: typeof x.e; why: string } => !!x.why) : [];
     return { rows, left }; }, [tools, hub]);
+  const off = all.rows.filter((r) => !linkOn(r.openHref)).map((r) => r.e.id).join(); /* changes only when a studio is switched */
+  return useMemo(() => (off ? { rows: all.rows.filter((r) => linkOn(r.openHref)), left: all.left } : all), [all, off]);
 }
 /** Sample mode (no keys, mock server): said once, plainly. */
 function useSampleMode() {

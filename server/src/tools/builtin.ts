@@ -107,6 +107,9 @@ export const BUILTIN_TOOL_STUDIO: ReadonlyMap<string, StudioId> = new Map([
   ...APP_GALLERY.map((a) => [`app-${a.id}`, 'apps-gallery' as StudioId] as const),
 ]);
 
+/** A gallery recipe (app-<id>) also needs its base tool's studio: Relight runs Create Image, so it is gone while Image is off (GET /api/ui). */
+export const GALLERY_BASE_STUDIO: ReadonlyMap<string, StudioId> = new Map(APP_GALLERY.flatMap((a) => { const s = BUILTIN_TOOL_STUDIO.get(a.base); return s ? [[`app-${a.id}`, s] as const] : []; }));
+
 /** Roadmap ("Soon") entries (CLEANROOM-SPEC P1/P2; our own names). A real tool with the same id takes the entry's place. */
 export const SOON: readonly [string, string][] = [['edit-recreate', 'Edit Recreate'], ['scene-studio', 'Scene Studio'], ['reframe', 'Reframe'], ['cutout', 'Cutout'],
   ['character-builder', 'Character Builder'], ['lipsync', 'Lipsync'], ['storyboard', 'Storyboard']];

@@ -7,6 +7,7 @@
  *  - A job without a poster saves one from the viewer once it loads (POST /api/jobs/:id/3d-poster): the card still for the feed.
  *  - "Make a video": records one orbit in the browser (free) and keeps it as a normal video result (tool three-d-turntable).
  */
+import { useLinkOn } from './plugins';
 import { WorksWith } from './WorksWith';
 import { SAMPLE_SITE, SAMPLE_OUTPUT } from './sampleSite';
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -64,7 +65,7 @@ export function Viewer3D({ item, onClose, onPrev, onNext, pos, bigBytes = BIG_GL
   /** row 1's main button instead of the default (a job: Make a video; an example: none, the GLB tile downloads it), e.g. an example's "Use this image" */ primary?: ReactNode;
   /** more footer tiles after GLB and Still (a job's shared Share and More from ResultView) */ tiles?: ReactNode; /** dialogs over the viewer (Share) */ children?: ReactNode;
   bigBytes?: number; /** start recording the turntable as soon as the model loads (the Turntable workflow) */ recordOnOpen?: boolean; onTurntable?: (jobId: string) => void; /** a character was rigged from this model (its new job id) */ onRigged?: (jobId: string) => void }) {
-  const toast = useToast(); const v = useRef<Model3DHandle>(null);
+  const toast = useToast(); const v = useRef<Model3DHandle>(null); const linkOn = useLinkOn(); /* Recreate and Direct a Shot hide while 3D is off */
   const meta = useMeta3d(item.jobId ? item.src : null); const bytes = meta?.bytes ?? (item.mb ? item.mb * 1e6 : 0);
   const [okBig, setOkBig] = useState(false); const big = bytes > bigBytes && !okBig;
   const [rotate, setRotate] = useState(true); const [look, setLook] = useState<Look>('lit'); const [loaded, setLoaded] = useState(false);
@@ -100,10 +101,10 @@ export function Viewer3D({ item, onClose, onPrev, onNext, pos, bigBytes = BIG_GL
   const footer = <>
     <div className="rvx-row1">{item.jobId && !primary ? <button type="button" className="rvx-primary" data-testid="v3d-make-video" disabled={!loaded || !!rec} onClick={() => void record()} {...tip('Records one orbit of the model in your browser and keeps it as a video. Free.')}><VideoIcon size={16} />{rec ? 'Recording…' : 'Make a video'}</button>
       : primary ?? null /* no second Download GLB: the GLB tile below downloads it (UX audit #9) */}
-      {item.recreateHref && <a className="rvx-second" href={item.recreateHref} onClick={goClick(item.recreateHref, onClose)} data-action="recreate" data-testid="rv-recreate" {...tip('The same inputs and settings in this workflow, with a new seed')}><RecreateGlyph />Recreate</a>}</div>
+      {item.recreateHref && linkOn(item.recreateHref) && <a className="rvx-second" href={item.recreateHref} onClick={goClick(item.recreateHref, onClose)} data-action="recreate" data-testid="rv-recreate" {...tip('The same inputs and settings in this workflow, with a new seed')}><RecreateGlyph />Recreate</a>}</div>
     <div className="rvx-tiles" data-testid="rvx-tiles">
       <a className="rvx-tile" href={item.src} download={item.downloadName} data-testid="v3d-download" aria-label="Download the GLB" {...tip('Download the GLB')}><DownloadIcon size={18} /><span>Save</span></a>
-      {item.jobId && <a className="rvx-tile" href={directShotHref(item.jobId)} onClick={goClick(directShotHref(item.jobId), onClose)} data-testid="v3d-use-shot" aria-label="Use in Direct a Shot" {...tip('Use in Direct a Shot: put this model in a 3D set as a prop or as the actor, film it, then render it as real video')}><PrevizIcon size={18} /><span>Shot</span></a>}
+      {item.jobId && linkOn(directShotHref(item.jobId)) && <a className="rvx-tile" href={directShotHref(item.jobId)} onClick={goClick(directShotHref(item.jobId), onClose)} data-testid="v3d-use-shot" aria-label="Use in Direct a Shot" {...tip('Use in Direct a Shot: put this model in a 3D set as a prop or as the actor, film it, then render it as real video')}><PrevizIcon size={18} /><span>Shot</span></a>}
       <button type="button" className="rvx-tile" data-testid="v3d-still" disabled={!loaded} aria-label="Save a still picture" {...tip('Save a picture of this view (PNG)')} onClick={async () => { const b = await v.current?.snapshot(); if (!b) return; const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = item.downloadName.replace(/\.glb$/i, '.png'); a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" aria-hidden><rect x="3" y="5" width="18" height="14" rx="2.5" /><circle cx="12" cy="12" r="3.5" /></svg><span>Photo</span></button>
       {item.jobId && <button type="button" className="rvx-tile" data-testid="v3d-rig" aria-label="Rig as a character" onClick={() => setRig(true)} {...tip(item.animation ? 'Rig it again: new bones and moves. Free, in your browser' : 'Rig as a character: give it bones and moves (walk, run, dance), then direct it. Free, in your browser')}><RigIcon size={18} /><span>Rig</span></button>}
       {tiles}</div><WorksWith className="v3d-works" testId="v3d-works-with">Opens in Blender, and online in any glTF viewer.</WorksWith>{item.credit && <p className="m3d-credit" data-testid="v3d-credit">{item.credit}</p>}</>;

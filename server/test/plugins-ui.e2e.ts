@@ -44,6 +44,7 @@ try {
   for (const id of ['place-kie', 'place-runpod']) { assert.equal(by[id].state, 'not-installed'); assert.equal(by[id].installable, true); }
   assert.equal(by['place-fal'].state, 'needs-key'); assert.deepEqual(by['place-fal'].key, { connection: 'fal', label: 'fal key', set: false });
   assert.ok(!(await ui()).includes('canvas-demo') && (await ui()).includes('canvas'));
+  const ts = (await get('/api/ui')).body.toolStudio; assert.equal(ts['h3-video'], 'studio-video'); assert.equal(ts.reframe, 'studio-edit'); assert.equal(ts['app-relight'], 'apps-gallery'); /* the web hides links into a studio that is off */
   ok(`GET /api/plugins: ${l.plugins.length} rows, plain names and groups; start-off ones off; kie.ai and RunPod ready to install; fal needs its key`);
 
   // ---- the spend guard and the app itself ----
