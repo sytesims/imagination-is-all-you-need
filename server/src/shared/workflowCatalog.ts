@@ -245,6 +245,7 @@ export const WF_EXCLUDED: Record<string, string> = {
 /** Server tools no card points at, and why (every other tool on GET /api/tools has a card). */
 export const WF_TOOLS_EXCLUDED: Record<string, string> = {
   'photos-reel': 'the hidden base tool behind Photos → Reel (app-photos-to-reel), not a separate workflow',
+  'layers-edit': 'Render in the Video to layers viewer (your changes to a split), opened from a result, not a workflow you start',
   'make-it-real': 'the Render step inside Direct a Shot (v-direct-a-shot), not a workflow you open on its own',
   cinema: 'Director, retired (2026-10-23): its page opens Create Video',
   soul: 'legacy look LoRAs page: Create Image has the looks now',

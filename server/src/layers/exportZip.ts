@@ -15,6 +15,7 @@ import { ff } from './masks.js';
 import { workDir, manifestPath } from './assemble.js';
 import { exportManifest, type LayersManifest, type LayerEntry } from './manifest.js';
 import { writeZip } from './zipStream.js';
+import { layerSource } from './editRender.js';
 
 /** A file-safe slug of a layer name. */
 export const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'layer';
@@ -50,7 +51,7 @@ async function make(jobId: string, z: string): Promise<string> {
   const names = new Map<number, { prores: string; matte: string }>();
   for (const e of m.layers) {
     const matte = path.join(w, `matte${e.id}.mkv`); if (!existsSync(matte)) throw new Error('This split’s mattes are no longer on this computer');
-    const mov = path.join(ex, `${stem(e)}.mov`); await ff(proresArgs({ source: src, matte, frames: m.frames, out: mov }), 'ProRes 4444');
+    const mov = path.join(ex, `${stem(e)}.mov`); await ff(proresArgs({ source: layerSource(jobId, m, e.id), matte, frames: m.frames, out: mov }), 'ProRes 4444'); // an edited split: each layer's own footage
     const n = { prores: `layers/${stem(e)}.mov`, matte: `mattes/${stem(e)}-matte.mp4` }; names.set(e.id, n);
     files.push({ name: n.prores, path: mov }, { name: n.matte, path: fromUrl(e.matteUrl) });
   }

@@ -12,7 +12,10 @@ import { usePluginOn } from '../../shared/plugins';
 import { tip } from '../../shared/Tooltip';
 import { LayerSheetsIcon, DownloadIcon, PlayIcon, PauseIcon } from '../Icons';
 import type { LayersManifest } from '../../../../server/src/layers/manifest';
-import { LAYERS_TOOL } from '../../../../server/src/layers/constants';
+import { LAYER_JOB_TOOLS } from '../../../../server/src/layers/constants';
+import { stackOrder, isChanged } from '../../../../server/src/layers/edit';
+import { useLayerEdits, useTextPictures, cssFilter, cssTransform, NO_EDIT } from './layerEdit';
+import { LayerEditPanel } from './LayerEditPanel';
 import '../../shared/layerStack.css';
 import './videoLayers.css';
 
@@ -21,7 +24,7 @@ export type LayersMode = 'layers' | 'depth' | 'background' | 'overview';
 
 export function useVideoLayers(job: { id: string; toolId?: string; status?: string } | null): LayersManifest | null {
   const on = usePluginOn('studio-edit'); /* Video to layers is part of the Edit studio, with Footage Effects */ const [m, setM] = useState<LayersManifest | null>(null);
-  const want = !!job && job.toolId === LAYERS_TOOL && job.status === 'done' && on;
+  const want = !!job && LAYER_JOB_TOOLS.includes(String(job.toolId)) && job.status === 'done' && on;
   useEffect(() => { setM(null); if (!want) return; const ac = new AbortController();
     fetch(`/api/layers/${encodeURIComponent(job!.id)}`, { signal: ac.signal }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.kind === 'video-layers') setM(d); }).catch(() => undefined);
     return () => ac.abort(); }, [job?.id, want]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -32,9 +35,9 @@ export function useVideoLayers(job: { id: string; toolId?: string; status?: stri
 export function useVideoLayerView(jobId: string) {
   const [hidden, setHidden] = useState<ReadonlySet<number>>(() => new Set()); const [solo, setSolo] = useState<number | null>(null);
   const [bgOn, setBgOn] = useState(true); const [mode, setMode] = useState<LayersMode>('layers');
-  const [time, setTime] = useState(0); const [playing, setPlaying] = useState(true);
+  const [time, setTime] = useState(0); const [playing, setPlaying] = useState(true); const edit = useLayerEdits(jobId);
   useEffect(() => { setHidden(new Set()); setSolo(null); setBgOn(true); setMode('layers'); setTime(0); setPlaying(true); }, [jobId]);
-  return { hidden, solo, bgOn, mode, time, playing, setMode, setTime, setPlaying,
+  return { hidden, solo, bgOn, mode, time, playing, setMode, setTime, setPlaying, edit,
     toggle: (id: number) => setHidden((h) => { const n = new Set(h); if (n.has(id)) n.delete(id); else n.add(id); return n; }),
     toggleSolo: (id: number) => setSolo((s) => (s === id ? null : id)), toggleBg: () => setBgOn((b) => !b),
     visible: (id: number) => (solo != null ? solo === id : !hidden.has(id)) };
@@ -61,12 +64,37 @@ export function VideoLayersStage({ m, view }: { m: LayersManifest; view: VideoLa
   const vprops = { muted: true, loop: true, playsInline: true, preload: 'auto' as const, autoPlay: playing, 'data-media-keep': '' /* the stack plays together: never budget-paused one by one (shared/mediaPause.ts) */ };
   const bottomUp = [...m.layers].sort((a, b) => a.order - b.order); const shown = m.layers.filter((l) => view.visible(l.id)).length;
   const label = mode === 'depth' ? 'Depth (near is white)' : mode === 'background' ? 'Clean background' : mode === 'overview' ? 'Overview: each layer in its colour' : `${shown} of ${m.layers.length} layers shown`;
+  /* your changes (layerEdit.ts): moved / scaled / recoloured layers and texts, as the render will make them */
+  const { edit } = view; const W = m.width, H = m.height; const pics = useTextPictures(edit.texts, W, H);
+  const changed = Object.values(edit.edits).some(isChanged) || edit.texts.length > 0 || view.hidden.size > 0;
+  const stack = stackOrder(bottomUp.map((l) => l.id), edit.texts.map((t) => ({ slot: t.slot })));
+  const sel = edit.selected; const selEdit = sel?.kind === 'layer' ? edit.edits[sel.id] ?? NO_EDIT(sel.id) : undefined;
+  /* drag the selected layer (or text) to move it; drag the corner handle to scale it */
+  const drag = useRef<{ kind: 'move' | 'scale'; x0: number; y0: number; ex: number; ey: number; s0: number; d0: number } | null>(null);
+  const toFrame = (dxPx: number, dyPx: number) => { const r = box.current!.getBoundingClientRect(); return [dxPx * (W / r.width), dyPx * (H / r.height)]; };
+  const down = (kind: 'move' | 'scale') => (e: React.PointerEvent) => { if (!sel) return; e.preventDefault(); e.stopPropagation(); (e.target as Element).setPointerCapture?.(e.pointerId);
+    const r = box.current!.getBoundingClientRect(); const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const cur = sel.kind === 'layer' ? selEdit! : edit.texts[sel.index];
+    drag.current = { kind, x0: e.clientX, y0: e.clientY, ex: cur.x ?? 0, ey: cur.y ?? 0, s0: sel.kind === 'layer' ? selEdit!.scale ?? 1 : 1, d0: Math.max(1, Math.hypot(e.clientX - cx, e.clientY - cy)) }; };
+  const move = (e: React.PointerEvent) => { const d = drag.current; if (!d || !sel) return; const [dx, dy] = toFrame(e.clientX - d.x0, e.clientY - d.y0);
+    if (d.kind === 'scale' && sel.kind === 'layer') { const r = box.current!.getBoundingClientRect(); const dd = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+      edit.patch(sel.id, { scale: Math.round(Math.min(3, Math.max(0.2, d.s0 * (dd / d.d0))) * 100) / 100 }); return; }
+    if (sel.kind === 'layer') edit.patch(sel.id, { x: Math.round(d.ex + dx), y: Math.round(d.ey + dy) }); else edit.patchText(sel.index, { x: Math.round(Math.min(W, Math.max(0, d.ex + dx))), y: Math.round(Math.min(H, Math.max(0, d.ey + dy))) }); };
+  const up = () => { drag.current = null; };
   return <div className="vly-stage" data-testid="vly-stage">
-    <div ref={box} className="rvx-media rvx-fit ly-canvas alpha-bg vly-canvas" style={{ ['--ar' as any]: m.width / m.height }} role="img" aria-label={`Video to layers: ${label}`} data-testid={`vly-canvas-${mode}`}>
+    <div ref={box} className={`rvx-media rvx-fit ly-canvas alpha-bg vly-canvas${sel && mode === 'layers' ? ' vly-editing' : ''}`} style={{ ['--ar' as any]: m.width / m.height }} role="img" aria-label={`Video to layers: ${label}`} data-testid={`vly-canvas-${mode}`}
+      onPointerDown={mode === 'layers' ? down('move') : undefined} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
       {mode === 'layers' && <>
-        {m.background.url && <video key="bg" src={m.background.url} {...vprops} className={view.bgOn && view.solo == null ? undefined : 'ly-off'} data-testid="vly-bg" />}
-        {bottomUp.map((l) => <video key={l.id} src={l.previewUrl} {...vprops} className={view.visible(l.id) ? undefined : 'ly-off'} data-testid={`vly-video-${l.id}`} />)}
-        {shown === 0 && !(view.bgOn && m.background.url) && <span className="ly-none">All layers hidden</span>}
+        {m.background.url ? <video key="bg" src={m.background.url} {...vprops} className={view.bgOn && view.solo == null ? undefined : 'ly-off'} data-testid="vly-bg" />
+          : changed && <video key="src" src={m.sourceUrl} {...vprops} className={view.solo == null ? undefined : 'ly-off'} data-testid="vly-source-base" /> /* no clean background: the render puts your changes over the clip itself */}
+        {stack.map((it) => it.kind === 'layer'
+          ? (() => { const l = m.layers.find((x) => x.id === it.id)!; const e = edit.edits[l.id];
+            return <video key={l.id} src={l.previewUrl} {...vprops} className={view.visible(l.id) ? undefined : 'ly-off'} style={{ transform: cssTransform(e, W, H), filter: cssFilter(e) }} data-testid={`vly-video-${l.id}`} />; })()
+          : pics[it.index] ? <img key={`t${it.index}`} src={pics[it.index]!} alt="" draggable={false} className={view.solo == null ? 'vly-text' : 'vly-text ly-off'} data-testid={`vly-text-${it.index}`} /> : null)}
+        {sel?.kind === 'layer' && <><span className="vly-sel" style={{ transform: cssTransform(selEdit, W, H) }} aria-hidden data-testid="vly-sel" />
+          <span className="vly-handle" onPointerDown={down('scale')} data-testid="vly-scale-handle" title="Drag towards the middle to shrink, away to grow" /* always in view, wherever the layer went */ /></>}
+        {sel?.kind === 'text' && edit.texts[sel.index] && <span className="vly-text-sel" style={{ left: `${(edit.texts[sel.index].x / W) * 100}%`, top: `${(edit.texts[sel.index].y / H) * 100}%` }} aria-hidden data-testid="vly-text-sel" />}
+        {shown === 0 && !(view.bgOn && m.background.url) && !changed && <span className="ly-none">All layers hidden</span>}
       </>}
       {mode === 'depth' && m.depth.url && <video key="depth" src={m.depth.url} {...vprops} data-testid="vly-depth" />}
       {mode === 'background' && m.background.url && <video key="plate" src={m.background.url} {...vprops} data-testid="vly-plate" />}
@@ -109,9 +137,11 @@ export function VideoLayersPanel({ m, view, onError }: { m: LayersManifest; view
         return <li key={l.id} className={`ly-row${vis ? '' : ' off'}${solo ? ' on' : ''}`} data-testid={`vly-row-${l.id}`}>
           <button type="button" className="ly-eye" aria-pressed={!view.hidden.has(l.id)} aria-label={`${view.hidden.has(l.id) ? 'Show' : 'Hide'} ${l.name}`} {...tip(view.hidden.has(l.id) ? 'Show layer' : 'Hide layer')} onClick={() => view.toggle(l.id)} data-testid={`vly-eye-${l.id}`}><EyeGlyph off={view.hidden.has(l.id)} /></button>
           <button type="button" className={`ly-eye vly-solo${solo ? ' on' : ''}`} aria-pressed={solo} aria-label={`${solo ? 'Stop solo' : 'Solo'} ${l.name}`} {...tip(solo ? 'Show every layer again' : 'Show only this layer')} onClick={() => view.toggleSolo(l.id)} data-testid={`vly-solo-${l.id}`}><SoloGlyph /></button>
+          <button type="button" className="ly-pick" aria-pressed={view.edit.selected?.kind === 'layer' && view.edit.selected.id === l.id} data-testid={`vly-pick-${l.id}`} {...tip('Change this layer: move, scale, colour')}
+            onClick={() => { view.setMode('layers'); view.edit.select(view.edit.selected?.kind === 'layer' && view.edit.selected.id === l.id ? null : { kind: 'layer', id: l.id }); }}>
           <video className="vly-thumb" src={`${l.matteUrl}#t=0.5`} muted playsInline preload="metadata" aria-hidden />
           <span className="ly-name"><b><i className="vly-dot" style={{ background: l.colour }} aria-hidden />{l.name}</b>
-            <small>{pos}{l.depth != null ? ` · depth ${Math.round(l.depth * 100)}%` : ''}{l.coverage < 0.5 ? ` · in ${Math.round(l.coverage * 100)}% of the clip` : ''}</small></span>
+            <small>{pos}{l.depth != null ? ` · depth ${Math.round(l.depth * 100)}%` : ''}{l.coverage < 0.5 ? ` · in ${Math.round(l.coverage * 100)}% of the clip` : ''}</small></span></button>
           <a className="ly-dl" href={l.previewUrl} download aria-label={`Download ${l.name} (WebM with transparency)`} {...tip('This layer as a WebM with transparency')} data-testid={`vly-dl-${l.id}`}><DownloadIcon size={15} /></a>
         </li>; })}
       {m.background.url && <li className={`ly-row${view.bgOn && view.solo == null ? '' : ' off'}`} data-testid="vly-row-bg">
@@ -122,6 +152,7 @@ export function VideoLayersPanel({ m, view, onError }: { m: LayersManifest; view
         <a className="ly-dl" href={m.background.url} download aria-label="Download the clean background" data-testid="vly-dl-bg"><DownloadIcon size={15} /></a></li>}
     </ul>
     {m.background.note && <p className="rvx-hint vly-note" data-testid="vly-bg-note">{m.background.note}</p>}
+    <LayerEditPanel m={m} view={view} onError={onError} />
     <div className="ly-alls vly-alls">
       <button type="button" className="ly-all" onClick={exportZip} disabled={ex === 'busy'} aria-busy={ex === 'busy'} data-testid="vly-export" {...tip('ProRes 4444 per layer, black-and-white mattes, 16-bit depth, the clean background and layers.json')}>
         <DownloadIcon size={15} />{ex === 'busy' ? 'Making the export…' : ex === 'done' ? 'Export downloaded' : 'Export for editors (.zip)'}</button>

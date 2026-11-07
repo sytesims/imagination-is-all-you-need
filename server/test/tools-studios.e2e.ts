@@ -16,7 +16,7 @@ const REPO = path.resolve(import.meta.dirname, '../..');
 
 /** GET /api/tools order before Phase 3 (origin/v2 ce69560c, mock backend). */
 const NAV = ['object-swap', 'motion-transfer', 'restyle', 'reshoot', 'camera', 'photo-fx', 'upscale', 'create-image', 'h3-video', 'h3-extend', 'audio', 'soundtrack', 'cinema', 'voice',
-  'image-upscale', 'soul', 'three-d', 'three-d-turntable', 'plan-a-shot', 'make-it-real', 'footage-fx', 'two-person-swap', 'prompt-edit', 'finish', 'layers' /* Video to layers (2026-11-07) */, 'reframe', 'remove-bg', 'sdr-hdr',
+  'image-upscale', 'soul', 'three-d', 'three-d-turntable', 'plan-a-shot', 'make-it-real', 'footage-fx', 'two-person-swap', 'prompt-edit', 'finish', 'layers' /* Video to layers (2026-11-07) */, 'layers-edit' /* its Render (hidden) */, 'reframe', 'remove-bg', 'sdr-hdr',
   'fps-boost', 'depth-map', 'photos-reel', 'app-character-sheet', 'app-product-shot', 'app-phone-photo', 'app-inpaint', 'app-relight', 'app-photos-to-reel', 'app-transition',
   'app-ugc-ad', 'app-orbit-shot', 'app-anime-restyle', 'app-video-upscale', 'app-change-voice', 'app-translate-video', 'app-face-swap', 'app-shots', 'app-person-swap',
   'app-material-swap', 'app-ad-pack', 'app-remove-bg', 'app-expand', 'app-erase', 'app-try-on', 'app-image-layers', 'app-image-vector', 'app-music-bed'];

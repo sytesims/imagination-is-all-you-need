@@ -9,11 +9,11 @@ import type { FastifyInstance } from 'fastify';
 import { createReadStream, statSync } from 'node:fs';
 import { jobs } from '../jobs.js';
 import { appFileName } from '../shared/fileNames.js';
-import { LAYERS_TOOL } from './constants.js';
+import { LAYER_JOB_TOOLS } from './constants.js';
 import { readManifest, buildExport } from './exportZip.js';
 
 const notFound = (reply: any, error = 'No layers for this job') => reply.code(404).send({ error, errorType: 'not_found' });
-const layersJob = (id: string) => { const j = jobs.get(id); return j && j.toolId === LAYERS_TOOL && j.status === 'done' ? j : null; };
+const layersJob = (id: string) => { const j = jobs.get(id); return j && LAYER_JOB_TOOLS.includes(j.toolId) && j.status === 'done' ? j : null; };
 
 export function registerLayersRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/api/layers/:id', async (req, reply) => {
