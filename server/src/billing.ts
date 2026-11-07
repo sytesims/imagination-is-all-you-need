@@ -113,7 +113,10 @@ export interface CostEstimate { billedTo: BilledTo; billedToName: string; estUsd
 export { comfyUnits }; // shared/runCost.ts: one rounding for the quote and the bar's option prices
 const unitsOf = (billedTo: BilledTo, usd: number) => providerUnits(billedTo, usd); // shared/runCost.ts (the bar's option prices use the same)
 /** ✦ credits (1 credit = $0.01, the existing quote field) → the cost object. */
-export function costOf(o: { kind: string | null | undefined; routeId?: string | null; credits: number | null; demo?: boolean; listCredits?: number | null; estimated?: boolean; exactUsd?: number | null; unconfirmed?: boolean }): CostEstimate {
+/** The price words for a request that can't run here and has no price: an agent read the old "Free" as a free run (2026-11-07). */
+export const NOT_AVAILABLE_TEXT = 'Not available';
+/** unavailable: the request can't run here and has no price (credits null: not wired, coming soon, held until measured): usdText "Not available", never "Free". */
+export function costOf(o: { kind: string | null | undefined; routeId?: string | null; credits: number | null; demo?: boolean; listCredits?: number | null; estimated?: boolean; exactUsd?: number | null; unconfirmed?: boolean; unavailable?: boolean }): CostEstimate {
   const billedTo = billedToOf(o.kind, o.routeId); const info = billingInfo(billedTo);
   const real = billedTo === 'local' ? 0 : o.demo ? (o.listCredits ?? null) : o.credits;
   const realUsd = real == null ? null : r4(real / 100); const estUsd = o.demo || billedTo === 'local' ? 0 : realUsd ?? 0;
@@ -124,7 +127,7 @@ export function costOf(o: { kind: string | null | undefined; routeId?: string | 
   const checkedAt = billedTo === 'local' ? null : hp?.checkedAt ?? (route as any)?.checkedAt ?? null; const sourceUrl = billedTo === 'local' ? null : hp?.sourceUrl ?? (route as any)?.sourceUrl ?? null;
   const plan = billedTo === 'comfy' ? effectiveComfyPlan() : null; const estimated = billedTo !== 'local' && (o.estimated ?? true);
   const shownUsd = o.demo ? realUsd ?? 0 : estUsd;
-  const usdText = billedTo === 'local' ? LOCAL_FREE : shownUsd > 0 ? usdToken(shownUsd, { approx: estimated }) : 'Free';
+  const usdText = billedTo === 'local' ? LOCAL_FREE : o.unavailable && o.credits == null && !o.demo ? NOT_AVAILABLE_TEXT : shownUsd > 0 ? usdToken(shownUsd, { approx: estimated }) : 'Free';
   const cost: CostEstimate = { billedTo, billedToName: info.name, estUsd, ...units, failureRule: info.failureRule, failureNote: info.failureNote, estimated, demo: !!o.demo && billedTo !== 'local', realRunUsd: billedTo === 'local' ? 0 : realUsd, actualReported: info.actualCost === 'per-job',
     checkedAt, sourceUrl, plan, usdText, ...(billedTo !== 'local' && (o.unconfirmed || (hp && hp.usd == null && typeof hp.estimateUsd === 'number')) ? { unconfirmed: true } : {}) };
   cost.detail = costDetail(cost); return cost;
@@ -466,6 +469,7 @@ pricing.setCore({ id: 'cost', order: 0, run(q) {
   // Every pre-run price is an estimate (list price × the job's units); only the spend log's actualUsd is a provider-reported figure.
   // exactUsd: set by the routing hook from the routed price (routing/http.ts routeExactUsd), so it always belongs to these credits
   const exactUsd = typeof payload.exactUsd === 'number' ? payload.exactUsd : null;
-  const cost = costOf({ kind: kind ?? (credits ? 'direct' : 'local'), routeId, credits, demo: payload.demo === true, listCredits: payload.listCredits ?? null, estimated: true, exactUsd, unconfirmed: payload.unconfirmed === true });
+  const cost = costOf({ kind: kind ?? (credits ? 'direct' : 'local'), routeId, credits, demo: payload.demo === true, listCredits: payload.listCredits ?? null, estimated: true, exactUsd, unconfirmed: payload.unconfirmed === true,
+    unavailable: payload.runnable === false /* can't run and no price (credits null): "Not available", never "Free" (agent path audit 2026-11-07 #2) */ });
   q.cost = cost; return { ...payload, billingMode: billingMode(), cost };
 } });

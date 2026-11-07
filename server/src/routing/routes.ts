@@ -196,10 +196,12 @@ export function nativeRoute(p: ProviderDef): RouteDef {
   const cloud = p.id.startsWith('cloud-');
   return { routeId: `${cloud ? 'comfy-cloud' : 'comfy-router'}:${p.id}`, kind: cloud ? 'comfy-cloud' : 'comfy-router', modelId: p.id, endpoint: p.nodes?.join(', ') || p.via, priceRef: p.id,
     sourceUrl: p.docUrl ?? h?.sourceUrl ?? 'https://docs.comfy.org/tutorials/partner-nodes/pricing', checkedAt: CHECKED, typicalLatencySec: /video|kling|veo|seedance|h3/i.test(p.id) ? 120 : 15,
-    latencyEstimated: true, latencySource: 'estimated', envKey: COMFY_ENV, label: cloud && comfyCloudOpen(p) ? 'Comfy Cloud' : PARTNER_LABEL };
+    latencyEstimated: true, latencySource: 'estimated', envKey: COMFY_ENV, label: cloud ? (comfyCloudOpen(p) ? 'Comfy Cloud' : CLOUD_PARTNER_LABEL) : PARTNER_LABEL };
 }
 /** Partner/API nodes use the Comfy key but are not labelled plain 'Comfy Cloud'. */
 export const PARTNER_LABEL = 'Comfy Router';
+/** A partner (closed) model run on Comfy Cloud (comfy-cloud:* routes that aren't an open Comfy Cloud workflow): not Comfy Router (2026-11-07). */
+export const CLOUD_PARTNER_LABEL = 'Comfy Cloud · partner model';
 /** Comfy Router as an EXTRA Run on place of a model whose native route is elsewhere (2026-10-25: Nano Banana 2 Lite, native = the Gemini API).
  *  Same model card; the body, block and refs come from routing/routerModels.ts (keyed by the model id, so the runner finds it from the route id);
  *  priceRef = the route id (its own Router price row in shared/hostedPrices.ts). Like a native Router route, a job it can't take is refused up
@@ -234,7 +236,8 @@ export function tierOf(r: { kind: string; routeId: string }): 0 | 1 | 2 | 3 {
   return 2;
 }
 export const TIER_LABELS = ['Comfy Cloud', PARTNER_LABEL, 'API', 'Local'] as const;
-export const tierLabel = (r: { kind: string; routeId: string }) => TIER_LABELS[tierOf(r)];
+/** A partner model on a comfy-cloud:* route says so ("Comfy Cloud · partner model"); Comfy Router's own routes stay "Comfy Router". */
+export const tierLabel = (r: { kind: string; routeId: string }) => { const t = tierOf(r); return t === 1 && r.kind === 'comfy-cloud' ? CLOUD_PARTNER_LABEL : TIER_LABELS[t]; };
 /**
  * B6 change 1: Comfy Cloud workflow twins as routes of their open model (one card, chips Comfy Cloud · API · Local). The twin's own provider id
  * stays a hidden alias (provider=cloud-ltx-camera still runs, saved pins and old jobs resolve). Each twin serves only its tools and jobs:

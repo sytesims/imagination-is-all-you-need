@@ -25,7 +25,7 @@ export const cloudRunnerLive = () => config.backend !== 'mock' || /^(1|true)$/i.
 /** BUG-HUNT-10 PB re-check 2: plain user copy (reasonCode stays 'not_wired'). As a reason chip: "Not available on this server yet". */
 export const NOT_WIRED_REASON = 'not ready in this app yet';
 /** Sentence for 409s / notices: "<label> isn't available on this server yet." */
-export const notWiredSentence = (label: string) => `${label.replace(/\bComfy Router\b/g, 'Comfy Cloud')} isn’t ready yet. Pick another model.`;
+export const notWiredSentence = (label: string) => `${label.replace(/\bComfy Router\b/g, 'Comfy Cloud').replace(/\s*·\s*partner (model|API)\b/, '')} isn’t ready yet. Pick another model.`;
 export function routeRunnable(r: Pick<RouteDef, 'kind' | 'routeId' | 'direct' | 'request' | 'routerOff'> & { cloudRun?: unknown }): boolean {
   if (r.kind === 'local' || (QUEUE_PLACES.has(r.kind) && !places.off(r.kind))) return true; // fal / Replicate run any route of theirs (the route is the model slug), when their place plugin is on
   if (r.kind === 'runpod' && !places.off('runpod')) return true; // your RunPod endpoint runs any of its routes (our ComfyUI graphs, place-runpod)
