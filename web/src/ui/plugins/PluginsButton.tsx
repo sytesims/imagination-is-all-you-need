@@ -73,7 +73,7 @@ function QuickMenu({ close }: { close: () => void }) {
       <button ref={add} type="button" className="btn btn-sm btn-ghost pgx-grow" aria-haspopup="menu" aria-expanded={addOpen} onClick={() => setAddOpen((x) => !x)}><PlusIcon size={14} />Add plugin<ChevronDownIcon size={13} /></button>
       <button type="button" className="btn btn-sm btn-ghost pgx-grow" onClick={() => go('/plugins')} data-testid="plugins-all">All plugins<ChevronRightIcon size={13} /></button>
     </div>
-    <AddPluginMenu open={addOpen} anchor={add} onClose={() => setAddOpen(false)} onBrowse={() => { setAddOpen(false); go('/plugins#ready'); }} />
+    <AddPluginMenu open={addOpen} anchor={add} onClose={() => setAddOpen(false)} onBrowse={() => { setAddOpen(false); go('/plugins#places'); }} />
   </div>;
 }
 
